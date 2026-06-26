@@ -13,6 +13,8 @@ from feasibility import (
     check_solution_feasible,
     compute_timing,
     drone_sortie_distance,
+    drone_sortie_energy,
+    drone_sortie_energy_details,
     sortie_nodes,
     update_drone_sortie_timing,
 )
@@ -71,7 +73,7 @@ def _sorties_by_launch_position(state: TVDState) -> Dict[int, List[dict]]:
         if not isinstance(sortie, dict):
             continue
         launch, _, _ = sortie_nodes(sortie)
-        launch_pos = _route_position(state.van_route, launch)
+        launch_pos = int(sortie.get("launch_position", _route_position(state.van_route, launch)))
         if launch_pos >= 0:
             launch_positions.setdefault(launch_pos, []).append(sortie)
     return launch_positions
@@ -306,13 +308,20 @@ def save_route_plan_detail(
         "owned_num_drones": config.fleet.num_drones,
         "used_trucks": metrics.get("used_trucks", 0),
         "used_vans": metrics.get("used_vans", 0),
-        "used_drone_sorties": metrics.get("used_drone_sorties", metrics.get("used_drones", 0)),
+        "used_drones": metrics.get("used_drones", 0),
+        "used_drone_sorties": metrics.get("used_drone_sorties", 0),
+        "distance_metric": "Euclidean distance",
+        "ground_distance_factor": config.data.road_distance_factor,
         "tractor_speed_kmph": config.fleet.tractor_speed_kmph,
         "van_speed_kmph": config.fleet.van_speed_kmph,
         "drone_speed_kmph": config.fleet.drone_speed_kmph,
         "van_capacity_kg": config.fleet.van_capacity_kg,
         "drone_capacity_kg": config.fleet.drone_capacity_kg,
         "drone_endurance_km": config.fleet.drone_endurance_km,
+        "drone_battery_capacity_kwh": config.fleet.drone_battery_capacity_kwh,
+        "drone_payload_energy_coeff_rou": config.fleet.drone_payload_energy_coeff,
+        "drone_base_energy_coeff_rou1": config.fleet.drone_base_energy_coeff,
+        "drone_self_weight_kg": config.fleet.drone_self_weight_kg,
         "tractor_cost_per_km": config.cost.tractor_cost_per_km,
         "van_cost_per_km": config.cost.van_cost_per_km,
         "drone_cost_per_km": config.cost.drone_cost_per_km,
@@ -326,9 +335,9 @@ def save_route_plan_detail(
         "customer_service_time_min": config.data.service_time_min,
         "low_floor_service_rule": "low-floor customers can be served by van or drone; optimizer decides service_mode",
         "high_floor_service_rule": "high-floor customers must be served by drone",
-        "drone_energy_coefficients": "not implemented in this prototype",
+        "drone_energy_formula": "energy += [rou * (pickup_load + delivery_load + drone_self_weight) + rou1] * flight_hours",
         "waiting_cost_in_objective": False,
-        "used_drone_sorties_note": "charged as drone fixed-cost activations because this prototype has no drone identity layer yet",
+        "used_drones_note": "physical drone count after assigning drone_id to sorties",
     }
     for field, value in settings.items():
         lines.append(f"{field}: {value}")
@@ -477,31 +486,74 @@ def save_route_plan_detail(
             _append_csv_row(csv_rows, "van_route", "van_segment", idx + 1, field, value)
     lines.append("")
 
+    lines.append("van node load updates:")
+    lines.append(
+        "route_index | node | load_arrival | delivered_here | "
+        "launched_payload_here | load_departure"
+    )
+    for update in van_load_updates:
+        route_index = int(update["route_index"])
+        node = int(update["node"])
+        lines.append(
+            f"{route_index} | {node} | {_fmt(update['load_arrival'])} | "
+            f"{_fmt(update['delivered'])} | {_fmt(update['launched_payload'])} | "
+            f"{_fmt(update['load_departure'])}"
+        )
+        for field, value in update.items():
+            _append_csv_row(
+                csv_rows,
+                "van_route",
+                "van_node_load",
+                route_index,
+                field,
+                value,
+            )
+    lines.append("")
+
     lines.append("四、无人机 sorties")
     for sortie_idx, sortie in enumerate(state.drone_sorties, start=1):
         launch, customers, recovery = sortie_nodes(sortie)
         payload = float(sum(data.demands[customer] for customer in customers))
         distance = drone_sortie_distance(sortie, data)
+        energy, energy_rows = drone_sortie_energy_details(sortie, data, config)
         flight_time = _travel_minutes(distance, config.fleet.drone_speed_kmph)
-        launch_pos = _route_position(state.van_route, launch)
-        recovery_pos = _route_position(state.van_route, recovery, launch_pos)
+        launch_pos = int(sortie.get("launch_position", _route_position(state.van_route, launch))) if isinstance(sortie, dict) else _route_position(state.van_route, launch)
+        recovery_pos = int(sortie.get("recovery_position", _route_position(state.van_route, recovery, launch_pos))) if isinstance(sortie, dict) else _route_position(state.van_route, recovery, launch_pos)
         van_arrival_recovery = float(
             van_sequence.get(recovery_pos, {}).get("arrival_time", 0.0)
         )
+        delivery_load_departure = payload
+        pickup_load_departure = 0.0
+        effective_weight = (
+            delivery_load_departure
+            + pickup_load_departure
+            + config.fleet.drone_self_weight_kg
+        )
         sortie_fields = {
-            "launch node": launch,
+            "drone_id": int(sortie.get("drone_id", 0)) if isinstance(sortie, dict) else 0,
+            "launch_node": launch,
+            "launch_position": launch_pos,
             "launch_time": float(sortie.get("launch_time", 0.0)) if isinstance(sortie, dict) else 0.0,
-            "customers sequence": customers,
-            "recovery node": recovery,
+            "customers": customers,
+            "recovery_node": recovery,
+            "recovery_position": recovery_pos,
             "recovery_time": float(sortie.get("recovery_time", 0.0)) if isinstance(sortie, dict) else 0.0,
             "same_node": launch == recovery,
+            "delivery_load_departure": delivery_load_departure,
+            "pickup_load_departure": pickup_load_departure,
+            "effective_weight": effective_weight,
+            "flight_hours": distance / config.fleet.drone_speed_kmph,
+            "energy_increment_kwh": energy,
+            "cumulative_energy_kwh": energy,
             "total_payload": payload,
             "total_drone_distance": distance,
+            "total_drone_energy_kwh": energy,
             "drone_flight_time": flight_time,
             "van_arrival_recovery": van_arrival_recovery,
             "van_waiting_time": float(sortie.get("van_waiting_time", 0.0)) if isinstance(sortie, dict) else 0.0,
             "drone_waiting_time": float(sortie.get("drone_waiting_time", 0.0)) if isinstance(sortie, dict) else 0.0,
             "endurance_feasible": distance <= config.fleet.drone_endurance_km,
+            "battery_feasible": energy <= config.fleet.drone_battery_capacity_kwh,
             "payload_feasible": payload <= config.fleet.drone_capacity_kg,
         }
         lines.append(f"Drone sortie {sortie_idx}:")
@@ -522,7 +574,9 @@ def save_route_plan_detail(
         lines.append(
             "  from | to | distance | travel_time | arrival_time_at_to | "
             "service_start | service_finish | time_window | time_window_ok | "
-            "load_departure_from | delivered_at_to | load_after_service_at_to"
+            "delivery_load_departure | pickup_load_departure | effective_weight | "
+            "flight_hours | delivered_at_to | load_after_service_at_to | "
+            "energy_increment_kwh | cumulative_energy_kwh"
         )
         remaining_payload = payload
         sortie_customer_set = set(customers)
@@ -546,12 +600,18 @@ def save_route_plan_detail(
             load_departure = remaining_payload
             load_after_service = remaining_payload - delivered
             remaining_payload = load_after_service
+            energy_row = energy_rows[leg_idx]
             lines.append(
                 f"  {start} | {end} | {_fmt(leg_distance)} | {_fmt(leg_travel_time)} | "
                 f"{_fmt(arrival_time)} | "
                 f"{_fmt(start_service) if start_service != '' else ''} | "
                 f"{_fmt(finish_service) if finish_service != '' else ''} | {tw} | {tw_ok} | "
-                f"{_fmt(load_departure)} | {_fmt(delivered)} | {_fmt(load_after_service)}"
+                f"{_fmt(energy_row['delivery_load_departure'])} | "
+                f"{_fmt(energy_row['pickup_load_departure'])} | "
+                f"{_fmt(energy_row['effective_weight'])} | "
+                f"{_fmt(energy_row['flight_hours'])} | "
+                f"{_fmt(delivered)} | {_fmt(load_after_service)} | "
+                f"{_fmt(energy_row['energy_increment'])} | {_fmt(energy_row['cumulative_energy'])}"
             )
             for field, value in {
                 "sortie_id": sortie_idx,
@@ -565,8 +625,14 @@ def save_route_plan_detail(
                 "time_window": tw,
                 "time_window_ok": tw_ok,
                 "load_departure_from": load_departure,
+                "delivery_load_departure": energy_row["delivery_load_departure"],
+                "pickup_load_departure": energy_row["pickup_load_departure"],
+                "effective_weight": energy_row["effective_weight"],
+                "flight_hours": energy_row["flight_hours"],
                 "delivered_at_to": delivered,
                 "load_after_service_at_to": load_after_service,
+                "energy_increment_kwh": energy_row["energy_increment"],
+                "cumulative_energy_kwh": energy_row["cumulative_energy"],
             }.items():
                 _append_csv_row(
                     csv_rows,
@@ -608,6 +674,38 @@ def save_route_plan_detail(
                     value,
                 )
         lines.append("")
+
+    lines.append("四-补充、实体无人机路径")
+    physical_routes = timing.get("drone_physical_routes", {})
+    warehouse_launch_counts = timing.get("drone_warehouse_launch_count", {})
+    if physical_routes:
+        for drone_id, route in sorted(physical_routes.items()):
+            lines.append(f"physical_drone_{int(drone_id)}: {' -> '.join(str(int(node)) for node in route)}")
+            _append_csv_row(
+                csv_rows,
+                "physical_drones",
+                "physical_drone",
+                int(drone_id),
+                "route",
+                [int(node) for node in route],
+            )
+    else:
+        lines.append("physical_drone_routes: []")
+    lines.append("warehouse_launch_count per drone:")
+    if warehouse_launch_counts:
+        for drone_id, count in sorted(warehouse_launch_counts.items()):
+            lines.append(f"physical_drone_{int(drone_id)}: {int(count)}")
+            _append_csv_row(
+                csv_rows,
+                "physical_drones",
+                "warehouse_launch_count",
+                int(drone_id),
+                "warehouse_launch_count",
+                int(count),
+            )
+    else:
+        lines.append("warehouse_launch_count: {}")
+    lines.append("")
 
     lines.append("五、客户服务汇总")
     lines.append(
@@ -679,6 +777,11 @@ def save_route_plan_detail(
             for item in violations
             if "launch" in item or "recovery" in item or "van_route" in item
         ],
+        "physical_drone_violations": [
+            item
+            for item in violations
+            if "drone_id" in item or "physical drones" in item
+        ],
     }
     lines.append(f"feasible: {feasible}")
     lines.append(f"violations: {violations}")
@@ -690,6 +793,24 @@ def save_route_plan_detail(
     lines.append("")
 
     lines.append("七、成本拆分")
+    lines.append(
+        "drone_fixed_cost calculation: "
+        f"used_drones({metrics.get('used_drones', 0)}) * "
+        f"drone_fixed_cost({config.cost.drone_fixed_cost}) = "
+        f"{_fmt(metrics.get('drone_fixed_cost', 0.0))}"
+    )
+    _append_csv_row(
+        csv_rows,
+        "costs",
+        "calculation",
+        "drone_fixed_cost",
+        "calculation",
+        {
+            "used_drones": metrics.get("used_drones", 0),
+            "unit_drone_fixed_cost": config.cost.drone_fixed_cost,
+            "drone_fixed_cost": metrics.get("drone_fixed_cost", 0.0),
+        },
+    )
     cost_fields = [
         "truck_cost",
         "truck_transport_cost",
@@ -700,6 +821,7 @@ def save_route_plan_detail(
         "drone_cost",
         "drone_transport_cost",
         "drone_fixed_cost",
+        "drone_energy",
         "penalty_cost",
         "total_cost",
         "waiting_cost_reported",
@@ -753,16 +875,30 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         launch, customers, recovery = sortie_nodes(sortie)
         payload = float(sum(data.demands[customer] for customer in customers))
         distance = drone_sortie_distance(sortie, data)
+        energy = drone_sortie_energy(sortie, data, config)
+        pickup_load_departure = 0.0
+        effective_weight = payload + pickup_load_departure + config.fleet.drone_self_weight_kg
         drone_sortie_details.append(
             {
+                "drone_id": int(sortie.get("drone_id", 0)) if isinstance(sortie, dict) else 0,
                 "launch": launch,
+                "launch_position": int(sortie.get("launch_position", -1)) if isinstance(sortie, dict) else -1,
                 "customers": customers,
                 "number_of_customers": len(customers),
                 "recovery": recovery,
+                "recovery_position": int(sortie.get("recovery_position", -1)) if isinstance(sortie, dict) else -1,
                 "same_node": launch == recovery,
+                "delivery_load_departure": payload,
+                "pickup_load_departure": pickup_load_departure,
+                "effective_weight": effective_weight,
+                "flight_hours": distance / config.fleet.drone_speed_kmph,
+                "energy_increment_kwh": energy,
+                "cumulative_energy_kwh": energy,
                 "total_payload": payload,
                 "drone_distance": distance,
+                "drone_energy": energy,
                 "endurance_feasible": distance <= config.fleet.drone_endurance_km,
+                "battery_feasible": energy <= config.fleet.drone_battery_capacity_kwh,
                 "payload_feasible": payload <= config.fleet.drone_capacity_kg,
                 "launch_time": float(sortie.get("launch_time", 0.0)) if isinstance(sortie, dict) else 0.0,
                 "recovery_time": float(sortie.get("recovery_time", 0.0)) if isinstance(sortie, dict) else 0.0,
@@ -805,6 +941,8 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         "total_van_waiting_time": total_van_waiting,
         "total_drone_waiting_time": total_drone_waiting,
         "drone_sortie_details": drone_sortie_details,
+        "drone_physical_routes": timing.get("drone_physical_routes", {}),
+        "drone_warehouse_launch_count": timing.get("drone_warehouse_launch_count", {}),
         "feasible": feasible,
         "violations": "; ".join(violations),
         "truck_route": result.best_state.truck_route,

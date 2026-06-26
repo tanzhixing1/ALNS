@@ -4,7 +4,7 @@ from typing import List
 
 from config import TVDConfig
 from dataset_loader import InstanceData
-from feasibility import check_solution_feasible, drone_sortie_distance
+from feasibility import check_solution_feasible, drone_sortie_distance, drone_sortie_energy
 from objective import objective
 from state import TVDState
 
@@ -72,6 +72,7 @@ def _can_make_transshipment_sortie(
         and all(data.drone_eligible[customer] for customer in customers)
         and sum(data.demands[customer] for customer in customers) <= config.fleet.drone_capacity_kg
         and drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
+        and drone_sortie_energy(sortie, data, config) <= config.fleet.drone_battery_capacity_kwh
     )
 
 
@@ -223,11 +224,12 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             for customer in sortie_customers:
                 state.van_route.remove(customer)
                 state.service_mode[customer] = "drone"
-            state.drone_sorties.append(
-                _make_drone_sortie(
-                    selected_transshipment, sortie_customers, selected_transshipment
-                )
+            sortie = _make_drone_sortie(
+                selected_transshipment, sortie_customers, selected_transshipment
             )
+            sortie["launch_position"] = 0
+            sortie["recovery_position"] = 0
+            state.drone_sorties.append(sortie)
 
     feasible, _ = check_solution_feasible(state, data, config)
     if not feasible:

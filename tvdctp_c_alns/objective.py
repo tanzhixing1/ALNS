@@ -4,7 +4,12 @@ from typing import Dict, Tuple
 
 from config import TVDConfig
 from dataset_loader import InstanceData
-from feasibility import check_solution_feasible, compute_waiting_minutes, drone_sortie_distance
+from feasibility import (
+    check_solution_feasible,
+    compute_waiting_minutes,
+    drone_sortie_distance,
+    drone_sortie_energy,
+)
 from state import TVDState
 
 
@@ -18,14 +23,22 @@ def _route_distance(route: list[int], matrix) -> float:
 def _vehicle_usage_counts(state: TVDState) -> Dict[str, int]:
     used_trucks = 1 if len(state.truck_route) > 1 else 0
     used_vans = 1 if state.get_van_customers() or state.drone_sorties else 0
-    # This prototype has no drone identity layer yet, so drone fixed cost is
-    # charged by sortie activation.
-    used_drones = len(state.drone_sorties)
+    physical_routes = state.timing.get("drone_physical_routes", {})
+    used_drone_ids = {
+        int(sortie["drone_id"])
+        for sortie in state.drone_sorties
+        if isinstance(sortie, dict) and sortie.get("drone_id") is not None
+    }
+    used_drones = (
+        len(physical_routes)
+        if isinstance(physical_routes, dict) and physical_routes
+        else len(used_drone_ids)
+    )
     return {
         "used_trucks": used_trucks,
         "used_vans": used_vans,
         "used_drones": used_drones,
-        "used_drone_sorties": used_drones,
+        "used_drone_sorties": len(state.drone_sorties),
     }
 
 
@@ -49,6 +62,10 @@ def objective(
 
     drone_distance = sum(
         drone_sortie_distance(sortie, data)
+        for sortie in state.drone_sorties
+    )
+    drone_energy = sum(
+        drone_sortie_energy(sortie, data, config)
         for sortie in state.drone_sorties
     )
     drone_transport_cost = sum(
@@ -83,6 +100,7 @@ def objective(
         "truck_distance": float(truck_distance),
         "van_distance": float(van_distance),
         "drone_distance": float(drone_distance),
+        "drone_energy": float(drone_energy),
         **usage,
         "waiting_cost": float(waiting_cost),
         "waiting_cost_reported": float(waiting_cost),

@@ -14,13 +14,20 @@ owned_num_vans: 1
 owned_num_drones: 3
 used_trucks: 1
 used_vans: 1
+used_drones: 1
 used_drone_sorties: 2
+distance_metric: Euclidean distance
+ground_distance_factor: 1.0
 tractor_speed_kmph: 30.0
 van_speed_kmph: 40.0
 drone_speed_kmph: 80.0
 van_capacity_kg: 500.0
 drone_capacity_kg: 30.0
 drone_endurance_km: 90.0
+drone_battery_capacity_kwh: 13.8
+drone_payload_energy_coeff_rou: 0.5
+drone_base_energy_coeff_rou1: 0.18
+drone_self_weight_kg: 5.0
 tractor_cost_per_km: 1.93
 van_cost_per_km: 0.875
 drone_cost_per_km: 0.052
@@ -31,9 +38,9 @@ default_time_window: (0.0, 360.0)
 customer_service_time_min: 0.0
 low_floor_service_rule: low-floor customers can be served by van or drone; optimizer decides service_mode
 high_floor_service_rule: high-floor customers must be served by drone
-drone_energy_coefficients: not implemented in this prototype
+drone_energy_formula: energy += [rou * (pickup_load + delivery_load + drone_self_weight) + rou1] * flight_hours
 waiting_cost_in_objective: False
-used_drone_sorties_note: charged as drone fixed-cost activations because this prototype has no drone identity layer yet
+used_drones_note: physical drone count after assigning drone_id to sorties
 
 一、节点与订单信息表
 node_id | node_type | x | y | demand | time_window | service_time | drone_eligible | high_floor | order_id | container_id | assigned_transshipment
@@ -57,78 +64,112 @@ truck_depot_node: 1
 truck_route: 1 -> 0 -> 2
 truck segments:
 from | to | distance | travel_time | arrival_time | container_load_departure_from | payload_kg_departure_from | container_load_arrival_at_to | payload_kg_arrival_at_to | operation_at_to | container_load_departure_at_to | payload_kg_departure_at_to
-1 | 0 | 10.151 | 20.301 | 20.301 | 0.000 | 0.000 | 0.000 | 0.000 | load_container | 1.000 | 80.000
-0 | 2 | 35.203 | 70.406 | 90.707 | 1.000 | 80.000 | 1.000 | 80.000 | unload_container | 0.000 | 0.000
-truck_arrival_time at selected_transshipment: 90.707
+1 | 0 | 8.602 | 17.205 | 17.205 | 0.000 | 0.000 | 0.000 | 0.000 | load_container | 1.000 | 80.000
+0 | 2 | 29.833 | 59.666 | 76.870 | 1.000 | 80.000 | 1.000 | 80.000 | unload_container | 0.000 | 0.000
+truck_arrival_time at selected_transshipment: 76.870
 
 三、二阶段 van 路线
-van_route: 2 -> 7 -> 4 -> 2
+van_route: 2 -> 4 -> 7 -> 2
 from | to | distance | travel_time | arrival_time_at_to | service_start | service_finish | time_window | time_window_ok | load_departure_from | load_arrival_at_to | delivered_at_to | launched_payload_at_to | load_departure_at_to
-2 | 7 | 29.508 | 44.262 | 134.969 | 134.969 | 134.969 | (0.0, 360.0) | True | 60.000 | 60.000 | 17.000 | 26.000 | 17.000
-7 | 4 | 18.038 | 27.056 | 162.342 | 162.342 | 162.342 | (0.0, 360.0) | True | 17.000 | 17.000 | 17.000 | 0.000 | 0.000
-4 | 2 | 20.761 | 31.142 | 193.484 |  |  |  |  | 0.000 | 0.000 | 0.000 | 0.000 | 0.000
+2 | 4 | 17.594 | 26.392 | 103.262 | 103.262 | 103.262 | (0.0, 360.0) | True | 60.000 | 60.000 | 17.000 | 0.000 | 43.000
+4 | 7 | 15.286 | 22.929 | 126.191 | 126.191 | 126.191 | (0.0, 360.0) | True | 43.000 | 43.000 | 17.000 | 26.000 | 0.000
+7 | 2 | 25.007 | 37.510 | 163.701 |  |  |  |  | 0.000 | 0.000 | 0.000 | 0.000 | 0.000
+
+van node load updates:
+route_index | node | load_arrival | delivered_here | launched_payload_here | load_departure
+0 | 2 | 80.000 | 0.000 | 20.000 | 60.000
+1 | 4 | 60.000 | 17.000 | 0.000 | 43.000
+2 | 7 | 43.000 | 17.000 | 26.000 | 0.000
+3 | 2 | 0.000 | 0.000 | 0.000 | 0.000
 
 四、无人机 sorties
 Drone sortie 1:
-- launch node: 7
-- launch_time: 134.969
-- customers sequence: [5, 8]
-- recovery node: 2
-- recovery_time: 172.565
+- drone_id: 1
+- launch_node: 7
+- launch_position: 2
+- launch_time: 126.191
+- customers: [5, 8]
+- recovery_node: 2
+- recovery_position: 3
+- recovery_time: 163.787
 - same_node: False
+- delivery_load_departure: 26.000
+- pickup_load_departure: 0.000
+- effective_weight: 31.000
+- flight_hours: 0.627
+- energy_increment_kwh: 5.103
+- cumulative_energy_kwh: 5.103
 - total_payload: 26.000
 - total_drone_distance: 50.128
+- total_drone_energy_kwh: 5.103
 - drone_flight_time: 37.596
-- van_arrival_recovery: 193.484
-- van_waiting_time: 0.000
-- drone_waiting_time: 20.919
+- van_arrival_recovery: 163.701
+- van_waiting_time: 0.086
+- drone_waiting_time: 0.000
 - endurance_feasible: True
+- battery_feasible: True
 - payload_feasible: True
   drone_route: 7 -> 5 -> 8 -> 2
   drone segments:
-  from | to | distance | travel_time | arrival_time_at_to | service_start | service_finish | time_window | time_window_ok | load_departure_from | delivered_at_to | load_after_service_at_to
-  7 | 5 | 5.726 | 4.295 | 139.264 | 139.264 | 139.264 | (0.0, 360.0) | True | 26.000 | 14.000 | 12.000
-  5 | 8 | 33.238 | 24.928 | 164.192 | 164.192 | 164.192 | (0.0, 360.0) | True | 12.000 | 12.000 | 0.000
-  8 | 2 | 11.164 | 8.373 | 172.565 |  |  |  |  | 0.000 | 0.000 | 0.000
+  from | to | distance | travel_time | arrival_time_at_to | service_start | service_finish | time_window | time_window_ok | delivery_load_departure | pickup_load_departure | effective_weight | flight_hours | delivered_at_to | load_after_service_at_to | energy_increment_kwh | cumulative_energy_kwh
+  7 | 5 | 5.726 | 4.295 | 130.486 | 130.486 | 130.486 | (0.0, 360.0) | True | 26.000 | 0.000 | 31.000 | 0.072 | 14.000 | 12.000 | 1.122 | 1.122
+  5 | 8 | 33.238 | 24.928 | 155.414 | 155.414 | 155.414 | (0.0, 360.0) | True | 12.000 | 0.000 | 17.000 | 0.415 | 12.000 | 0.000 | 3.606 | 4.729
+  8 | 2 | 11.164 | 8.373 | 163.787 |  |  |  |  | 0.000 | 0.000 | 5.000 | 0.140 | 0.000 | 0.000 | 0.374 | 5.103
   drone customers:
   customer_id | arrival_time | service_start | service_finish | time_window | time_window_ok
-  5 | 139.264 | 139.264 | 139.264 | (0.0, 360.0) | True
-  8 | 164.192 | 164.192 | 164.192 | (0.0, 360.0) | True
+  5 | 130.486 | 130.486 | 130.486 | (0.0, 360.0) | True
+  8 | 155.414 | 155.414 | 155.414 | (0.0, 360.0) | True
 
 Drone sortie 2:
-- launch node: 2
-- launch_time: 90.707
-- customers sequence: [6, 9]
-- recovery node: 7
-- recovery_time: 135.285
+- drone_id: 1
+- launch_node: 2
+- launch_position: 0
+- launch_time: 76.870
+- customers: [6, 9]
+- recovery_node: 7
+- recovery_position: 2
+- recovery_time: 121.448
 - same_node: False
+- delivery_load_departure: 20.000
+- pickup_load_departure: 0.000
+- effective_weight: 25.000
+- flight_hours: 0.743
+- energy_increment_kwh: 6.429
+- cumulative_energy_kwh: 6.429
 - total_payload: 20.000
 - total_drone_distance: 59.437
+- total_drone_energy_kwh: 6.429
 - drone_flight_time: 44.578
-- van_arrival_recovery: 134.969
-- van_waiting_time: 0.316
-- drone_waiting_time: 0.000
+- van_arrival_recovery: 126.191
+- van_waiting_time: 0.000
+- drone_waiting_time: 4.743
 - endurance_feasible: True
+- battery_feasible: True
 - payload_feasible: True
   drone_route: 2 -> 6 -> 9 -> 7
   drone segments:
-  from | to | distance | travel_time | arrival_time_at_to | service_start | service_finish | time_window | time_window_ok | load_departure_from | delivered_at_to | load_after_service_at_to
-  2 | 6 | 29.460 | 22.095 | 112.802 | 112.802 | 112.802 | (0.0, 360.0) | True | 20.000 | 10.000 | 10.000
-  6 | 9 | 12.087 | 9.066 | 121.868 | 121.868 | 121.868 | (0.0, 360.0) | True | 10.000 | 10.000 | 0.000
-  9 | 7 | 17.890 | 13.418 | 135.285 |  |  |  |  | 0.000 | 0.000 | 0.000
+  from | to | distance | travel_time | arrival_time_at_to | service_start | service_finish | time_window | time_window_ok | delivery_load_departure | pickup_load_departure | effective_weight | flight_hours | delivered_at_to | load_after_service_at_to | energy_increment_kwh | cumulative_energy_kwh
+  2 | 6 | 29.460 | 22.095 | 98.965 | 98.965 | 98.965 | (0.0, 360.0) | True | 20.000 | 0.000 | 25.000 | 0.368 | 10.000 | 10.000 | 4.669 | 4.669
+  6 | 9 | 12.087 | 9.066 | 108.031 | 108.031 | 108.031 | (0.0, 360.0) | True | 10.000 | 0.000 | 15.000 | 0.151 | 10.000 | 0.000 | 1.160 | 5.830
+  9 | 7 | 17.890 | 13.418 | 121.448 |  |  |  |  | 0.000 | 0.000 | 5.000 | 0.224 | 0.000 | 0.000 | 0.599 | 6.429
   drone customers:
   customer_id | arrival_time | service_start | service_finish | time_window | time_window_ok
-  6 | 112.802 | 112.802 | 112.802 | (0.0, 360.0) | True
-  9 | 121.868 | 121.868 | 121.868 | (0.0, 360.0) | True
+  6 | 98.965 | 98.965 | 98.965 | (0.0, 360.0) | True
+  9 | 108.031 | 108.031 | 108.031 | (0.0, 360.0) | True
+
+四-补充、实体无人机路径
+physical_drone_1: 2 -> 6 -> 9 -> 7 -> 5 -> 8 -> 2
+warehouse_launch_count per drone:
+physical_drone_1: 1
 
 五、客户服务汇总
 customer_id | service_mode | served_by_route_or_sortie_id | arrival_time | service_start | service_finish | time_window | demand | unique_service | mode_constraint_ok
-4 | van | van_route | 162.342 | 162.342 | 162.342 | (0.0, 360.0) | 17.0 | True | True
-5 | drone | drone_sortie_1 | 139.264 | 139.264 | 139.264 | (0.0, 360.0) | 14.0 | True | True
-6 | drone | drone_sortie_2 | 112.802 | 112.802 | 112.802 | (0.0, 360.0) | 10.0 | True | True
-7 | van | van_route | 134.969 | 134.969 | 134.969 | (0.0, 360.0) | 17.0 | True | True
-8 | drone | drone_sortie_1 | 164.192 | 164.192 | 164.192 | (0.0, 360.0) | 12.0 | True | True
-9 | drone | drone_sortie_2 | 121.868 | 121.868 | 121.868 | (0.0, 360.0) | 10.0 | True | True
+4 | van | van_route | 103.262 | 103.262 | 103.262 | (0.0, 360.0) | 17.0 | True | True
+5 | drone | drone_sortie_1 | 130.486 | 130.486 | 130.486 | (0.0, 360.0) | 14.0 | True | True
+6 | drone | drone_sortie_2 | 98.965 | 98.965 | 98.965 | (0.0, 360.0) | 10.0 | True | True
+7 | van | van_route | 126.191 | 126.191 | 126.191 | (0.0, 360.0) | 17.0 | True | True
+8 | drone | drone_sortie_1 | 155.414 | 155.414 | 155.414 | (0.0, 360.0) | 12.0 | True | True
+9 | drone | drone_sortie_2 | 108.031 | 108.031 | 108.031 | (0.0, 360.0) | 10.0 | True | True
 
 六、可行性检查结果
 feasible: True
@@ -138,19 +179,22 @@ capacity_violations: []
 drone_endurance_violations: []
 order_container_assignment_violations: []
 launch_recovery_violations: []
+physical_drone_violations: []
 
 七、成本拆分
-truck_cost: 253.532
-truck_transport_cost: 87.532
+drone_fixed_cost calculation: used_drones(1) * drone_fixed_cost(169.0) = 169.000
+truck_cost: 240.180
+truck_transport_cost: 74.180
 truck_fixed_cost: 166.000
-van_cost: 118.768
-van_transport_cost: 59.768
+van_cost: 109.651
+van_transport_cost: 50.651
 van_fixed_cost: 59.000
-drone_cost: 343.697
+drone_cost: 174.697
 drone_transport_cost: 5.697
-drone_fixed_cost: 338.000
+drone_fixed_cost: 169.000
+drone_energy: 11.532
 penalty_cost: 0.000
-total_cost: 715.998
-waiting_cost_reported: 13.768
+total_cost: 524.529
+waiting_cost_reported: 3.131
 waiting_cost_reported 不进入 total_cost.
 

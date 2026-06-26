@@ -15,6 +15,8 @@ The current v6 toy version models:
 - 2 candidate transshipment warehouses.
 - 1 selected transshipment warehouse.
 - 1 van route and simplified drone sorties.
+- Physical drone identities assigned across sorties for fixed-cost counting.
+- Payload-dependent drone energy checks for delivery-only drone routes.
 - Strict customer time windows.
 - Arrival-time propagation for truck, van, and drone moves.
 - Simplified van-drone timing synchronization.
@@ -96,6 +98,7 @@ Drone sorties keep the format:
     "van_waiting_time": float,
     "drone_waiting_time": float,
     "same_node": bool,
+    "drone_id": int,
 }
 ```
 
@@ -166,13 +169,15 @@ The timing propagation computes:
 
 For each drone sortie:
 
-1. `launch_time` is the van arrival time at the launch node.
+1. `launch_time` is the later of van availability and assigned drone availability
+   at the launch node.
 2. Drone flight time is computed as
    `launch -> customer_1 -> customer_2 -> ... -> recovery`.
 3. Drone customers are served in sortie order with hard time-window checks.
 4. Van arrival at the recovery node is read from the propagated van route.
 5. If the drone arrives later, `van_waiting_time` is positive.
 6. If the van arrives later, `drone_waiting_time` is positive.
+7. A recovered physical drone can be reused for a later sortie after recovery.
 
 The waiting cost uses the sum of van and drone waiting minutes converted to the
 configured hourly waiting cost. It is reported as `waiting_cost_reported`, but
@@ -191,6 +196,7 @@ The objective contains:
 - `drone_cost`
 - `drone_transport_cost`
 - `drone_fixed_cost`
+- `drone_energy`
 - `waiting_cost_reported`
 - `penalty_cost`
 - `total_cost`
@@ -207,8 +213,17 @@ The truck cost is computed from `truck_route`, not from a fixed
 
 where each vehicle-mode cost is fixed usage cost plus distance-based
 transportation cost. Truck and van usage are binary route activations. Drone
-usage is counted by sortie activation because the prototype does not yet assign
-physical drone identities across sorties.
+usage is counted by unique physical `drone_id` assigned during timing
+propagation, while `used_drone_sorties` is reported separately.
+
+The current delivery-only drone energy increment is:
+
+```text
+energy += [rou * (delivery_load + pickup_load + drone_self_weight) + rou1] * flight_hours
+```
+
+with pickup load currently zero, `rou=0.5`, `rou1=0.18`, drone self-weight
+`5 kg`, and battery capacity `13.8 kWh`.
 
 `waiting_cost_reported` is diagnostic only and is not optimized directly.
 
@@ -219,13 +234,12 @@ physical drone identities across sorties.
 - Multiple trucks, trailers, vans, or drones.
 - Trailer-tractor binding.
 - Pickup/delivery request types.
-- Payload-dependent drone energy consumption.
 - Multi-van cross-vehicle recovery.
 - Gurobi MILP.
 - RL/PPO operator selection.
 
-Drone endurance is still modeled as a distance constraint. A
-payload-dependent drone energy model has not been implemented yet.
+Drone endurance is modeled both as a distance constraint and as a battery energy
+constraint. Pickup load is not implemented yet.
 
 ## How to Run
 

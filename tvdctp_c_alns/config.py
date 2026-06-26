@@ -27,6 +27,10 @@ class FleetConfig:
     van_capacity_kg: float = 500.0
     drone_capacity_kg: float = 30.0
     drone_endurance_km: float = 90.0
+    drone_battery_capacity_kwh: float = 13.8
+    drone_payload_energy_coeff: float = 0.5
+    drone_base_energy_coeff: float = 0.18
+    drone_self_weight_kg: float = 5.0
     num_trucks: int = 1
     num_vans: int = 1
     num_drones: int = 3
@@ -56,7 +60,7 @@ class ToyDataConfig:
     num_orders: int = 6
     num_containers: int = 1
     container_origin: str = "port"
-    road_distance_factor: float = 1.18
+    road_distance_factor: float = 1.0
     high_floor_ratio: float = 0.35
     min_demand_kg: int = 3
     max_demand_kg: int = 20

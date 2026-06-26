@@ -7,7 +7,12 @@ import numpy as np
 
 from config import TVDConfig
 from dataset_loader import InstanceData
-from feasibility import check_solution_feasible, drone_sortie_distance, sortie_nodes
+from feasibility import (
+    check_solution_feasible,
+    drone_sortie_distance,
+    drone_sortie_energy,
+    sortie_nodes,
+)
 from objective import objective
 from state import TVDState, default_timing
 
@@ -267,7 +272,11 @@ def _can_make_drone_sortie(sortie: dict, data: InstanceData, config: TVDConfig) 
         return False
     if _drone_payload(customers, data) > config.fleet.drone_capacity_kg:
         return False
-    return drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
+    return (
+        drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
+        and drone_sortie_energy(sortie, data, config)
+        <= config.fleet.drone_battery_capacity_kwh
+    )
 
 
 def _extend_drone_customers(
@@ -322,6 +331,8 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
                 customer, launch, recovery, state, data, config
             )
             sortie = _make_drone_sortie(launch, sortie_customers, recovery)
+            sortie["launch_position"] = int(launch_pos)
+            sortie["recovery_position"] = int(recovery_pos)
             if not _can_make_drone_sortie(sortie, data, config):
                 continue
             dist = drone_sortie_distance(sortie, data)

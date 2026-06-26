@@ -9,13 +9,20 @@ problem_settings,setting,owned_num_vans,owned_num_vans,1
 problem_settings,setting,owned_num_drones,owned_num_drones,3
 problem_settings,setting,used_trucks,used_trucks,1
 problem_settings,setting,used_vans,used_vans,1
+problem_settings,setting,used_drones,used_drones,1
 problem_settings,setting,used_drone_sorties,used_drone_sorties,2
+problem_settings,setting,distance_metric,distance_metric,Euclidean distance
+problem_settings,setting,ground_distance_factor,ground_distance_factor,1.0
 problem_settings,setting,tractor_speed_kmph,tractor_speed_kmph,30.0
 problem_settings,setting,van_speed_kmph,van_speed_kmph,40.0
 problem_settings,setting,drone_speed_kmph,drone_speed_kmph,80.0
 problem_settings,setting,van_capacity_kg,van_capacity_kg,500.0
 problem_settings,setting,drone_capacity_kg,drone_capacity_kg,30.0
 problem_settings,setting,drone_endurance_km,drone_endurance_km,90.0
+problem_settings,setting,drone_battery_capacity_kwh,drone_battery_capacity_kwh,13.8
+problem_settings,setting,drone_payload_energy_coeff_rou,drone_payload_energy_coeff_rou,0.5
+problem_settings,setting,drone_base_energy_coeff_rou1,drone_base_energy_coeff_rou1,0.18
+problem_settings,setting,drone_self_weight_kg,drone_self_weight_kg,5.0
 problem_settings,setting,tractor_cost_per_km,tractor_cost_per_km,1.93
 problem_settings,setting,van_cost_per_km,van_cost_per_km,0.875
 problem_settings,setting,drone_cost_per_km,drone_cost_per_km,0.052
@@ -26,9 +33,9 @@ problem_settings,setting,default_time_window,default_time_window,"(0.0, 360.0)"
 problem_settings,setting,customer_service_time_min,customer_service_time_min,0.0
 problem_settings,setting,low_floor_service_rule,low_floor_service_rule,low-floor customers can be served by van or drone; optimizer decides service_mode
 problem_settings,setting,high_floor_service_rule,high_floor_service_rule,high-floor customers must be served by drone
-problem_settings,setting,drone_energy_coefficients,drone_energy_coefficients,not implemented in this prototype
+problem_settings,setting,drone_energy_formula,drone_energy_formula,energy += [rou * (pickup_load + delivery_load + drone_self_weight) + rou1] * flight_hours
 problem_settings,setting,waiting_cost_in_objective,waiting_cost_in_objective,False
-problem_settings,setting,used_drone_sorties_note,used_drone_sorties_note,charged as drone fixed-cost activations because this prototype has no drone identity layer yet
+problem_settings,setting,used_drones_note,used_drones_note,physical drone count after assigning drone_id to sorties
 nodes_orders,node,0,node_id,0
 nodes_orders,node,0,node_type,port
 nodes_orders,node,0,x,5.0
@@ -155,9 +162,9 @@ container_truck,container,0,orders,"[0, 1, 2, 3, 4, 5]"
 container_truck,container,0,customers,"[4, 5, 6, 7, 8, 9]"
 container_truck,truck_segment,1,from,1
 container_truck,truck_segment,1,to,0
-container_truck,truck_segment,1,distance,10.1507438151103
-container_truck,truck_segment,1,travel_time,20.3014876302206
-container_truck,truck_segment,1,arrival_time,20.3014876302206
+container_truck,truck_segment,1,distance,8.602325267042627
+container_truck,truck_segment,1,travel_time,17.204650534085253
+container_truck,truck_segment,1,arrival_time,17.204650534085253
 container_truck,truck_segment,1,container_load_departure_from,0.0
 container_truck,truck_segment,1,payload_kg_departure_from,0.0
 container_truck,truck_segment,1,container_load_arrival_at_to,0.0
@@ -167,9 +174,9 @@ container_truck,truck_segment,1,container_load_departure_at_to,1.0
 container_truck,truck_segment,1,payload_kg_departure_at_to,80.0
 container_truck,truck_segment,2,from,0
 container_truck,truck_segment,2,to,2
-container_truck,truck_segment,2,distance,35.202783980816065
-container_truck,truck_segment,2,travel_time,70.40556796163213
-container_truck,truck_segment,2,arrival_time,90.70705559185274
+container_truck,truck_segment,2,distance,29.832867780352597
+container_truck,truck_segment,2,travel_time,59.665735560705194
+container_truck,truck_segment,2,arrival_time,76.87038609479045
 container_truck,truck_segment,2,container_load_departure_from,1.0
 container_truck,truck_segment,2,payload_kg_departure_from,80.0
 container_truck,truck_segment,2,container_load_arrival_at_to,1.0
@@ -178,38 +185,38 @@ container_truck,truck_segment,2,operation_at_to,unload_container
 container_truck,truck_segment,2,container_load_departure_at_to,0.0
 container_truck,truck_segment,2,payload_kg_departure_at_to,0.0
 van_route,van_segment,1,from,2
-van_route,van_segment,1,to,7
-van_route,van_segment,1,distance,29.50778484307148
-van_route,van_segment,1,travel_time,44.261677264607215
-van_route,van_segment,1,arrival_time_at_to,134.96873285645995
-van_route,van_segment,1,service_start,134.96873285645995
-van_route,van_segment,1,service_finish,134.96873285645995
+van_route,van_segment,1,to,4
+van_route,van_segment,1,distance,17.59439163498979
+van_route,van_segment,1,travel_time,26.391587452484686
+van_route,van_segment,1,arrival_time_at_to,103.26197354727513
+van_route,van_segment,1,service_start,103.26197354727513
+van_route,van_segment,1,service_finish,103.26197354727513
 van_route,van_segment,1,time_window,"(0.0, 360.0)"
 van_route,van_segment,1,time_window_ok,True
 van_route,van_segment,1,load_departure_from,60.0
 van_route,van_segment,1,load_arrival_at_to,60.0
 van_route,van_segment,1,delivered_at_to,17.0
-van_route,van_segment,1,launched_payload_at_to,26.0
-van_route,van_segment,1,load_departure_at_to,17.0
-van_route,van_segment,2,from,7
-van_route,van_segment,2,to,4
-van_route,van_segment,2,distance,18.037616450411893
-van_route,van_segment,2,travel_time,27.05642467561784
-van_route,van_segment,2,arrival_time_at_to,162.34157318380966
-van_route,van_segment,2,service_start,162.34157318380966
-van_route,van_segment,2,service_finish,162.34157318380966
+van_route,van_segment,1,launched_payload_at_to,0.0
+van_route,van_segment,1,load_departure_at_to,43.0
+van_route,van_segment,2,from,4
+van_route,van_segment,2,to,7
+van_route,van_segment,2,distance,15.286115635942283
+van_route,van_segment,2,travel_time,22.929173453913425
+van_route,van_segment,2,arrival_time_at_to,126.19114700118855
+van_route,van_segment,2,service_start,126.19114700118855
+van_route,van_segment,2,service_finish,126.19114700118855
 van_route,van_segment,2,time_window,"(0.0, 360.0)"
 van_route,van_segment,2,time_window_ok,True
-van_route,van_segment,2,load_departure_from,17.0
-van_route,van_segment,2,load_arrival_at_to,17.0
+van_route,van_segment,2,load_departure_from,43.0
+van_route,van_segment,2,load_arrival_at_to,43.0
 van_route,van_segment,2,delivered_at_to,17.0
-van_route,van_segment,2,launched_payload_at_to,0.0
+van_route,van_segment,2,launched_payload_at_to,26.0
 van_route,van_segment,2,load_departure_at_to,0.0
-van_route,van_segment,3,from,4
+van_route,van_segment,3,from,7
 van_route,van_segment,3,to,2
-van_route,van_segment,3,distance,20.761382129287952
-van_route,van_segment,3,travel_time,31.142073193931928
-van_route,van_segment,3,arrival_time_at_to,193.4836463777416
+van_route,van_segment,3,distance,25.00659732463685
+van_route,van_segment,3,travel_time,37.50989598695527
+van_route,van_segment,3,arrival_time_at_to,163.70104298814383
 van_route,van_segment,3,service_start,
 van_route,van_segment,3,service_finish,
 van_route,van_segment,3,time_window,
@@ -219,19 +226,54 @@ van_route,van_segment,3,load_arrival_at_to,0.0
 van_route,van_segment,3,delivered_at_to,0.0
 van_route,van_segment,3,launched_payload_at_to,0.0
 van_route,van_segment,3,load_departure_at_to,0.0
-drone_sorties,sortie,1,launch node,7
-drone_sorties,sortie,1,launch_time,134.96873285645995
-drone_sorties,sortie,1,customers sequence,"[5, 8]"
-drone_sorties,sortie,1,recovery node,2
-drone_sorties,sortie,1,recovery_time,172.5647012181153
+van_route,van_node_load,0,route_index,0.0
+van_route,van_node_load,0,node,2.0
+van_route,van_node_load,0,load_arrival,80.0
+van_route,van_node_load,0,delivered,0.0
+van_route,van_node_load,0,launched_payload,20.0
+van_route,van_node_load,0,load_departure,60.0
+van_route,van_node_load,1,route_index,1.0
+van_route,van_node_load,1,node,4.0
+van_route,van_node_load,1,load_arrival,60.0
+van_route,van_node_load,1,delivered,17.0
+van_route,van_node_load,1,launched_payload,0.0
+van_route,van_node_load,1,load_departure,43.0
+van_route,van_node_load,2,route_index,2.0
+van_route,van_node_load,2,node,7.0
+van_route,van_node_load,2,load_arrival,43.0
+van_route,van_node_load,2,delivered,17.0
+van_route,van_node_load,2,launched_payload,26.0
+van_route,van_node_load,2,load_departure,0.0
+van_route,van_node_load,3,route_index,3.0
+van_route,van_node_load,3,node,2.0
+van_route,van_node_load,3,load_arrival,0.0
+van_route,van_node_load,3,delivered,0.0
+van_route,van_node_load,3,launched_payload,0.0
+van_route,van_node_load,3,load_departure,0.0
+drone_sorties,sortie,1,drone_id,1
+drone_sorties,sortie,1,launch_node,7
+drone_sorties,sortie,1,launch_position,2
+drone_sorties,sortie,1,launch_time,126.19114700118855
+drone_sorties,sortie,1,customers,"[5, 8]"
+drone_sorties,sortie,1,recovery_node,2
+drone_sorties,sortie,1,recovery_position,3
+drone_sorties,sortie,1,recovery_time,163.7871153628439
 drone_sorties,sortie,1,same_node,False
+drone_sorties,sortie,1,delivery_load_departure,26.0
+drone_sorties,sortie,1,pickup_load_departure,0.0
+drone_sorties,sortie,1,effective_weight,31.0
+drone_sorties,sortie,1,flight_hours,0.6265994726942556
+drone_sorties,sortie,1,energy_increment_kwh,5.102657341677441
+drone_sorties,sortie,1,cumulative_energy_kwh,5.102657341677441
 drone_sorties,sortie,1,total_payload,26.0
 drone_sorties,sortie,1,total_drone_distance,50.12795781554045
+drone_sorties,sortie,1,total_drone_energy_kwh,5.102657341677441
 drone_sorties,sortie,1,drone_flight_time,37.59596836165534
-drone_sorties,sortie,1,van_arrival_recovery,193.4836463777416
-drone_sorties,sortie,1,van_waiting_time,0.0
-drone_sorties,sortie,1,drone_waiting_time,20.918945159626304
+drone_sorties,sortie,1,van_arrival_recovery,163.70104298814383
+drone_sorties,sortie,1,van_waiting_time,0.08607237470008045
+drone_sorties,sortie,1,drone_waiting_time,0.0
 drone_sorties,sortie,1,endurance_feasible,True
+drone_sorties,sortie,1,battery_feasible,True
 drone_sorties,sortie,1,payload_feasible,True
 drone_sorties,sortie,1,drone_route,"[7, 5, 8, 2]"
 drone_sorties,sortie_segment,1:1,sortie_id,1
@@ -239,67 +281,96 @@ drone_sorties,sortie_segment,1:1,from,7
 drone_sorties,sortie_segment,1:1,to,5
 drone_sorties,sortie_segment,1:1,distance,5.7264791702735165
 drone_sorties,sortie_segment,1:1,travel_time,4.294859377705137
-drone_sorties,sortie_segment,1:1,arrival_time_at_to,139.2635922341651
-drone_sorties,sortie_segment,1:1,service_start,139.2635922341651
-drone_sorties,sortie_segment,1:1,service_finish,139.2635922341651
+drone_sorties,sortie_segment,1:1,arrival_time_at_to,130.4860063788937
+drone_sorties,sortie_segment,1:1,service_start,130.4860063788937
+drone_sorties,sortie_segment,1:1,service_finish,130.4860063788937
 drone_sorties,sortie_segment,1:1,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_segment,1:1,time_window_ok,True
 drone_sorties,sortie_segment,1:1,load_departure_from,26.0
+drone_sorties,sortie_segment,1:1,delivery_load_departure,26.0
+drone_sorties,sortie_segment,1:1,pickup_load_departure,0.0
+drone_sorties,sortie_segment,1:1,effective_weight,31.0
+drone_sorties,sortie_segment,1:1,flight_hours,0.07158098962841895
 drone_sorties,sortie_segment,1:1,delivered_at_to,14.0
 drone_sorties,sortie_segment,1:1,load_after_service_at_to,12.0
+drone_sorties,sortie_segment,1:1,energy_increment_kwh,1.1223899173736092
+drone_sorties,sortie_segment,1:1,cumulative_energy_kwh,1.1223899173736092
 drone_sorties,sortie_segment,1:2,sortie_id,1
 drone_sorties,sortie_segment,1:2,from,5
 drone_sorties,sortie_segment,1:2,to,8
 drone_sorties,sortie_segment,1:2,distance,33.23757186249852
 drone_sorties,sortie_segment,1:2,travel_time,24.92817889687389
-drone_sorties,sortie_segment,1:2,arrival_time_at_to,164.191771131039
-drone_sorties,sortie_segment,1:2,service_start,164.191771131039
-drone_sorties,sortie_segment,1:2,service_finish,164.191771131039
+drone_sorties,sortie_segment,1:2,arrival_time_at_to,155.4141852757676
+drone_sorties,sortie_segment,1:2,service_start,155.4141852757676
+drone_sorties,sortie_segment,1:2,service_finish,155.4141852757676
 drone_sorties,sortie_segment,1:2,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_segment,1:2,time_window_ok,True
 drone_sorties,sortie_segment,1:2,load_departure_from,12.0
+drone_sorties,sortie_segment,1:2,delivery_load_departure,12.0
+drone_sorties,sortie_segment,1:2,pickup_load_departure,0.0
+drone_sorties,sortie_segment,1:2,effective_weight,17.0
+drone_sorties,sortie_segment,1:2,flight_hours,0.4154696482812315
 drone_sorties,sortie_segment,1:2,delivered_at_to,12.0
 drone_sorties,sortie_segment,1:2,load_after_service_at_to,0.0
+drone_sorties,sortie_segment,1:2,energy_increment_kwh,3.6062765470810896
+drone_sorties,sortie_segment,1:2,cumulative_energy_kwh,4.728666464454699
 drone_sorties,sortie_segment,1:3,sortie_id,1
 drone_sorties,sortie_segment,1:3,from,8
 drone_sorties,sortie_segment,1:3,to,2
 drone_sorties,sortie_segment,1:3,distance,11.163906782768413
 drone_sorties,sortie_segment,1:3,travel_time,8.37293008707631
-drone_sorties,sortie_segment,1:3,arrival_time_at_to,172.5647012181153
+drone_sorties,sortie_segment,1:3,arrival_time_at_to,163.7871153628439
 drone_sorties,sortie_segment,1:3,service_start,
 drone_sorties,sortie_segment,1:3,service_finish,
 drone_sorties,sortie_segment,1:3,time_window,
 drone_sorties,sortie_segment,1:3,time_window_ok,
 drone_sorties,sortie_segment,1:3,load_departure_from,0.0
+drone_sorties,sortie_segment,1:3,delivery_load_departure,0.0
+drone_sorties,sortie_segment,1:3,pickup_load_departure,0.0
+drone_sorties,sortie_segment,1:3,effective_weight,5.0
+drone_sorties,sortie_segment,1:3,flight_hours,0.13954883478460517
 drone_sorties,sortie_segment,1:3,delivered_at_to,0.0
 drone_sorties,sortie_segment,1:3,load_after_service_at_to,0.0
+drone_sorties,sortie_segment,1:3,energy_increment_kwh,0.3739908772227419
+drone_sorties,sortie_segment,1:3,cumulative_energy_kwh,5.102657341677441
 drone_sorties,sortie_customer,1:5,sortie_id,1
 drone_sorties,sortie_customer,1:5,customer_id,5
-drone_sorties,sortie_customer,1:5,arrival_time,139.2635922341651
-drone_sorties,sortie_customer,1:5,service_start,139.2635922341651
-drone_sorties,sortie_customer,1:5,service_finish,139.2635922341651
+drone_sorties,sortie_customer,1:5,arrival_time,130.4860063788937
+drone_sorties,sortie_customer,1:5,service_start,130.4860063788937
+drone_sorties,sortie_customer,1:5,service_finish,130.4860063788937
 drone_sorties,sortie_customer,1:5,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_customer,1:5,time_window_ok,True
 drone_sorties,sortie_customer,1:8,sortie_id,1
 drone_sorties,sortie_customer,1:8,customer_id,8
-drone_sorties,sortie_customer,1:8,arrival_time,164.191771131039
-drone_sorties,sortie_customer,1:8,service_start,164.191771131039
-drone_sorties,sortie_customer,1:8,service_finish,164.191771131039
+drone_sorties,sortie_customer,1:8,arrival_time,155.4141852757676
+drone_sorties,sortie_customer,1:8,service_start,155.4141852757676
+drone_sorties,sortie_customer,1:8,service_finish,155.4141852757676
 drone_sorties,sortie_customer,1:8,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_customer,1:8,time_window_ok,True
-drone_sorties,sortie,2,launch node,2
-drone_sorties,sortie,2,launch_time,90.70705559185274
-drone_sorties,sortie,2,customers sequence,"[6, 9]"
-drone_sorties,sortie,2,recovery node,7
-drone_sorties,sortie,2,recovery_time,135.2851485081918
+drone_sorties,sortie,2,drone_id,1
+drone_sorties,sortie,2,launch_node,2
+drone_sorties,sortie,2,launch_position,0
+drone_sorties,sortie,2,launch_time,76.87038609479045
+drone_sorties,sortie,2,customers,"[6, 9]"
+drone_sorties,sortie,2,recovery_node,7
+drone_sorties,sortie,2,recovery_position,2
+drone_sorties,sortie,2,recovery_time,121.4484790111295
 drone_sorties,sortie,2,same_node,False
+drone_sorties,sortie,2,delivery_load_departure,20.0
+drone_sorties,sortie,2,pickup_load_departure,0.0
+drone_sorties,sortie,2,effective_weight,25.0
+drone_sorties,sortie,2,flight_hours,0.7429682152723178
+drone_sorties,sortie,2,energy_increment_kwh,6.429124653368191
+drone_sorties,sortie,2,cumulative_energy_kwh,6.429124653368191
 drone_sorties,sortie,2,total_payload,20.0
 drone_sorties,sortie,2,total_drone_distance,59.43745722178543
+drone_sorties,sortie,2,total_drone_energy_kwh,6.429124653368191
 drone_sorties,sortie,2,drone_flight_time,44.57809291633907
-drone_sorties,sortie,2,van_arrival_recovery,134.96873285645995
-drone_sorties,sortie,2,van_waiting_time,0.3164156517318588
-drone_sorties,sortie,2,drone_waiting_time,0.0
+drone_sorties,sortie,2,van_arrival_recovery,126.19114700118855
+drone_sorties,sortie,2,van_waiting_time,0.0
+drone_sorties,sortie,2,drone_waiting_time,4.742667990059047
 drone_sorties,sortie,2,endurance_feasible,True
+drone_sorties,sortie,2,battery_feasible,True
 drone_sorties,sortie,2,payload_feasible,True
 drone_sorties,sortie,2,drone_route,"[2, 6, 9, 7]"
 drone_sorties,sortie_segment,2:1,sortie_id,2
@@ -307,60 +378,80 @@ drone_sorties,sortie_segment,2:1,from,2
 drone_sorties,sortie_segment,2:1,to,6
 drone_sorties,sortie_segment,2:1,distance,29.460064839793507
 drone_sorties,sortie_segment,2:1,travel_time,22.095048629845127
-drone_sorties,sortie_segment,2:1,arrival_time_at_to,112.80210422169786
-drone_sorties,sortie_segment,2:1,service_start,112.80210422169786
-drone_sorties,sortie_segment,2:1,service_finish,112.80210422169786
+drone_sorties,sortie_segment,2:1,arrival_time_at_to,98.96543472463557
+drone_sorties,sortie_segment,2:1,service_start,98.96543472463557
+drone_sorties,sortie_segment,2:1,service_finish,98.96543472463557
 drone_sorties,sortie_segment,2:1,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_segment,2:1,time_window_ok,True
 drone_sorties,sortie_segment,2:1,load_departure_from,20.0
+drone_sorties,sortie_segment,2:1,delivery_load_departure,20.0
+drone_sorties,sortie_segment,2:1,pickup_load_departure,0.0
+drone_sorties,sortie_segment,2:1,effective_weight,25.0
+drone_sorties,sortie_segment,2:1,flight_hours,0.3682508104974188
 drone_sorties,sortie_segment,2:1,delivered_at_to,10.0
 drone_sorties,sortie_segment,2:1,load_after_service_at_to,10.0
+drone_sorties,sortie_segment,2:1,energy_increment_kwh,4.66942027710727
+drone_sorties,sortie_segment,2:1,cumulative_energy_kwh,4.66942027710727
 drone_sorties,sortie_segment,2:2,sortie_id,2
 drone_sorties,sortie_segment,2:2,from,6
 drone_sorties,sortie_segment,2:2,to,9
 drone_sorties,sortie_segment,2:2,distance,12.08738770342706
 drone_sorties,sortie_segment,2:2,travel_time,9.065540777570295
-drone_sorties,sortie_segment,2:2,arrival_time_at_to,121.86764499926815
-drone_sorties,sortie_segment,2:2,service_start,121.86764499926815
-drone_sorties,sortie_segment,2:2,service_finish,121.86764499926815
+drone_sorties,sortie_segment,2:2,arrival_time_at_to,108.03097550220586
+drone_sorties,sortie_segment,2:2,service_start,108.03097550220586
+drone_sorties,sortie_segment,2:2,service_finish,108.03097550220586
 drone_sorties,sortie_segment,2:2,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_segment,2:2,time_window_ok,True
 drone_sorties,sortie_segment,2:2,load_departure_from,10.0
+drone_sorties,sortie_segment,2:2,delivery_load_departure,10.0
+drone_sorties,sortie_segment,2:2,pickup_load_departure,0.0
+drone_sorties,sortie_segment,2:2,effective_weight,15.0
+drone_sorties,sortie_segment,2:2,flight_hours,0.15109234629283824
 drone_sorties,sortie_segment,2:2,delivered_at_to,10.0
 drone_sorties,sortie_segment,2:2,load_after_service_at_to,0.0
+drone_sorties,sortie_segment,2:2,energy_increment_kwh,1.1603892195289978
+drone_sorties,sortie_segment,2:2,cumulative_energy_kwh,5.829809496636268
 drone_sorties,sortie_segment,2:3,sortie_id,2
 drone_sorties,sortie_segment,2:3,from,9
 drone_sorties,sortie_segment,2:3,to,7
 drone_sorties,sortie_segment,2:3,distance,17.890004678564864
 drone_sorties,sortie_segment,2:3,travel_time,13.417503508923648
-drone_sorties,sortie_segment,2:3,arrival_time_at_to,135.2851485081918
+drone_sorties,sortie_segment,2:3,arrival_time_at_to,121.4484790111295
 drone_sorties,sortie_segment,2:3,service_start,
 drone_sorties,sortie_segment,2:3,service_finish,
 drone_sorties,sortie_segment,2:3,time_window,
 drone_sorties,sortie_segment,2:3,time_window_ok,
 drone_sorties,sortie_segment,2:3,load_departure_from,0.0
+drone_sorties,sortie_segment,2:3,delivery_load_departure,0.0
+drone_sorties,sortie_segment,2:3,pickup_load_departure,0.0
+drone_sorties,sortie_segment,2:3,effective_weight,5.0
+drone_sorties,sortie_segment,2:3,flight_hours,0.2236250584820608
 drone_sorties,sortie_segment,2:3,delivered_at_to,0.0
 drone_sorties,sortie_segment,2:3,load_after_service_at_to,0.0
+drone_sorties,sortie_segment,2:3,energy_increment_kwh,0.5993151567319229
+drone_sorties,sortie_segment,2:3,cumulative_energy_kwh,6.429124653368191
 drone_sorties,sortie_customer,2:6,sortie_id,2
 drone_sorties,sortie_customer,2:6,customer_id,6
-drone_sorties,sortie_customer,2:6,arrival_time,112.80210422169786
-drone_sorties,sortie_customer,2:6,service_start,112.80210422169786
-drone_sorties,sortie_customer,2:6,service_finish,112.80210422169786
+drone_sorties,sortie_customer,2:6,arrival_time,98.96543472463557
+drone_sorties,sortie_customer,2:6,service_start,98.96543472463557
+drone_sorties,sortie_customer,2:6,service_finish,98.96543472463557
 drone_sorties,sortie_customer,2:6,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_customer,2:6,time_window_ok,True
 drone_sorties,sortie_customer,2:9,sortie_id,2
 drone_sorties,sortie_customer,2:9,customer_id,9
-drone_sorties,sortie_customer,2:9,arrival_time,121.86764499926815
-drone_sorties,sortie_customer,2:9,service_start,121.86764499926815
-drone_sorties,sortie_customer,2:9,service_finish,121.86764499926815
+drone_sorties,sortie_customer,2:9,arrival_time,108.03097550220586
+drone_sorties,sortie_customer,2:9,service_start,108.03097550220586
+drone_sorties,sortie_customer,2:9,service_finish,108.03097550220586
 drone_sorties,sortie_customer,2:9,time_window,"(0.0, 360.0)"
 drone_sorties,sortie_customer,2:9,time_window_ok,True
+physical_drones,physical_drone,1,route,"[2, 6, 9, 7, 5, 8, 2]"
+physical_drones,warehouse_launch_count,1,warehouse_launch_count,1
 customer_service,customer,4,customer_id,4
 customer_service,customer,4,service_mode,van
 customer_service,customer,4,served_by_route_or_sortie_id,van_route
-customer_service,customer,4,arrival_time,162.34157318380966
-customer_service,customer,4,service_start,162.34157318380966
-customer_service,customer,4,service_finish,162.34157318380966
+customer_service,customer,4,arrival_time,103.26197354727513
+customer_service,customer,4,service_start,103.26197354727513
+customer_service,customer,4,service_finish,103.26197354727513
 customer_service,customer,4,time_window,"(0.0, 360.0)"
 customer_service,customer,4,demand,17.0
 customer_service,customer,4,unique_service,True
@@ -368,9 +459,9 @@ customer_service,customer,4,mode_constraint_ok,True
 customer_service,customer,5,customer_id,5
 customer_service,customer,5,service_mode,drone
 customer_service,customer,5,served_by_route_or_sortie_id,drone_sortie_1
-customer_service,customer,5,arrival_time,139.2635922341651
-customer_service,customer,5,service_start,139.2635922341651
-customer_service,customer,5,service_finish,139.2635922341651
+customer_service,customer,5,arrival_time,130.4860063788937
+customer_service,customer,5,service_start,130.4860063788937
+customer_service,customer,5,service_finish,130.4860063788937
 customer_service,customer,5,time_window,"(0.0, 360.0)"
 customer_service,customer,5,demand,14.0
 customer_service,customer,5,unique_service,True
@@ -378,9 +469,9 @@ customer_service,customer,5,mode_constraint_ok,True
 customer_service,customer,6,customer_id,6
 customer_service,customer,6,service_mode,drone
 customer_service,customer,6,served_by_route_or_sortie_id,drone_sortie_2
-customer_service,customer,6,arrival_time,112.80210422169786
-customer_service,customer,6,service_start,112.80210422169786
-customer_service,customer,6,service_finish,112.80210422169786
+customer_service,customer,6,arrival_time,98.96543472463557
+customer_service,customer,6,service_start,98.96543472463557
+customer_service,customer,6,service_finish,98.96543472463557
 customer_service,customer,6,time_window,"(0.0, 360.0)"
 customer_service,customer,6,demand,10.0
 customer_service,customer,6,unique_service,True
@@ -388,9 +479,9 @@ customer_service,customer,6,mode_constraint_ok,True
 customer_service,customer,7,customer_id,7
 customer_service,customer,7,service_mode,van
 customer_service,customer,7,served_by_route_or_sortie_id,van_route
-customer_service,customer,7,arrival_time,134.96873285645995
-customer_service,customer,7,service_start,134.96873285645995
-customer_service,customer,7,service_finish,134.96873285645995
+customer_service,customer,7,arrival_time,126.19114700118855
+customer_service,customer,7,service_start,126.19114700118855
+customer_service,customer,7,service_finish,126.19114700118855
 customer_service,customer,7,time_window,"(0.0, 360.0)"
 customer_service,customer,7,demand,17.0
 customer_service,customer,7,unique_service,True
@@ -398,9 +489,9 @@ customer_service,customer,7,mode_constraint_ok,True
 customer_service,customer,8,customer_id,8
 customer_service,customer,8,service_mode,drone
 customer_service,customer,8,served_by_route_or_sortie_id,drone_sortie_1
-customer_service,customer,8,arrival_time,164.191771131039
-customer_service,customer,8,service_start,164.191771131039
-customer_service,customer,8,service_finish,164.191771131039
+customer_service,customer,8,arrival_time,155.4141852757676
+customer_service,customer,8,service_start,155.4141852757676
+customer_service,customer,8,service_finish,155.4141852757676
 customer_service,customer,8,time_window,"(0.0, 360.0)"
 customer_service,customer,8,demand,12.0
 customer_service,customer,8,unique_service,True
@@ -408,9 +499,9 @@ customer_service,customer,8,mode_constraint_ok,True
 customer_service,customer,9,customer_id,9
 customer_service,customer,9,service_mode,drone
 customer_service,customer,9,served_by_route_or_sortie_id,drone_sortie_2
-customer_service,customer,9,arrival_time,121.86764499926815
-customer_service,customer,9,service_start,121.86764499926815
-customer_service,customer,9,service_finish,121.86764499926815
+customer_service,customer,9,arrival_time,108.03097550220586
+customer_service,customer,9,service_start,108.03097550220586
+customer_service,customer,9,service_finish,108.03097550220586
 customer_service,customer,9,time_window,"(0.0, 360.0)"
 customer_service,customer,9,demand,10.0
 customer_service,customer,9,unique_service,True
@@ -420,18 +511,21 @@ feasibility,category,capacity_violations,capacity_violations,[]
 feasibility,category,drone_endurance_violations,drone_endurance_violations,[]
 feasibility,category,order_container_assignment_violations,order_container_assignment_violations,[]
 feasibility,category,launch_recovery_violations,launch_recovery_violations,[]
+feasibility,category,physical_drone_violations,physical_drone_violations,[]
 feasibility,summary,feasible,feasible,True
 feasibility,summary,violations,violations,[]
-costs,cost,truck_cost,truck_cost,253.5323086461379
-costs,cost,truck_transport_cost,truck_transport_cost,87.53230864613789
+costs,calculation,drone_fixed_cost,calculation,"{'used_drones': 1, 'unit_drone_fixed_cost': 169.0, 'drone_fixed_cost': 169.0}"
+costs,cost,truck_cost,truck_cost,240.1799225814728
+costs,cost,truck_transport_cost,truck_transport_cost,74.17992258147278
 costs,cost,truck_fixed_cost,truck_fixed_cost,166.0
-costs,cost,van_cost,van_cost,118.76843549492492
-costs,cost,van_transport_cost,van_transport_cost,59.768435494924915
+costs,cost,van_cost,van_cost,109.6512165211228
+costs,cost,van_transport_cost,van_transport_cost,50.651216521122805
 costs,cost,van_fixed_cost,van_fixed_cost,59.0
-costs,cost,drone_cost,drone_cost,343.69740158194094
+costs,cost,drone_cost,drone_cost,174.69740158194094
 costs,cost,drone_transport_cost,drone_transport_cost,5.697401581940945
-costs,cost,drone_fixed_cost,drone_fixed_cost,338.0
+costs,cost,drone_fixed_cost,drone_fixed_cost,169.0
+costs,cost,drone_energy,drone_energy,11.531781995045632
 costs,cost,penalty_cost,penalty_cost,0.0
-costs,cost,total_cost,total_cost,715.9981457230037
-costs,cost,waiting_cost_reported,waiting_cost_reported,13.767592259363875
+costs,cost,total_cost,total_cost,524.5285406845366
+costs,cost,waiting_cost_reported,waiting_cost_reported,3.130633336485501
 costs,note,waiting_cost_reported,not_in_total_cost,True

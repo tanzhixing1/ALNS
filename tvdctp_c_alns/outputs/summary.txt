@@ -1,45 +1,46 @@
-best_objective: 715.9981457230037
-truck_cost: 253.5323086461379
-truck_transport_cost: 87.53230864613789
+best_objective: 524.5285406845366
+truck_cost: 240.1799225814728
+truck_transport_cost: 74.17992258147278
 truck_fixed_cost: 166.0
-van_cost: 118.76843549492492
-van_transport_cost: 59.768435494924915
+van_cost: 109.6512165211228
+van_transport_cost: 50.651216521122805
 van_fixed_cost: 59.0
-drone_cost: 343.69740158194094
+drone_cost: 174.69740158194094
 drone_transport_cost: 5.697401581940945
-drone_fixed_cost: 338.0
-truck_distance: 45.35352779592637
-van_distance: 68.30678342277133
+drone_fixed_cost: 169.0
+truck_distance: 38.435193047395224
+van_distance: 57.88710459556892
 drone_distance: 109.56541503732588
+drone_energy: 11.531781995045632
 used_trucks: 1
 used_vans: 1
-used_drones: 2
+used_drones: 1
 used_drone_sorties: 2
-waiting_cost: 13.767592259363875
-waiting_cost_reported: 13.767592259363875
+waiting_cost: 3.130633336485501
+waiting_cost_reported: 3.130633336485501
 penalty_cost: 0.0
-total_cost: 715.9981457230037
-van_waiting_time: 0.3164156517318588
-drone_waiting_time: 20.918945159626304
+total_cost: 524.5285406845366
+van_waiting_time: 0.08607237470008045
+drone_waiting_time: 4.742667990059047
 early_waiting_time: 0.0
 num_time_window_violations: 0
 waiting_cost_reported_not_optimized: True
 feasible: True
-runtime_seconds: 0.5795096000656486
+runtime_seconds: 0.5118585000745952
 port_node: 0
 truck_depot_node: 1
 container_origin: 0
 transshipment_nodes: [2, 3]
 selected_transshipment: 2
 candidate_transshipment_nodes: [2, 3]
-truck_arrival_time: 90.70705559185274
-van_start_time: 90.70705559185274
-truck_arrival: {1: 0.0, 0: 20.3014876302206, 2: 90.70705559185274}
-van_arrival: {2: 193.4836463777416, 7: 134.96873285645995, 4: 162.34157318380966}
-van_arrival_sequence: [{'route_index': 0.0, 'node': 2.0, 'arrival_time': 90.70705559185274}, {'route_index': 1.0, 'node': 7.0, 'arrival_time': 134.96873285645995}, {'route_index': 2.0, 'node': 4.0, 'arrival_time': 162.34157318380966}, {'route_index': 3.0, 'node': 2.0, 'arrival_time': 193.4836463777416}]
-drone_arrival: {6: 112.80210422169786, 9: 121.86764499926815, 5: 139.2635922341651, 8: 164.191771131039}
-service_start: {6: 112.80210422169786, 9: 121.86764499926815, 7: 134.96873285645995, 5: 139.2635922341651, 8: 164.191771131039, 4: 162.34157318380966}
-service_finish: {6: 112.80210422169786, 9: 121.86764499926815, 7: 134.96873285645995, 5: 139.2635922341651, 8: 164.191771131039, 4: 162.34157318380966}
+truck_arrival_time: 76.87038609479045
+van_start_time: 76.87038609479045
+truck_arrival: {1: 0.0, 0: 17.204650534085253, 2: 76.87038609479045}
+van_arrival: {2: 163.70104298814383, 4: 103.26197354727513, 7: 126.19114700118855}
+van_arrival_sequence: [{'route_index': 0.0, 'node': 2.0, 'arrival_time': 76.87038609479045}, {'route_index': 1.0, 'node': 4.0, 'arrival_time': 103.26197354727513}, {'route_index': 2.0, 'node': 7.0, 'arrival_time': 126.19114700118855}, {'route_index': 3.0, 'node': 2.0, 'arrival_time': 163.70104298814383}]
+drone_arrival: {6: 98.96543472463557, 9: 108.03097550220586, 5: 130.4860063788937, 8: 155.4141852757676}
+service_start: {6: 98.96543472463557, 9: 108.03097550220586, 4: 103.26197354727513, 7: 126.19114700118855, 5: 130.4860063788937, 8: 155.4141852757676}
+service_finish: {6: 98.96543472463557, 9: 108.03097550220586, 4: 103.26197354727513, 7: 126.19114700118855, 5: 130.4860063788937, 8: 155.4141852757676}
 time_windows: {4: (0.0, 360.0), 5: (0.0, 360.0), 6: (0.0, 360.0), 7: (0.0, 360.0), 8: (0.0, 360.0), 9: (0.0, 360.0)}
 time_window_violations: []
 total_early_waiting_time: 0.0
@@ -50,13 +51,15 @@ num_drone_customers: 4
 num_drone_sorties: 2
 number_of_same_node_sorties: 0
 number_of_cross_node_sorties: 2
-total_van_waiting_time: 0.3164156517318588
-total_drone_waiting_time: 20.918945159626304
-drone_sortie_details: [{'launch': 7, 'customers': [5, 8], 'number_of_customers': 2, 'recovery': 2, 'same_node': False, 'total_payload': 26.0, 'drone_distance': 50.12795781554045, 'endurance_feasible': True, 'payload_feasible': True, 'launch_time': 134.96873285645995, 'recovery_time': 172.5647012181153, 'van_waiting_time': 0.0, 'drone_waiting_time': 20.918945159626304}, {'launch': 2, 'customers': [6, 9], 'number_of_customers': 2, 'recovery': 7, 'same_node': False, 'total_payload': 20.0, 'drone_distance': 59.43745722178543, 'endurance_feasible': True, 'payload_feasible': True, 'launch_time': 90.70705559185274, 'recovery_time': 135.2851485081918, 'van_waiting_time': 0.3164156517318588, 'drone_waiting_time': 0.0}]
+total_van_waiting_time: 0.08607237470008045
+total_drone_waiting_time: 4.742667990059047
+drone_sortie_details: [{'drone_id': 1, 'launch': 7, 'launch_position': 2, 'customers': [5, 8], 'number_of_customers': 2, 'recovery': 2, 'recovery_position': 3, 'same_node': False, 'delivery_load_departure': 26.0, 'pickup_load_departure': 0.0, 'effective_weight': 31.0, 'flight_hours': 0.6265994726942556, 'energy_increment_kwh': 5.102657341677441, 'cumulative_energy_kwh': 5.102657341677441, 'total_payload': 26.0, 'drone_distance': 50.12795781554045, 'drone_energy': 5.102657341677441, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 126.19114700118855, 'recovery_time': 163.7871153628439, 'van_waiting_time': 0.08607237470008045, 'drone_waiting_time': 0.0}, {'drone_id': 1, 'launch': 2, 'launch_position': 0, 'customers': [6, 9], 'number_of_customers': 2, 'recovery': 7, 'recovery_position': 2, 'same_node': False, 'delivery_load_departure': 20.0, 'pickup_load_departure': 0.0, 'effective_weight': 25.0, 'flight_hours': 0.7429682152723178, 'energy_increment_kwh': 6.429124653368191, 'cumulative_energy_kwh': 6.429124653368191, 'total_payload': 20.0, 'drone_distance': 59.43745722178543, 'drone_energy': 6.429124653368191, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 76.87038609479045, 'recovery_time': 121.4484790111295, 'van_waiting_time': 0.0, 'drone_waiting_time': 4.742667990059047}]
+drone_physical_routes: {1: [2, 6, 9, 7, 5, 8, 2]}
+drone_warehouse_launch_count: {1: 1}
 violations: 
 truck_route: [1, 0, 2]
-van_route: [2, 7, 4, 2]
-drone_sorties: [{'launch': 7, 'customers': [5, 8], 'recovery': 2, 'launch_time': 134.96873285645995, 'recovery_time': 172.5647012181153, 'van_waiting_time': 0.0, 'drone_waiting_time': 20.918945159626304, 'same_node': False, 'synchronized_recovery_time': 193.4836463777416}, {'launch': 2, 'customers': [6, 9], 'recovery': 7, 'launch_time': 90.70705559185274, 'recovery_time': 135.2851485081918, 'van_waiting_time': 0.3164156517318588, 'drone_waiting_time': 0.0, 'same_node': False, 'synchronized_recovery_time': 135.2851485081918}]
+van_route: [2, 4, 7, 2]
+drone_sorties: [{'launch': 7, 'customers': [5, 8], 'recovery': 2, 'launch_time': 126.19114700118855, 'recovery_time': 163.7871153628439, 'van_waiting_time': 0.08607237470008045, 'drone_waiting_time': 0.0, 'same_node': False, 'launch_position': 2, 'recovery_position': 3, 'drone_id': 1, 'synchronized_recovery_time': 163.7871153628439}, {'launch': 2, 'customers': [6, 9], 'recovery': 7, 'launch_time': 76.87038609479045, 'recovery_time': 121.4484790111295, 'van_waiting_time': 0.0, 'drone_waiting_time': 4.742667990059047, 'same_node': False, 'launch_position': 0, 'recovery_position': 2, 'drone_id': 1, 'synchronized_recovery_time': 126.19114700118855}]
 container_assignment: {0: {'container_id': 0, 'origin_node': 0, 'origin_type': 'port', 'candidate_transshipments': [2, 3], 'selected_transshipment': 2, 'orders': [0, 1, 2, 3, 4, 5], 'customers': [4, 5, 6, 7, 8, 9]}}
 order_assignment: {4: {'order_id': 0, 'customer_id': 4, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 17.0, 'service_required': True}, 5: {'order_id': 1, 'customer_id': 5, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 14.0, 'service_required': True}, 6: {'order_id': 2, 'customer_id': 6, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 10.0, 'service_required': True}, 7: {'order_id': 3, 'customer_id': 7, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 17.0, 'service_required': True}, 8: {'order_id': 4, 'customer_id': 8, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 12.0, 'service_required': True}, 9: {'order_id': 5, 'customer_id': 9, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 10.0, 'service_required': True}}
 route_plan_detail_txt: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\route_plan_detail.txt
