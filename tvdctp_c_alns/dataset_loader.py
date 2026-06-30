@@ -23,6 +23,7 @@ class InstanceData:
     nodes: List[int]
     coordinates: Dict[int, Coord]
     demands: Dict[int, float]
+    pickup_demands: Dict[int, float]
     time_windows: Dict[int, Tuple[float, float]]
     service_times: Dict[int, float]
     is_high_floor: Dict[int, bool]
@@ -107,6 +108,15 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
         )
         for customer in customers
     }
+    pickup_demands = {
+        customer: float(
+            rng.integers(
+                config.data.min_pickup_demand_kg,
+                config.data.max_pickup_demand_kg + 1,
+            )
+        )
+        for customer in customers
+    }
 
     service_times = {customer: config.data.service_time_min for customer in customers}
     time_windows = {
@@ -150,6 +160,7 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
                 "container_origin": container_origin,
                 "assigned_transshipment": None,
                 "demand": demands[customer],
+                "pickup_demand": pickup_demands[customer],
                 "service_required": True,
             }
         )
@@ -181,6 +192,7 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
         nodes=nodes,
         coordinates=coordinates,
         demands=demands,
+        pickup_demands=pickup_demands,
         time_windows=time_windows,
         service_times=service_times,
         is_high_floor=is_high_floor,

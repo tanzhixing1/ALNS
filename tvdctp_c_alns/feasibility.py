@@ -30,6 +30,14 @@ def drone_sortie_distance(sortie, data: InstanceData) -> float:
     return float(sum(dist[path[idx], path[idx + 1]] for idx in range(len(path) - 1)))
 
 
+def delivery_demand(data: InstanceData, customer: int) -> float:
+    return float(data.demands.get(customer, 0.0))
+
+
+def pickup_demand(data: InstanceData, customer: int) -> float:
+    return float(getattr(data, "pickup_demands", {}).get(customer, 0.0))
+
+
 def drone_sortie_energy_details(
     sortie, data: InstanceData, config: TVDConfig
 ) -> Tuple[float, List[Dict[str, float]]]:
@@ -42,7 +50,7 @@ def drone_sortie_energy_details(
 
     launch, customers, recovery = sortie_nodes(sortie)
     route = [launch] + customers + [recovery]
-    remaining_delivery = float(sum(data.demands[customer] for customer in customers))
+    remaining_delivery = float(sum(delivery_demand(data, customer) for customer in customers))
     pickup_load = 0.0
     cumulative = 0.0
     rows: List[Dict[str, float]] = []
@@ -52,18 +60,18 @@ def drone_sortie_energy_details(
         end = route[idx + 1]
         distance = float(data.drone_distance_matrix[start, end])
         flight_hours = distance / config.fleet.drone_speed_kmph
-        effective_weight = (
-            pickup_load
-            + remaining_delivery
-            + config.fleet.drone_self_weight_kg
-        )
+        payload_departure = pickup_load + remaining_delivery
+        effective_weight = payload_departure + config.fleet.drone_self_weight_kg
         power = (
             config.fleet.drone_payload_energy_coeff * effective_weight
             + config.fleet.drone_base_energy_coeff
         )
         energy = power * flight_hours
         cumulative += energy
-        delivered = float(data.demands[end]) if end in customers else 0.0
+        delivered = delivery_demand(data, end) if end in customers else 0.0
+        picked_up = pickup_demand(data, end) if end in customers else 0.0
+        delivery_after_service = remaining_delivery - delivered
+        pickup_after_service = pickup_load + picked_up
         rows.append(
             {
                 "from": float(start),
@@ -72,13 +80,19 @@ def drone_sortie_energy_details(
                 "flight_hours": flight_hours,
                 "delivery_load_departure": remaining_delivery,
                 "pickup_load_departure": pickup_load,
+                "payload_departure": payload_departure,
                 "effective_weight": effective_weight,
                 "energy_increment": energy,
                 "cumulative_energy": cumulative,
                 "delivered_at_to": delivered,
+                "picked_up_at_to": picked_up,
+                "delivery_load_after_service": delivery_after_service,
+                "pickup_load_after_service": pickup_after_service,
+                "payload_after_service": delivery_after_service + pickup_after_service,
             }
         )
-        remaining_delivery -= delivered
+        remaining_delivery = delivery_after_service
+        pickup_load = pickup_after_service
 
     return float(cumulative), rows
 
@@ -86,6 +100,18 @@ def drone_sortie_energy_details(
 def drone_sortie_energy(sortie, data: InstanceData, config: TVDConfig) -> float:
     total, _ = drone_sortie_energy_details(sortie, data, config)
     return total
+
+
+def drone_sortie_peak_payload(sortie, data: InstanceData, config: TVDConfig) -> float:
+    _, rows = drone_sortie_energy_details(sortie, data, config)
+    peak = 0.0
+    for row in rows:
+        peak = max(
+            peak,
+            float(row["payload_departure"]),
+            float(row["payload_after_service"]),
+        )
+    return peak
 
 
 def _travel_minutes(distance: float, speed_kmph: float) -> float:
@@ -109,6 +135,7 @@ def _empty_timing() -> Dict[str, object]:
         "drone_physical_routes": {},
         "drone_physical_sorties": {},
         "drone_warehouse_launch_count": {},
+        "drone_warehouse_return_count": {},
     }
 
 
@@ -216,6 +243,73 @@ def _is_warehouse_node(state: TVDState, node: int) -> bool:
     }
 
 
+def _sorties_by_position(state: TVDState, route: List[int]) -> Tuple[Dict[int, List[dict]], Dict[int, List[dict]]]:
+    launches: Dict[int, List[dict]] = {}
+    recoveries: Dict[int, List[dict]] = {}
+    for sortie in state.drone_sorties:
+        if not isinstance(sortie, dict):
+            continue
+        launch_pos, recovery_pos = _resolve_sortie_positions(sortie, route)
+        if launch_pos >= 0:
+            launches.setdefault(launch_pos, []).append(sortie)
+        if recovery_pos >= 0:
+            recoveries.setdefault(recovery_pos, []).append(sortie)
+    return launches, recoveries
+
+
+def _van_load_trace(state: TVDState, data: InstanceData) -> Tuple[List[Dict[str, float]], float]:
+    route = state.van_route
+    van_customers = set(state.get_van_customers())
+    launches, recoveries = _sorties_by_position(state, route)
+    delivery_load = float(
+        sum(delivery_demand(data, customer) for customer in state.get_served_customers())
+    )
+    pickup_load = 0.0
+    peak_payload = delivery_load + pickup_load
+    trace: List[Dict[str, float]] = []
+
+    for route_index, node in enumerate(route):
+        node = int(node)
+        delivery_arrival = delivery_load
+        pickup_arrival = pickup_load
+
+        delivered_here = delivery_demand(data, node) if node in van_customers else 0.0
+        picked_up_here = pickup_demand(data, node) if node in van_customers else 0.0
+        delivery_load -= delivered_here
+        pickup_load += picked_up_here
+
+        launched_delivery = 0.0
+        for sortie in launches.get(route_index, []):
+            _, customers, _ = sortie_nodes(sortie)
+            launched_delivery += sum(delivery_demand(data, customer) for customer in customers)
+        delivery_load -= launched_delivery
+
+        recovered_pickup = 0.0
+        for sortie in recoveries.get(route_index, []):
+            _, customers, _ = sortie_nodes(sortie)
+            recovered_pickup += sum(pickup_demand(data, customer) for customer in customers)
+        pickup_load += recovered_pickup
+
+        peak_payload = max(peak_payload, delivery_load + pickup_load)
+        trace.append(
+            {
+                "route_index": float(route_index),
+                "node": float(node),
+                "delivery_load_arrival": float(delivery_arrival),
+                "pickup_load_arrival": float(pickup_arrival),
+                "delivered_here": float(delivered_here),
+                "picked_up_here": float(picked_up_here),
+                "launched_delivery": float(launched_delivery),
+                "recovered_pickup": float(recovered_pickup),
+                "delivery_load_departure": float(delivery_load),
+                "pickup_load_departure": float(pickup_load),
+                "payload_departure": float(delivery_load + pickup_load),
+            }
+        )
+
+    return trace, float(peak_payload)
+
+
 def compute_timing(
     state: TVDState, data: InstanceData, config: TVDConfig
 ) -> Dict[str, object]:
@@ -263,6 +357,7 @@ def compute_timing(
     physical_routes: Dict[int, List[int]] = timing["drone_physical_routes"]  # type: ignore[assignment]
     physical_sorties: Dict[int, List[Dict[str, object]]] = timing["drone_physical_sorties"]  # type: ignore[assignment]
     warehouse_launch_count: Dict[int, int] = timing["drone_warehouse_launch_count"]  # type: ignore[assignment]
+    warehouse_return_count: Dict[int, int] = timing["drone_warehouse_return_count"]  # type: ignore[assignment]
     available_drones: List[Tuple[int, int]] = []
     next_drone_id = 1
 
@@ -327,12 +422,10 @@ def compute_timing(
             else:
                 drone_id = next_drone_id
                 next_drone_id += 1
-                physical_routes[drone_id] = [launch]
+                physical_routes[drone_id] = [int(route[0])]
                 physical_sorties[drone_id] = []
-                warehouse_launch_count[drone_id] = 0
-
-            if _is_warehouse_node(state, launch):
-                warehouse_launch_count[drone_id] = warehouse_launch_count.get(drone_id, 0) + 1
+                warehouse_launch_count[drone_id] = 1
+                warehouse_return_count[drone_id] = 0
 
             launch_time = float(latest_departure)
             drone_time = launch_time
@@ -356,6 +449,8 @@ def compute_timing(
             )
             if recovery_pos != idx:
                 pending_recoveries.setdefault(recovery_pos, []).append((sortie, drone_id, float(drone_time)))
+            if _is_warehouse_node(state, recovery):
+                warehouse_return_count[drone_id] = warehouse_return_count.get(drone_id, 0) + 1
             physical_route = physical_routes.setdefault(drone_id, [launch])
             if not physical_route or int(physical_route[-1]) != int(launch):
                 physical_route.append(int(launch))
@@ -393,6 +488,14 @@ def compute_timing(
                     sortie["synchronized_recovery_time"] = float(latest_departure)
 
         current_time = latest_departure
+
+    if route and route[-1] in state.transshipment_nodes:
+        terminal_warehouse = int(route[-1])
+        for drone_id, _ in available_drones:
+            physical_route = physical_routes.setdefault(drone_id, [])
+            if not physical_route or int(physical_route[-1]) != terminal_warehouse:
+                physical_route.append(terminal_warehouse)
+                warehouse_return_count[drone_id] = warehouse_return_count.get(drone_id, 0) + 1
 
     state.timing = timing
     state.metadata["timing"] = timing
@@ -444,11 +547,14 @@ def check_solution_feasible(
             f"truck_route must be {expected_truck_route} for the selected transshipment."
         )
 
-    if len(route) < 2 or route[0] != state.selected_transshipment or route[-1] != state.selected_transshipment:
-        violations.append("van_route must start and end at selected_transshipment.")
+    if len(route) < 2 or route[0] != state.selected_transshipment or route[-1] not in state.transshipment_nodes:
+        violations.append("van_route must start at selected_transshipment and end at a transshipment warehouse.")
 
     illegal_route_nodes = [
-        node for node in route if node not in customers and node != state.selected_transshipment
+        node
+        for idx, node in enumerate(route)
+        if node not in customers
+        and not (idx in (0, len(route) - 1) and node in state.transshipment_nodes)
     ]
     if illegal_route_nodes:
         violations.append(f"van_route contains illegal nodes: {illegal_route_nodes}")
@@ -505,8 +611,14 @@ def check_solution_feasible(
     if unexpected:
         violations.append(f"unexpected served customers: {unexpected}")
 
-    if sum(data.demands[c] for c in van_customers) > config.fleet.van_capacity_kg:
+    van_load_trace, van_peak_payload = _van_load_trace(state, data)
+    if van_peak_payload > config.fleet.van_capacity_kg + 1e-9:
         violations.append("van payload capacity exceeded.")
+    for item in van_load_trace:
+        if item["delivery_load_departure"] < -1e-9:
+            violations.append(
+                f"van delivery load becomes negative at route position {int(item['route_index'])}."
+            )
 
     timing = compute_timing(state, data, config)
     for customer in data.customers:
@@ -564,8 +676,8 @@ def check_solution_feasible(
                 violations.append(f"drone customer {customer} also appears in van_route.")
             if not data.drone_eligible.get(customer, False):
                 violations.append(f"customer {customer} is not drone eligible.")
-        payload = sum(data.demands.get(customer, 0.0) for customer in sortie_customers)
-        if payload > config.fleet.drone_capacity_kg:
+        payload = drone_sortie_peak_payload(sortie, data, config)
+        if payload > config.fleet.drone_capacity_kg + 1e-9:
             violations.append(f"drone payload exceeded for sortie {sortie}.")
         if drone_sortie_distance(sortie, data) > config.fleet.drone_endurance_km:
             violations.append(f"drone endurance exceeded for sortie {sortie}.")
@@ -580,6 +692,7 @@ def check_solution_feasible(
 
     physical_sorties = timing.get("drone_physical_sorties", {})
     warehouse_launch_counts = timing.get("drone_warehouse_launch_count", {})
+    warehouse_return_counts = timing.get("drone_warehouse_return_count", {})
     if isinstance(physical_sorties, dict):
         for drone_id, records in physical_sorties.items():
             if not isinstance(records, list):
@@ -631,7 +744,12 @@ def check_solution_feasible(
             launch_count = int(warehouse_launch_counts.get(drone_id, 0))
             if launch_count > 1:
                 violations.append(
-                    f"drone_id {drone_id} launches from warehouse {launch_count} times."
+                    f"drone_id {drone_id} departs from warehouse {launch_count} times."
+                )
+            return_count = int(warehouse_return_counts.get(drone_id, 0))
+            if return_count > 1:
+                violations.append(
+                    f"drone_id {drone_id} returns to warehouse {return_count} times."
                 )
 
     if float(timing.get("van_waiting_time", 0.0)) < -1e-9:

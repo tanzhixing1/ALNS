@@ -16,7 +16,8 @@ The current v6 toy version models:
 - 1 selected transshipment warehouse.
 - 1 van route and simplified drone sorties.
 - Physical drone identities assigned across sorties for fixed-cost counting.
-- Payload-dependent drone energy checks for delivery-only drone routes.
+- Payload-dependent drone energy checks for drone routes with delivery load
+  and pickup load.
 - Strict customer time windows.
 - Arrival-time propagation for truck, van, and drone moves.
 - Simplified van-drone timing synchronization.
@@ -47,6 +48,7 @@ order_assignment[customer_id] = {
     "container_origin": container_origin,
     "assigned_transshipment": selected_transshipment,
     "demand": ...,
+    "pickup_demand": ...,
     "service_required": True,
 }
 ```
@@ -80,10 +82,12 @@ simplified to:
 truck_route = [truck_depot_node, selected_transshipment]
 ```
 
-The van route starts and ends at `selected_transshipment`:
+The van route starts at `selected_transshipment` and may end at any candidate
+transshipment warehouse. This is the toy project's open-route interpretation of
+the paper's warehouse return flexibility:
 
 ```python
-van_route = [selected_transshipment, ..., selected_transshipment]
+van_route = [selected_transshipment, ..., ending_transshipment]
 ```
 
 Drone sorties keep the format:
@@ -99,6 +103,8 @@ Drone sorties keep the format:
     "drone_waiting_time": float,
     "same_node": bool,
     "drone_id": int,
+    "launch_position": int,
+    "recovery_position": int,
 }
 ```
 
@@ -108,6 +114,20 @@ synchronization remain feasible. The code does not impose an artificial upper
 bound on the number of customers in one sortie. Repair operators first try
 cross-node sorties (`launch != recovery`). Same-node sorties are kept as a
 fallback so small toy instances remain feasible.
+
+Physical drone identities are assigned during timing propagation:
+
+- `used_drones` is the number of physical drone ids used.
+- `used_drone_sorties` is the number of independent flight sorties.
+- `physical_drone_routes` reports the physical route of each drone, including
+  carried movement from the warehouse to a later launch node when applicable.
+- `warehouse_launch_count` counts each physical drone's departure from a
+  warehouse. A drone carried away by a van without launching at the warehouse
+  still counts as one warehouse departure.
+- `warehouse_return_count` counts each physical drone's return to a warehouse.
+- Each physical drone may depart from a warehouse at most once and return to a
+  warehouse at most once. After returning to a warehouse, it cannot continue as
+  the same physical drone in this toy model.
 
 High-floor customers are input parameters and must be served by drone.
 Low-floor customers are allowed to be served by either van or drone; the final
@@ -177,7 +197,9 @@ For each drone sortie:
 4. Van arrival at the recovery node is read from the propagated van route.
 5. If the drone arrives later, `van_waiting_time` is positive.
 6. If the van arrives later, `drone_waiting_time` is positive.
-7. A recovered physical drone can be reused for a later sortie after recovery.
+7. A recovered physical drone can be reused for a later sortie after recovery
+   only if it was recovered at a non-warehouse van node. Recovery at a warehouse
+   ends that physical drone route.
 
 The waiting cost uses the sum of van and drone waiting minutes converted to the
 configured hourly waiting cost. It is reported as `waiting_cost_reported`, but
@@ -216,14 +238,20 @@ transportation cost. Truck and van usage are binary route activations. Drone
 usage is counted by unique physical `drone_id` assigned during timing
 propagation, while `used_drone_sorties` is reported separately.
 
-The current delivery-only drone energy increment is:
+Important objective convention: `waiting_cost_reported` is not included in
+`total_cost`, and drone energy is not converted into a monetary cost. Drone
+energy is reported in kWh and used for battery feasibility only.
+
+The current drone energy increment is:
 
 ```text
 energy += [rou * (delivery_load + pickup_load + drone_self_weight) + rou1] * flight_hours
 ```
 
-with pickup load currently zero, `rou=0.5`, `rou1=0.18`, drone self-weight
-`5 kg`, and battery capacity `13.8 kWh`.
+where delivery load decreases after customer delivery service and pickup load
+increases after customer pickup service. The default toy data still uses
+`pickup_demand=0`, `rou=0.5`, `rou1=0.18`, drone self-weight `5 kg`, and
+battery capacity `13.8 kWh`.
 
 `waiting_cost_reported` is diagnostic only and is not optimized directly.
 
@@ -233,13 +261,62 @@ with pickup load currently zero, `rou=0.5`, `rou1=0.18`, drone self-weight
 - Multiple containers.
 - Multiple trucks, trailers, vans, or drones.
 - Trailer-tractor binding.
-- Pickup/delivery request types.
 - Multi-van cross-vehicle recovery.
 - Gurobi MILP.
 - RL/PPO operator selection.
 
 Drone endurance is modeled both as a distance constraint and as a battery energy
-constraint. Pickup load is not implemented yet.
+constraint. Pickup load is implemented in load propagation and drone energy,
+but the default toy data keeps pickup demand at zero unless configured
+otherwise. Full import/export request classes and the second-stage export
+container drayage are not implemented yet.
+
+## Regression Tests / 回归测试
+
+The regression tests are used to prevent future changes from breaking the paper
+constraints that have already been implemented. They are not intended to prove
+that ALNS finds the optimal solution. They do not assert a fixed route, and they
+do not assert a fixed objective value. The tests mainly check feasibility,
+constraints, cost formulas, and physical-drone rules.
+
+Current tested instance sizes:
+
+- tiny: `num_orders=6`, `num_transshipments=2`, `num_containers=1`
+- small: `num_orders=10`, `num_transshipments=2`, `num_containers=1`
+- medium: `num_orders=20`, `num_transshipments=3`, `num_containers=2`
+
+Current checks:
+
+- `feasible=True`
+- `unassigned=[]`
+- each customer is served exactly once
+- `time_window_violations=[]`
+- `total_cost > 0`
+- `waiting_cost_reported` is not included in `total_cost`
+- `used_drones` is counted by physical drone quantity
+- `used_drone_sorties` equals the number of `drone_sorties`
+- each physical drone has `warehouse_launch_count <= 1`
+- each physical drone has `warehouse_return_count <= 1`
+- drone payload, endurance, and energy are feasible
+
+Run the regression tests from the `tvdctp_c_alns` directory:
+
+```bash
+python -m pytest tests
+```
+
+If `pytest` is not installed:
+
+```bash
+python -m pip install pytest
+```
+
+Run the regression tests after every change to `state.py`, `objective.py`,
+`feasibility.py`, `operators.py`, `initial_solution.py`, `alns_solver.py`,
+`evaluation.py`, `dataset_loader.py`, or `config.py`.
+
+If you want tests to run automatically before `git commit`, manually configure a
+pre-commit hook. This project does not write `.git/hooks` automatically.
 
 ## How to Run
 

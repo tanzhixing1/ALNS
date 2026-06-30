@@ -11,6 +11,7 @@ from feasibility import (
     check_solution_feasible,
     drone_sortie_distance,
     drone_sortie_energy,
+    drone_sortie_peak_payload,
     sortie_nodes,
 )
 from objective import objective
@@ -238,8 +239,10 @@ def _van_insert_cost(customer: int, route: List[int], idx: int, data: InstanceDa
 
 
 def _can_van_insert(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> bool:
-    current_load = sum(data.demands[c] for c in state.get_van_customers())
-    return current_load + data.demands[customer] <= config.fleet.van_capacity_kg
+    current_delivery = sum(data.demands[c] for c in state.get_van_customers())
+    current_pickup = sum(getattr(data, "pickup_demands", {}).get(c, 0.0) for c in state.get_van_customers())
+    customer_pickup = getattr(data, "pickup_demands", {}).get(customer, 0.0)
+    return current_delivery + current_pickup + data.demands[customer] + customer_pickup <= config.fleet.van_capacity_kg
 
 
 def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
@@ -261,7 +264,9 @@ def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: T
 
 
 def _drone_payload(customers: List[int], data: InstanceData) -> float:
-    return float(sum(data.demands[customer] for customer in customers))
+    delivery = sum(data.demands[customer] for customer in customers)
+    pickup = sum(getattr(data, "pickup_demands", {}).get(customer, 0.0) for customer in customers)
+    return float(delivery + pickup)
 
 
 def _can_make_drone_sortie(sortie: dict, data: InstanceData, config: TVDConfig) -> bool:
@@ -270,7 +275,7 @@ def _can_make_drone_sortie(sortie: dict, data: InstanceData, config: TVDConfig) 
         return False
     if any(not data.drone_eligible.get(customer, False) for customer in customers):
         return False
-    if _drone_payload(customers, data) > config.fleet.drone_capacity_kg:
+    if drone_sortie_peak_payload(sortie, data, config) > config.fleet.drone_capacity_kg:
         return False
     return (
         drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
@@ -317,13 +322,15 @@ def _extend_drone_customers(
 def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
     if not config.fleet.drone_enabled or not data.drone_eligible.get(customer, False):
         return None
-    if data.demands[customer] > config.fleet.drone_capacity_kg:
+    if data.demands[customer] + getattr(data, "pickup_demands", {}).get(customer, 0.0) > config.fleet.drone_capacity_kg:
         return None
 
     best_cross: Optional[InsertionMove] = None
     best_same: Optional[InsertionMove] = None
     route_positions = list(enumerate(state.van_route))
     for launch_pos, launch in route_positions:
+        if launch_pos == len(state.van_route) - 1:
+            continue
         for recovery_pos, recovery in route_positions[launch_pos:]:
             if launch == recovery and recovery_pos != launch_pos:
                 continue

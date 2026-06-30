@@ -4,7 +4,12 @@ from typing import List
 
 from config import TVDConfig
 from dataset_loader import InstanceData
-from feasibility import check_solution_feasible, drone_sortie_distance, drone_sortie_energy
+from feasibility import (
+    check_solution_feasible,
+    drone_sortie_distance,
+    drone_sortie_energy,
+    drone_sortie_peak_payload,
+)
 from objective import objective
 from state import TVDState
 
@@ -22,7 +27,11 @@ def _nearest_neighbor_route(data: InstanceData, selected_transshipment: int) -> 
         unvisited.remove(next_customer)
         current = next_customer
 
-    route.append(selected_transshipment)
+    end_transshipment = min(
+        data.transshipment_nodes,
+        key=lambda node: data.ground_distance_matrix[current, node],
+    )
+    route.append(int(end_transshipment))
     return route
 
 
@@ -70,7 +79,7 @@ def _can_make_transshipment_sortie(
         config.fleet.drone_enabled
         and customers
         and all(data.drone_eligible[customer] for customer in customers)
-        and sum(data.demands[customer] for customer in customers) <= config.fleet.drone_capacity_kg
+        and drone_sortie_peak_payload(sortie, data, config) <= config.fleet.drone_capacity_kg
         and drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
         and drone_sortie_energy(sortie, data, config) <= config.fleet.drone_battery_capacity_kwh
     )
@@ -105,6 +114,7 @@ def _build_assignments(data: InstanceData, selected_transshipment: int):
             "container_origin": int(order["container_origin"]),
             "assigned_transshipment": selected_transshipment,
             "demand": float(order["demand"]),
+            "pickup_demand": float(order.get("pickup_demand", 0.0)),
             "service_required": bool(order["service_required"]),
         }
 
@@ -152,7 +162,7 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         order_assignment=order_assignment,
         container_assignment=container_assignment,
         service_mode=service_mode,
-        metadata={"route_endpoints": [selected_transshipment]},
+        metadata={"route_endpoints": [van_route[0], van_route[-1]]},
     )
 
     candidates = sorted(

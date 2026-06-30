@@ -1,0 +1,69 @@
+best_objective: 673.5612543500798
+truck_cost: 240.1799225814728
+truck_transport_cost: 74.17992258147278
+truck_fixed_cost: 166.0
+van_cost: 84.55087684106724
+van_transport_cost: 25.55087684106723
+van_fixed_cost: 59.0
+drone_cost: 348.8304549275398
+drone_transport_cost: 10.830454927539819
+drone_fixed_cost: 338.0
+truck_distance: 38.435193047395224
+van_distance: 29.201002104076835
+drone_distance: 208.27797937576574
+drone_energy: 31.730592817394687
+used_trucks: 1
+used_vans: 1
+used_drones: 2
+used_drone_sorties: 4
+waiting_cost: 37.758511134684824
+waiting_cost_reported: 37.758511134684824
+penalty_cost: 0.0
+total_cost: 673.5612543500798
+van_waiting_time: 58.23934879385834
+drone_waiting_time: 0.0
+early_waiting_time: 0.0
+num_time_window_violations: 0
+waiting_cost_reported_not_optimized: True
+feasible: True
+runtime_seconds: 0.4186364999914076
+port_node: 0
+truck_depot_node: 1
+container_origin: 0
+transshipment_nodes: [2, 3]
+selected_transshipment: 2
+candidate_transshipment_nodes: [2, 3]
+truck_arrival_time: 76.87038609479045
+van_start_time: 76.87038609479045
+truck_arrival: {1: 0.0, 0: 17.204650534085253, 2: 76.87038609479045}
+van_arrival: {2: 76.87038609479045, 5: 87.44108834156225, 13: 153.77255947422705, 3: 175.2172128309657}
+van_arrival_sequence: [{'route_index': 0.0, 'node': 2.0, 'arrival_time': 76.87038609479045}, {'route_index': 1.0, 'node': 5.0, 'arrival_time': 87.44108834156225}, {'route_index': 2.0, 'node': 13.0, 'arrival_time': 153.77255947422705}, {'route_index': 3.0, 'node': 3.0, 'arrival_time': 175.2172128309657}]
+drone_arrival: {6: 87.15176275293675, 12: 98.65169913371435, 8: 100.29244668064521, 10: 112.77434137609593, 4: 155.23867121202795, 11: 158.45843382605725, 7: 144.2915844548217, 9: 154.33475664315543}
+service_start: {6: 87.15176275293675, 12: 98.65169913371435, 8: 100.29244668064521, 10: 112.77434137609593, 5: 87.44108834156225, 4: 155.23867121202795, 11: 158.45843382605725, 7: 144.2915844548217, 9: 154.33475664315543, 13: 153.77255947422705}
+service_finish: {6: 87.15176275293675, 12: 98.65169913371435, 8: 100.29244668064521, 10: 112.77434137609593, 5: 87.44108834156225, 4: 155.23867121202795, 11: 158.45843382605725, 7: 144.2915844548217, 9: 154.33475664315543, 13: 153.77255947422705}
+time_windows: {4: (0.0, 360.0), 5: (0.0, 360.0), 6: (0.0, 360.0), 7: (0.0, 360.0), 8: (0.0, 360.0), 9: (0.0, 360.0), 10: (0.0, 360.0), 11: (0.0, 360.0), 12: (0.0, 360.0), 13: (0.0, 360.0)}
+time_window_violations: []
+total_early_waiting_time: 0.0
+num_orders: 10
+num_containers: 1
+num_van_customers: 2
+num_drone_customers: 8
+num_drone_sorties: 4
+number_of_same_node_sorties: 0
+number_of_cross_node_sorties: 4
+total_van_waiting_time: 58.23934879385834
+total_drone_waiting_time: 0.0
+drone_sortie_details: [{'drone_id': 1, 'launch': 5, 'launch_position': 1, 'customers': [4, 11], 'number_of_customers': 2, 'recovery': 3, 'recovery_position': 3, 'same_node': False, 'delivery_load_departure': 21.0, 'pickup_load_departure': 0.0, 'effective_weight': 26.0, 'flight_hours': 0.7212129898064306, 'energy_increment_kwh': 8.852182778388473, 'cumulative_energy_kwh': 8.852182778388473, 'total_delivery_payload': 21.0, 'total_pickup_payload': 20.0, 'peak_payload': 21.0, 'drone_distance': 57.697039184514445, 'drone_energy': 8.852182778388473, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 135.6384586563782, 'recovery_time': 178.91123804476402, 'van_waiting_time': 3.6940252137983123, 'drone_waiting_time': 0.0}, {'drone_id': 2, 'launch': 5, 'launch_position': 1, 'customers': [7, 9], 'number_of_customers': 2, 'recovery': 13, 'recovery_position': 2, 'same_node': False, 'delivery_load_departure': 23.0, 'pickup_load_departure': 0.0, 'effective_weight': 28.0, 'flight_hours': 0.40803423471821565, 'energy_increment_kwh': 5.654017712598886, 'cumulative_energy_kwh': 5.654017712598886, 'total_delivery_payload': 23.0, 'total_pickup_payload': 22.0, 'peak_payload': 23.0, 'drone_distance': 32.642738777457254, 'drone_energy': 5.654017712598886, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 135.6384586563782, 'recovery_time': 160.12051273947114, 'van_waiting_time': 6.347953265244087, 'drone_waiting_time': 0.0}, {'drone_id': 1, 'launch': 2, 'launch_position': 0, 'customers': [6, 12], 'number_of_customers': 2, 'recovery': 5, 'recovery_position': 1, 'same_node': False, 'delivery_load_departure': 25.0, 'pickup_load_departure': 0.0, 'effective_weight': 30.0, 'flight_hours': 0.49475964164596353, 'energy_increment_kwh': 5.665863979297721, 'cumulative_energy_kwh': 5.665863979297721, 'total_delivery_payload': 25.0, 'total_pickup_payload': 13.0, 'peak_payload': 25.0, 'drone_distance': 39.580771331677084, 'drone_energy': 5.665863979297721, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 76.87038609479045, 'recovery_time': 106.55596459354827, 'van_waiting_time': 19.11487625198602, 'drone_waiting_time': 0.0}, {'drone_id': 2, 'launch': 2, 'launch_position': 0, 'customers': [8, 10], 'number_of_customers': 2, 'recovery': 5, 'recovery_position': 1, 'same_node': False, 'delivery_load_departure': 10.0, 'pickup_load_departure': 0.0, 'effective_weight': 15.0, 'flight_hours': 0.979467876026462, 'energy_increment_kwh': 11.558528347109608, 'cumulative_energy_kwh': 11.558528347109608, 'total_delivery_payload': 10.0, 'total_pickup_payload': 29.0, 'peak_payload': 29.0, 'drone_distance': 78.35743008211696, 'drone_energy': 11.558528347109608, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 76.87038609479045, 'recovery_time': 135.6384586563782, 'van_waiting_time': 29.082494062829923, 'drone_waiting_time': 0.0}]
+drone_physical_routes: {1: [2, 6, 12, 5, 4, 11, 3], 2: [2, 8, 10, 5, 7, 9, 13, 3]}
+drone_warehouse_launch_count: {1: 1, 2: 1}
+drone_warehouse_return_count: {1: 1, 2: 1}
+violations: 
+truck_route: [1, 0, 2]
+van_route: [2, 5, 13, 3]
+drone_sorties: [{'launch': 5, 'customers': [4, 11], 'recovery': 3, 'launch_time': 135.6384586563782, 'recovery_time': 178.91123804476402, 'van_waiting_time': 3.6940252137983123, 'drone_waiting_time': 0.0, 'same_node': False, 'launch_position': 1, 'recovery_position': 3, 'drone_id': 1, 'synchronized_recovery_time': 178.91123804476402}, {'launch': 5, 'customers': [7, 9], 'recovery': 13, 'launch_time': 135.6384586563782, 'recovery_time': 160.12051273947114, 'van_waiting_time': 6.347953265244087, 'drone_waiting_time': 0.0, 'same_node': False, 'launch_position': 1, 'recovery_position': 2, 'drone_id': 2, 'synchronized_recovery_time': 160.12051273947114}, {'launch': 2, 'customers': [6, 12], 'recovery': 5, 'launch_time': 76.87038609479045, 'recovery_time': 106.55596459354827, 'van_waiting_time': 19.11487625198602, 'drone_waiting_time': 0.0, 'same_node': False, 'launch_position': 0, 'recovery_position': 1, 'drone_id': 1, 'synchronized_recovery_time': 106.55596459354827}, {'launch': 2, 'customers': [8, 10], 'recovery': 5, 'launch_time': 76.87038609479045, 'recovery_time': 135.6384586563782, 'van_waiting_time': 29.082494062829923, 'drone_waiting_time': 0.0, 'same_node': False, 'launch_position': 0, 'recovery_position': 1, 'drone_id': 2, 'synchronized_recovery_time': 135.6384586563782}]
+container_assignment: {0: {'container_id': 0, 'origin_node': 0, 'origin_type': 'port', 'candidate_transshipments': [2, 3], 'selected_transshipment': 2, 'orders': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 'customers': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}}
+order_assignment: {4: {'order_id': 0, 'customer_id': 4, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 20.0, 'pickup_demand': 2.0, 'service_required': True}, 5: {'order_id': 1, 'customer_id': 5, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 11.0, 'pickup_demand': 18.0, 'service_required': True}, 6: {'order_id': 2, 'customer_id': 6, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 18.0, 'pickup_demand': 7.0, 'service_required': True}, 7: {'order_id': 3, 'customer_id': 7, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 5.0, 'pickup_demand': 4.0, 'service_required': True}, 8: {'order_id': 4, 'customer_id': 8, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 7.0, 'pickup_demand': 11.0, 'service_required': True}, 9: {'order_id': 5, 'customer_id': 9, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 18.0, 'pickup_demand': 18.0, 'service_required': True}, 10: {'order_id': 6, 'customer_id': 10, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 3.0, 'pickup_demand': 18.0, 'service_required': True}, 11: {'order_id': 7, 'customer_id': 11, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 1.0, 'pickup_demand': 18.0, 'service_required': True}, 12: {'order_id': 8, 'customer_id': 12, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 7.0, 'pickup_demand': 6.0, 'service_required': True}, 13: {'order_id': 9, 'customer_id': 13, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 14.0, 'pickup_demand': 0.0, 'service_required': True}}
+route_plan_detail_txt: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\open_pickup_10_openroute_seed5\route_plan_detail.txt
+route_plan_detail_csv: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\open_pickup_10_openroute_seed5\route_plan_detail.csv
+load_timeline_md: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\open_pickup_10_openroute_seed5\load_timeline.md
+route_load_timeline_png: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\open_pickup_10_openroute_seed5\route_load_timeline.png

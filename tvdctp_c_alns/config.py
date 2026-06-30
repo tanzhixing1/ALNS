@@ -62,8 +62,10 @@ class ToyDataConfig:
     container_origin: str = "port"
     road_distance_factor: float = 1.0
     high_floor_ratio: float = 0.35
-    min_demand_kg: int = 3
+    min_demand_kg: int = 0
     max_demand_kg: int = 20
+    min_pickup_demand_kg: int = 0
+    max_pickup_demand_kg: int = 20
     service_time_min: float = 0.0
     time_window_start_min: float = 0.0
     time_window_end_min: float = 360.0

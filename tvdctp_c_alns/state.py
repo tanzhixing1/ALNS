@@ -107,7 +107,7 @@ class TVDState:
         return customers
 
     def get_van_customers(self) -> List[int]:
-        endpoints = set(self.metadata.get("route_endpoints", []))
+        endpoints = set(self.metadata.get("route_endpoints", [])) | set(self.transshipment_nodes)
         return [int(node) for node in self.van_route if node not in endpoints]
 
     def mark_unassigned(self, customer: int) -> None:
