@@ -22,10 +22,23 @@ def _route_distance(route: list[int], matrix) -> float:
 
 def _vehicle_usage_counts(state: TVDState) -> Dict[str, int]:
     used_trucks = 1 if len(state.truck_route) > 1 else 0
-    used_vans = 1 if state.get_van_customers() or state.drone_sorties else 0
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    used_vans = sum(
+        1
+        for van_id, route in routes.items()
+        if len(route) > 2
+        or any(
+            isinstance(sortie, dict)
+            and (
+                sortie.get("launch_van_id") == van_id
+                or sortie.get("recovery_van_id") == van_id
+            )
+            for sortie in state.drone_sorties
+        )
+    )
     physical_routes = state.timing.get("drone_physical_routes", {})
     used_drone_ids = {
-        int(sortie["drone_id"])
+        str(sortie["drone_id"])
         for sortie in state.drone_sorties
         if isinstance(sortie, dict) and sortie.get("drone_id") is not None
     }
@@ -55,7 +68,12 @@ def objective(
     truck_fixed_cost = usage["used_trucks"] * config.cost.tractor_fixed_cost
     truck_cost = truck_transport_cost + truck_fixed_cost
 
-    van_distance = _route_distance(state.van_route, data.ground_distance_matrix)
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    van_distance = sum(
+        _route_distance(route, data.ground_distance_matrix)
+        for route in routes.values()
+        if len(route) >= 2
+    )
     van_transport_cost = van_distance * config.cost.van_cost_per_km
     van_fixed_cost = usage["used_vans"] * config.cost.van_fixed_cost
     van_cost = van_transport_cost + van_fixed_cost

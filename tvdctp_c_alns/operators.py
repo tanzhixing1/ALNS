@@ -27,6 +27,7 @@ class InsertionMove:
     mode: str
     cost: float
     index: Optional[int] = None
+    van_id: Optional[str] = None
     sortie: Optional[dict] = None
 
 
@@ -39,8 +40,12 @@ def _served_customers(state: TVDState) -> List[int]:
 
 
 def _remove_customer(state: TVDState, customer: int) -> None:
-    if customer in state.van_route:
-        state.van_route = [node for node in state.van_route if node != customer]
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for van_id, route in list(routes.items()):
+        if customer in route:
+            routes[van_id] = [node for node in route if node != customer]
+    state.van_routes = routes
+    state.sync_primary_van_route()
 
     remaining_sorties = []
     removed_drone_customers = set()
@@ -219,11 +224,25 @@ def switch_transshipment_operator(
     old_transshipment = switched.selected_transshipment
     switched.selected_transshipment = new_transshipment
     switched.truck_route = _truck_route_for_transshipment(data, new_transshipment)
-    switched.van_route = [new_transshipment, new_transshipment]
+    van_home = config.build_van_home(data.transshipment_nodes)
+    drone_initial_carrier = config.build_drone_initial_carrier(data.transshipment_nodes)
+    drone_home_warehouse = config.build_drone_home_warehouse(data.transshipment_nodes)
+    switched.van_home = van_home
+    switched.drone_initial_carrier = drone_initial_carrier
+    switched.drone_home_warehouse = drone_home_warehouse
+    switched.van_routes = {
+        van_id: [new_transshipment, new_transshipment]
+        for van_id, home in van_home.items()
+        if int(home) == int(new_transshipment)
+    }
+    switched.sync_primary_van_route()
     switched.drone_sorties = []
     switched.unassigned = data.customers.copy()
     switched.service_mode = {customer: "unassigned" for customer in data.customers}
-    switched.metadata["route_endpoints"] = [new_transshipment]
+    switched.metadata["route_endpoints"] = sorted(set(data.transshipment_nodes))
+    switched.metadata["warehouse_num_vans"] = config.warehouse_num_vans(data.transshipment_nodes)
+    switched.metadata["warehouse_num_drones"] = config.warehouse_num_drones(data.transshipment_nodes)
+    switched.metadata["drones_per_van"] = config.fleet.drones_per_van
     switched.metadata["transshipment_switched_from"] = old_transshipment
     switched.metadata["transshipment_switched_to"] = new_transshipment
     switched.timing = default_timing()
@@ -238,28 +257,31 @@ def _van_insert_cost(customer: int, route: List[int], idx: int, data: InstanceDa
     return float(dist[pred, customer] + dist[customer, succ] - dist[pred, succ])
 
 
-def _can_van_insert(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> bool:
-    current_delivery = sum(data.demands[c] for c in state.get_van_customers())
-    current_pickup = sum(getattr(data, "pickup_demands", {}).get(c, 0.0) for c in state.get_van_customers())
+def _can_van_insert(
+    customer: int,
+    route: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    route_customers = [node for node in route if node in data.customers]
+    current_delivery = sum(data.demands[c] for c in route_customers)
+    current_pickup = sum(getattr(data, "pickup_demands", {}).get(c, 0.0) for c in route_customers)
     customer_pickup = getattr(data, "pickup_demands", {}).get(customer, 0.0)
     return current_delivery + current_pickup + data.demands[customer] + customer_pickup <= config.fleet.van_capacity_kg
 
 
 def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
-    if not _can_van_insert(customer, state, data, config):
-        return None
-
-    fixed_delta = (
-        config.cost.van_fixed_cost
-        if not state.get_van_customers() and not state.drone_sorties
-        else 0.0
-    )
     best: Optional[InsertionMove] = None
-    for idx in range(1, len(state.van_route)):
-        delta = _van_insert_cost(customer, state.van_route, idx, data)
-        cost = delta * config.cost.van_cost_per_km + fixed_delta
-        if best is None or cost < best.cost:
-            best = InsertionMove(mode="van", cost=cost, index=idx)
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for van_id, route in routes.items():
+        if not _can_van_insert(customer, route, data, config):
+            continue
+        fixed_delta = 0.0 if len(route) > 2 else config.cost.van_fixed_cost
+        for idx in range(1, len(route)):
+            delta = _van_insert_cost(customer, route, idx, data)
+            cost = delta * config.cost.van_cost_per_km + fixed_delta
+            if best is None or cost < best.cost:
+                best = InsertionMove(mode="van", cost=cost, index=idx, van_id=van_id)
     return best
 
 
@@ -302,7 +324,7 @@ def _extend_drone_customers(
                 continue
             if not data.drone_eligible.get(candidate, False):
                 continue
-            if candidate in state.van_route:
+            if any(candidate in route for route in state.van_routes.values()):
                 continue
             trial_customers = customers + [candidate]
             trial_sortie = _make_drone_sortie(launch, trial_customers, recovery)
@@ -327,33 +349,62 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
 
     best_cross: Optional[InsertionMove] = None
     best_same: Optional[InsertionMove] = None
-    route_positions = list(enumerate(state.van_route))
-    for launch_pos, launch in route_positions:
-        if launch_pos == len(state.van_route) - 1:
-            continue
-        for recovery_pos, recovery in route_positions[launch_pos:]:
-            if launch == recovery and recovery_pos != launch_pos:
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for van_id, route in routes.items():
+        route_positions = list(enumerate(route))
+        drone_id = next(
+            (
+                candidate_drone
+                for candidate_drone, carrier in state.drone_initial_carrier.items()
+                if carrier == van_id
+            ),
+            "",
+        )
+        for launch_pos, launch in route_positions:
+            if launch_pos == len(route) - 1:
                 continue
-            sortie_customers = _extend_drone_customers(
-                customer, launch, recovery, state, data, config
-            )
-            sortie = _make_drone_sortie(launch, sortie_customers, recovery)
-            sortie["launch_position"] = int(launch_pos)
-            sortie["recovery_position"] = int(recovery_pos)
-            if not _can_make_drone_sortie(sortie, data, config):
-                continue
-            dist = drone_sortie_distance(sortie, data)
-            cost = dist * config.cost.drone_cost_per_km + config.cost.drone_fixed_cost
-            move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
-            if launch != recovery:
-                if best_cross is None or cost < best_cross.cost:
-                    best_cross = move
-            elif best_same is None or cost < best_same.cost:
-                best_same = move
+            for recovery_pos, recovery in route_positions[launch_pos:]:
+                if launch == recovery and recovery_pos != launch_pos:
+                    continue
+                sortie_customers = _extend_drone_customers(
+                    customer, launch, recovery, state, data, config
+                )
+                sortie = _make_drone_sortie(
+                    launch,
+                    sortie_customers,
+                    recovery,
+                    drone_id=drone_id,
+                    launch_van_id=van_id,
+                    recovery_van_id=van_id,
+                )
+                sortie["launch_position"] = int(launch_pos)
+                sortie["recovery_position"] = int(recovery_pos)
+                if not _can_make_drone_sortie(sortie, data, config):
+                    continue
+                dist = drone_sortie_distance(sortie, data)
+                fixed_delta = 0.0 if drone_id in {
+                    str(existing.get("drone_id"))
+                    for existing in state.drone_sorties
+                    if isinstance(existing, dict)
+                } else config.cost.drone_fixed_cost
+                cost = dist * config.cost.drone_cost_per_km + fixed_delta
+                move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
+                if launch != recovery:
+                    if best_cross is None or cost < best_cross.cost:
+                        best_cross = move
+                elif best_same is None or cost < best_same.cost:
+                    best_same = move
     return best_cross if best_cross is not None else best_same
 
 
-def _make_drone_sortie(launch: int, customers, recovery: int) -> dict:
+def _make_drone_sortie(
+    launch: int,
+    customers,
+    recovery: int,
+    drone_id: str = "",
+    launch_van_id: str = "",
+    recovery_van_id: str = "",
+) -> dict:
     if isinstance(customers, int):
         customers = [customers]
     return {
@@ -365,6 +416,9 @@ def _make_drone_sortie(launch: int, customers, recovery: int) -> dict:
         "van_waiting_time": 0.0,
         "drone_waiting_time": 0.0,
         "same_node": bool(launch == recovery),
+        "drone_id": drone_id,
+        "launch_van_id": launch_van_id,
+        "recovery_van_id": recovery_van_id,
     }
 
 
@@ -384,7 +438,9 @@ def _all_moves(customer: int, state: TVDState, data: InstanceData, config: TVDCo
 def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
     if move.mode == "van":
         assert move.index is not None
-        state.van_route.insert(move.index, customer)
+        assert move.van_id is not None
+        state.van_routes[move.van_id].insert(move.index, customer)
+        state.sync_primary_van_route()
         state.service_mode[customer] = "van"
     elif move.mode == "drone":
         assert move.sortie is not None

@@ -13,8 +13,11 @@ The current v6 toy version models:
 - 1 truck depot.
 - 1 port node.
 - 2 candidate transshipment warehouses.
-- 1 selected transshipment warehouse.
-- 1 van route and simplified drone sorties.
+- 1 selected transshipment warehouse for each toy container.
+- Multiple van routes from the selected warehouse, with open-route endings.
+- Per-warehouse van availability and derived drone availability.
+- Paper-style drone resources: `num_drones = num_vans * drones_per_van`;
+  `drones_per_van` defaults to 2 and drone counts are not independent inputs.
 - Physical drone identities assigned across sorties for fixed-cost counting.
 - Payload-dependent drone energy checks for drone routes with delivery load
   and pickup load.
@@ -82,18 +85,24 @@ simplified to:
 truck_route = [truck_depot_node, selected_transshipment]
 ```
 
-The van route starts at `selected_transshipment` and may end at any candidate
-transshipment warehouse. This is the toy project's open-route interpretation of
-the paper's warehouse return flexibility:
+Each van route starts at the van's home transshipment warehouse and may end at
+any candidate transshipment warehouse. This is the toy project's open-route
+interpretation of the paper's warehouse return flexibility:
 
 ```python
-van_route = [selected_transshipment, ..., ending_transshipment]
+van_routes = {
+    "van_0": [home_transshipment, ..., ending_transshipment],
+    "van_1": [home_transshipment, ..., ending_transshipment],
+}
 ```
 
 Drone sorties keep the format:
 
 ```python
 {
+    "drone_id": "drone_0",
+    "launch_van_id": "van_0",
+    "recovery_van_id": "van_0",
     "launch": int,
     "customers": [customer_1, customer_2, ...],
     "recovery": int,
@@ -102,7 +111,6 @@ Drone sorties keep the format:
     "van_waiting_time": float,
     "drone_waiting_time": float,
     "same_node": bool,
-    "drone_id": int,
     "launch_position": int,
     "recovery_position": int,
 }
@@ -140,7 +148,7 @@ the mandatory drone-service rule.
 In this v6 toy version, the initial solution chooses `selected_transshipment`
 using a simple estimated-cost rule. The ALNS loop optimizes:
 
-- `van_route`
+- `van_routes`
 - `drone_sorties`
 - `service_mode`
 - `unassigned`
@@ -259,7 +267,7 @@ battery capacity `13.8 kWh`.
 
 - Container splitting.
 - Multiple containers.
-- Multiple trucks, trailers, vans, or drones.
+- Multiple trucks, trailers, or containers.
 - Trailer-tractor binding.
 - Multi-van cross-vehicle recovery.
 - Gurobi MILP.

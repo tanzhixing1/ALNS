@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Dict, List, Optional
 
 
 @dataclass
@@ -32,8 +33,7 @@ class FleetConfig:
     drone_base_energy_coeff: float = 0.18
     drone_self_weight_kg: float = 5.0
     num_trucks: int = 1
-    num_vans: int = 1
-    num_drones: int = 3
+    drones_per_van: int = 2
     drone_enabled: bool = True
 
 
@@ -69,6 +69,10 @@ class ToyDataConfig:
     service_time_min: float = 0.0
     time_window_start_min: float = 0.0
     time_window_end_min: float = 360.0
+    vans_per_transshipment_by_scale: Dict[str, int] = field(
+        default_factory=lambda: {"small": 2, "medium": 3, "large": 4}
+    )
+    warehouse_num_vans: Dict[int, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -78,6 +82,75 @@ class TVDConfig:
     cost: CostConfig = field(default_factory=CostConfig)
     alns: ALNSConfig = field(default_factory=ALNSConfig)
     output_dir: str = "outputs"
+
+    def transshipment_nodes(self) -> List[int]:
+        start = self.data.transshipment_start_node
+        return list(range(start, start + self.data.num_transshipments))
+
+    def instance_scale(self) -> str:
+        if self.data.num_customers <= 10:
+            return "small"
+        if self.data.num_customers <= 50:
+            return "medium"
+        return "large"
+
+    def warehouse_num_vans(self, transshipment_nodes: Optional[List[int]] = None) -> Dict[int, int]:
+        nodes = transshipment_nodes if transshipment_nodes is not None else self.transshipment_nodes()
+        explicit = {int(node): int(count) for node, count in self.data.warehouse_num_vans.items()}
+        if explicit:
+            return {int(node): int(explicit.get(int(node), 0)) for node in nodes}
+
+        vans = int(self.data.vans_per_transshipment_by_scale[self.instance_scale()])
+        return {int(node): vans for node in nodes}
+
+    def warehouse_num_drones(self, transshipment_nodes: Optional[List[int]] = None) -> Dict[int, int]:
+        return {
+            warehouse: vans * int(self.fleet.drones_per_van)
+            for warehouse, vans in self.warehouse_num_vans(transshipment_nodes).items()
+        }
+
+    def total_num_vans(self, transshipment_nodes: Optional[List[int]] = None) -> int:
+        return int(sum(self.warehouse_num_vans(transshipment_nodes).values()))
+
+    def total_num_drones(self, transshipment_nodes: Optional[List[int]] = None) -> int:
+        return int(sum(self.warehouse_num_drones(transshipment_nodes).values()))
+
+    def build_van_home(self, transshipment_nodes: Optional[List[int]] = None) -> Dict[str, int]:
+        van_home: Dict[str, int] = {}
+        van_idx = 0
+        for warehouse in sorted(self.warehouse_num_vans(transshipment_nodes)):
+            for _ in range(self.warehouse_num_vans(transshipment_nodes)[warehouse]):
+                van_home[f"van_{van_idx}"] = int(warehouse)
+                van_idx += 1
+        return van_home
+
+    def build_drone_initial_carrier(
+        self, transshipment_nodes: Optional[List[int]] = None
+    ) -> Dict[str, str]:
+        drone_initial_carrier: Dict[str, str] = {}
+        drone_idx = 0
+        for van_id in sorted(self.build_van_home(transshipment_nodes), key=lambda item: int(item.split("_")[1])):
+            for _ in range(int(self.fleet.drones_per_van)):
+                drone_initial_carrier[f"drone_{drone_idx}"] = van_id
+                drone_idx += 1
+        return drone_initial_carrier
+
+    def build_drone_home_warehouse(
+        self, transshipment_nodes: Optional[List[int]] = None
+    ) -> Dict[str, int]:
+        van_home = self.build_van_home(transshipment_nodes)
+        return {
+            drone_id: int(van_home[van_id])
+            for drone_id, van_id in self.build_drone_initial_carrier(transshipment_nodes).items()
+        }
+
+    @property
+    def num_vans(self) -> int:
+        return self.total_num_vans()
+
+    @property
+    def num_drones(self) -> int:
+        return self.total_num_drones()
 
 
 def build_config(
@@ -90,6 +163,8 @@ def build_config(
     seed: int = 42,
     drone_enabled: bool = True,
     output_dir: str = "outputs",
+    drones_per_van: int = 2,
+    warehouse_num_vans: Optional[Dict[int, int]] = None,
 ) -> TVDConfig:
     config = TVDConfig()
     config.data.num_customers = num_customers
@@ -100,5 +175,11 @@ def build_config(
     config.alns.max_iterations = iterations
     config.alns.random_seed = seed
     config.fleet.drone_enabled = drone_enabled
+    config.fleet.drones_per_van = int(drones_per_van)
+    if warehouse_num_vans is not None:
+        config.data.warehouse_num_vans = {
+            int(warehouse): int(count)
+            for warehouse, count in warehouse_num_vans.items()
+        }
     config.output_dir = output_dir
     return config

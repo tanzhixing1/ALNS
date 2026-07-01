@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List
+from typing import Dict, List
 
 from config import TVDConfig
 from dataset_loader import InstanceData
@@ -33,6 +33,85 @@ def _nearest_neighbor_route(data: InstanceData, selected_transshipment: int) -> 
     )
     route.append(int(end_transshipment))
     return route
+
+
+def _route_insert_cost(route: List[int], customer: int, data: InstanceData) -> tuple[float, int]:
+    best_cost = None
+    best_idx = 1
+    for idx in range(1, len(route)):
+        pred = route[idx - 1]
+        succ = route[idx]
+        cost = float(
+            data.ground_distance_matrix[pred, customer]
+            + data.ground_distance_matrix[customer, succ]
+            - data.ground_distance_matrix[pred, succ]
+        )
+        if best_cost is None or cost < best_cost:
+            best_cost = cost
+            best_idx = idx
+    return float(best_cost or 0.0), best_idx
+
+
+def _route_payload(route: List[int], data: InstanceData) -> float:
+    customers = [node for node in route if node in data.customers]
+    return float(
+        sum(data.demands[customer] for customer in customers)
+        + sum(getattr(data, "pickup_demands", {}).get(customer, 0.0) for customer in customers)
+    )
+
+
+def _build_initial_van_routes(
+    data: InstanceData,
+    config: TVDConfig,
+    selected_transshipment: int,
+    van_home: Dict[str, int],
+) -> Dict[str, List[int]]:
+    selected_vans = [
+        van_id
+        for van_id, home in sorted(van_home.items(), key=lambda item: int(item[0].split("_")[1]))
+        if int(home) == int(selected_transshipment)
+    ]
+    if not selected_vans:
+        selected_vans = [sorted(van_home, key=lambda item: int(item.split("_")[1]))[0]]
+
+    van_routes = {van_id: [selected_transshipment, selected_transshipment] for van_id in selected_vans}
+    route_loads = {van_id: 0.0 for van_id in selected_vans}
+
+    for customer in data.customers:
+        demand = float(data.demands[customer]) + float(
+            getattr(data, "pickup_demands", {}).get(customer, 0.0)
+        )
+        feasible_vans = [
+            van_id
+            for van_id in selected_vans
+            if route_loads[van_id] + demand <= config.fleet.van_capacity_kg + 1e-9
+        ]
+        candidate_vans = feasible_vans if feasible_vans else selected_vans
+        best_van = None
+        best_cost = None
+        best_idx = 1
+        for van_id in candidate_vans:
+            cost, idx = _route_insert_cost(van_routes[van_id], customer, data)
+            route_customer_count = sum(1 for node in van_routes[van_id] if node in data.customers)
+            balanced_cost = cost + 100.0 * route_customer_count
+            if best_cost is None or balanced_cost < best_cost:
+                best_van = van_id
+                best_cost = balanced_cost
+                best_idx = idx
+        assert best_van is not None
+        van_routes[best_van].insert(best_idx, int(customer))
+        route_loads[best_van] += demand
+
+    for van_id, route in van_routes.items():
+        if len(route) > 1:
+            last_customer = next((node for node in reversed(route) if node in data.customers), selected_transshipment)
+            route[-1] = int(
+                min(
+                    data.transshipment_nodes,
+                    key=lambda node: data.ground_distance_matrix[last_customer, node],
+                )
+            )
+    return van_routes
 
 
 def _truck_route(data: InstanceData, selected_transshipment: int) -> List[int]:
@@ -85,7 +164,14 @@ def _can_make_transshipment_sortie(
     )
 
 
-def _make_drone_sortie(launch: int, customers, recovery: int) -> dict:
+def _make_drone_sortie(
+    launch: int,
+    customers,
+    recovery: int,
+    drone_id: str = "",
+    launch_van_id: str = "",
+    recovery_van_id: str = "",
+) -> dict:
     if isinstance(customers, int):
         customers = [customers]
     return {
@@ -97,6 +183,9 @@ def _make_drone_sortie(launch: int, customers, recovery: int) -> dict:
         "van_waiting_time": 0.0,
         "drone_waiting_time": 0.0,
         "same_node": bool(launch == recovery),
+        "drone_id": drone_id,
+        "launch_van_id": launch_van_id,
+        "recovery_van_id": recovery_van_id,
     }
 
 
@@ -146,7 +235,12 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
 
     selected_transshipment = _select_transshipment(data, config)
     truck_route = _truck_route(data, selected_transshipment)
-    van_route = _nearest_neighbor_route(data, selected_transshipment)
+    van_home = config.build_van_home(data.transshipment_nodes)
+    drone_initial_carrier = config.build_drone_initial_carrier(data.transshipment_nodes)
+    drone_home_warehouse = config.build_drone_home_warehouse(data.transshipment_nodes)
+    van_routes = _build_initial_van_routes(data, config, selected_transshipment, van_home)
+    primary_van = sorted(van_routes, key=lambda item: int(item.split("_")[1]))[0]
+    van_route = van_routes[primary_van].copy()
     service_mode = {customer: "van" for customer in data.customers}
     order_assignment, container_assignment = _build_assignments(
         data, selected_transshipment
@@ -159,10 +253,19 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         container_origin=data.container_origin,
         truck_route=truck_route,
         van_route=van_route,
+        van_routes=van_routes,
+        van_home=van_home,
+        drone_initial_carrier=drone_initial_carrier,
+        drone_home_warehouse=drone_home_warehouse,
         order_assignment=order_assignment,
         container_assignment=container_assignment,
         service_mode=service_mode,
-        metadata={"route_endpoints": [van_route[0], van_route[-1]]},
+        metadata={
+            "route_endpoints": sorted(set(data.transshipment_nodes)),
+            "warehouse_num_vans": config.warehouse_num_vans(data.transshipment_nodes),
+            "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
+            "drones_per_van": config.fleet.drones_per_van,
+        },
     )
 
     candidates = sorted(
@@ -172,16 +275,25 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
     drone_candidates = []
 
     for customer in candidates:
-        if customer not in state.van_route:
-            continue
         if not _can_make_transshipment_sortie(
             customer, selected_transshipment, data, config
         ):
             continue
 
-        pos = state.van_route.index(customer)
-        pred = state.van_route[pos - 1]
-        succ = state.van_route[pos + 1]
+        route_owner = next(
+            (
+                van_id
+                for van_id, route in state.van_routes.items()
+                if customer in route
+            ),
+            None,
+        )
+        if route_owner is None:
+            continue
+        route = state.van_routes[route_owner]
+        pos = route.index(customer)
+        pred = route[pos - 1]
+        succ = route[pos + 1]
         van_saving = (
             data.ground_distance_matrix[pred, customer]
             + data.ground_distance_matrix[customer, succ]
@@ -196,8 +308,17 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
 
     while drone_candidates:
         seed = drone_candidates.pop(0)
-        if seed not in state.van_route:
+        route_owner = next(
+            (
+                van_id
+                for van_id, route in state.van_routes.items()
+                if seed in route
+            ),
+            None,
+        )
+        if route_owner is None:
             continue
+        route = state.van_routes[route_owner]
         sortie_customers = [seed]
 
         changed = True
@@ -206,7 +327,15 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             best_candidate = None
             best_distance = None
             for candidate in drone_candidates:
-                if candidate not in state.van_route:
+                candidate_owner = next(
+                    (
+                        van_id
+                        for van_id, candidate_route in state.van_routes.items()
+                        if candidate in candidate_route
+                    ),
+                    None,
+                )
+                if candidate_owner != route_owner:
                     continue
                 trial_customers = sortie_customers + [candidate]
                 if not _can_make_transshipment_sortie(
@@ -232,10 +361,26 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             sortie_customers, selected_transshipment, data, config
         ):
             for customer in sortie_customers:
-                state.van_route.remove(customer)
+                state.van_routes[route_owner] = [
+                    node for node in state.van_routes[route_owner] if node != customer
+                ]
                 state.service_mode[customer] = "drone"
+            state.sync_primary_van_route()
+            drone_id = next(
+                (
+                    candidate_drone
+                    for candidate_drone, carrier in drone_initial_carrier.items()
+                    if carrier == route_owner
+                ),
+                "",
+            )
             sortie = _make_drone_sortie(
-                selected_transshipment, sortie_customers, selected_transshipment
+                selected_transshipment,
+                sortie_customers,
+                selected_transshipment,
+                drone_id=drone_id,
+                launch_van_id=route_owner,
+                recovery_van_id=route_owner,
             )
             sortie["launch_position"] = 0
             sortie["recovery_position"] = 0
@@ -251,12 +396,21 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             selected_transshipment=selected_transshipment,
             container_origin=data.container_origin,
             truck_route=truck_route,
-            van_route=_nearest_neighbor_route(data, selected_transshipment),
+            van_route=van_route,
+            van_routes=van_routes,
+            van_home=van_home,
+            drone_initial_carrier=drone_initial_carrier,
+            drone_home_warehouse=drone_home_warehouse,
             drone_sorties=[],
             order_assignment=order_assignment,
             container_assignment=container_assignment,
             service_mode={customer: "van" for customer in data.customers},
-            metadata={"route_endpoints": [selected_transshipment]},
+            metadata={
+                "route_endpoints": sorted(set(data.transshipment_nodes)),
+                "warehouse_num_vans": config.warehouse_num_vans(data.transshipment_nodes),
+                "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
+                "drones_per_van": config.fleet.drones_per_van,
+            },
         )
 
     objective(state, data, config)

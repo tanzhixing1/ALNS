@@ -229,9 +229,20 @@ def save_routes_plot(state: TVDState, data: InstanceData, output_path: Path) -> 
     for idx in range(len(truck_route) - 1):
         draw.line((points[truck_route[idx]], points[truck_route[idx + 1]]), fill=(214, 39, 40), width=3)
 
-    route = state.van_route
-    for idx in range(len(route) - 1):
-        draw.line((points[route[idx]], points[route[idx + 1]]), fill=(31, 119, 180), width=4)
+    van_colors = [
+        (31, 119, 180),
+        (23, 190, 207),
+        (66, 133, 244),
+        (0, 150, 136),
+    ]
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for route_idx, (van_id, route) in enumerate(sorted(routes.items())):
+        color = van_colors[route_idx % len(van_colors)]
+        for idx in range(len(route) - 1):
+            draw.line((points[route[idx]], points[route[idx + 1]]), fill=color, width=4)
+        if route:
+            x, y = points[route[0]]
+            draw.text((x + 10, y + 10 + 12 * route_idx), van_id, fill=color)
 
     for sortie in state.drone_sorties:
         launch, customers, recovery = sortie_nodes(sortie)
@@ -272,7 +283,7 @@ def save_routes_plot(state: TVDState, data: InstanceData, output_path: Path) -> 
         draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=color, outline=(30, 30, 30))
         draw.text((x + 10, y - 8), label, fill=(30, 30, 30))
 
-    draw.text((pad, 20), "TVDCTP-T route: red=truck, blue=van, green=drone", fill=(30, 30, 30))
+    draw.text((pad, 20), "TVDCTP-T route: red=truck, blue/cyan=van routes, green=drone", fill=(30, 30, 30))
     img.save(output_path)
 
 
@@ -288,11 +299,13 @@ def _drone_load_timeline_rows(
     for sortie_idx, sortie in enumerate(state.drone_sorties, start=1):
         launch, customers, recovery = sortie_nodes(sortie)
         energy, energy_rows = drone_sortie_energy_details(sortie, data, config)
-        drone_id = int(sortie.get("drone_id", 0)) if isinstance(sortie, dict) else 0
+        drone_id = str(sortie.get("drone_id", "")) if isinstance(sortie, dict) else ""
         launch_time = float(sortie.get("launch_time", 0.0)) if isinstance(sortie, dict) else 0.0
         recovery_time = float(sortie.get("recovery_time", 0.0)) if isinstance(sortie, dict) else 0.0
         launch_pos = int(sortie.get("launch_position", -1)) if isinstance(sortie, dict) else -1
         recovery_pos = int(sortie.get("recovery_position", -1)) if isinstance(sortie, dict) else -1
+        launch_van_id = str(sortie.get("launch_van_id", "")) if isinstance(sortie, dict) else ""
+        recovery_van_id = str(sortie.get("recovery_van_id", launch_van_id)) if isinstance(sortie, dict) else launch_van_id
         launch_delivery = float(sum(delivery_demand(data, customer) for customer in customers))
         launch_pickup = 0.0
 
@@ -303,7 +316,10 @@ def _drone_load_timeline_rows(
                 "event": "launch",
                 "node": launch,
                 "route_leg": "",
+                "launch_van_id": launch_van_id,
+                "recovery_van_id": recovery_van_id,
                 "van_position": launch_pos,
+                "van_id": launch_van_id,
                 "time": launch_time,
                 "delivery_before": launch_delivery,
                 "pickup_before": launch_pickup,
@@ -338,7 +354,10 @@ def _drone_load_timeline_rows(
                     "event": event,
                     "node": end,
                     "route_leg": f"{start}->{end}",
+                    "launch_van_id": launch_van_id,
+                    "recovery_van_id": recovery_van_id,
                     "van_position": recovery_pos if is_recovery else "",
+                    "van_id": recovery_van_id if is_recovery else "",
                     "time": arrival_time,
                     "delivery_before": float(energy_row["delivery_load_departure"]),
                     "pickup_before": float(energy_row["pickup_load_departure"]),
@@ -365,30 +384,87 @@ def _van_load_timeline_rows(
     config: TVDConfig,
 ) -> List[Dict[str, object]]:
     timing = state.timing
-    van_sequence = _van_sequence_lookup(timing)
     rows: List[Dict[str, object]] = []
-    for update in _van_load_updates(state, data):
-        route_index = int(update["route_index"])
-        node = int(update["node"])
-        rows.append(
-            {
-                "position": route_index,
-                "node": node,
-                "node_type": _node_type(node, data),
-                "time": float(van_sequence.get(route_index, {}).get("arrival_time", 0.0)),
-                "delivery_before": float(update["delivery_load_arrival"]),
-                "pickup_before": float(update["pickup_load_arrival"]),
-                "payload_before": float(update["load_arrival"]),
-                "van_delivered": float(update["delivered"]),
-                "van_picked_up": float(update["picked_up"]),
-                "drone_delivery_launched": float(update["launched_payload"]),
-                "drone_pickup_recovered": float(update["recovered_pickup"]),
-                "delivery_after": float(update["delivery_load_departure"]),
-                "pickup_after": float(update["pickup_load_departure"]),
-                "payload_after": float(update["load_departure"]),
-                "capacity_feasible": float(update["load_departure"]) <= config.fleet.van_capacity_kg + 1e-9,
-            }
-        )
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    sequences_by_van = timing.get("van_arrival_sequence_by_van", {})
+    van_customers = set(state.get_van_customers())
+
+    for van_id, route in sorted(routes.items()):
+        sequence = {
+            int(item["route_index"]): item
+            for item in sequences_by_van.get(van_id, [])
+            if isinstance(item, dict)
+        }
+        launches_by_pos: Dict[int, List[dict]] = {}
+        recoveries_by_pos: Dict[int, List[dict]] = {}
+        for sortie in state.drone_sorties:
+            if not isinstance(sortie, dict):
+                continue
+            launch, customers, recovery = sortie_nodes(sortie)
+            launch_van = str(sortie.get("launch_van_id", van_id))
+            recovery_van = str(sortie.get("recovery_van_id", launch_van))
+            if launch_van == van_id and launch in route:
+                launches_by_pos.setdefault(route.index(launch), []).append(sortie)
+            if recovery_van == van_id and recovery in route:
+                recoveries_by_pos.setdefault(route.index(recovery), []).append(sortie)
+
+        carried_customers = {
+            int(node)
+            for node in route
+            if int(node) in van_customers
+        }
+        for sorties in launches_by_pos.values():
+            for sortie in sorties:
+                _, customers, _ = sortie_nodes(sortie)
+                carried_customers.update(customers)
+
+        delivery_load = float(sum(delivery_demand(data, customer) for customer in carried_customers))
+        pickup_load = 0.0
+
+        for route_index, node in enumerate(route):
+            node = int(node)
+            delivery_before = delivery_load
+            pickup_before = pickup_load
+            delivered = delivery_demand(data, node) if node in van_customers else 0.0
+            picked_up = pickup_demand(data, node) if node in van_customers else 0.0
+            delivery_load -= delivered
+            pickup_load += picked_up
+            launched_payload = float(
+                sum(
+                    delivery_demand(data, customer)
+                    for sortie in launches_by_pos.get(route_index, [])
+                    for customer in sortie_nodes(sortie)[1]
+                )
+            )
+            delivery_load -= launched_payload
+            recovered_pickup = float(
+                sum(
+                    pickup_demand(data, customer)
+                    for sortie in recoveries_by_pos.get(route_index, [])
+                    for customer in sortie_nodes(sortie)[1]
+                )
+            )
+            pickup_load += recovered_pickup
+            rows.append(
+                {
+                    "van_id": van_id,
+                    "position": route_index,
+                    "node": node,
+                    "node_type": _node_type(node, data),
+                    "time": float(sequence.get(route_index, {}).get("arrival_time", 0.0)),
+                    "delivery_before": float(delivery_before),
+                    "pickup_before": float(pickup_before),
+                    "payload_before": float(delivery_before + pickup_before),
+                    "van_delivered": float(delivered),
+                    "van_picked_up": float(picked_up),
+                    "drone_delivery_launched": float(launched_payload),
+                    "drone_pickup_recovered": float(recovered_pickup),
+                    "delivery_after": float(delivery_load),
+                    "pickup_after": float(pickup_load),
+                    "payload_after": float(delivery_load + pickup_load),
+                    "capacity_feasible": float(delivery_load + pickup_load) <= config.fleet.van_capacity_kg + 1e-9,
+                }
+            )
     return rows
 
 
@@ -530,8 +606,8 @@ def save_load_timeline_markdown(
     lines.append("## Physical Drone Routes")
     physical_routes = state.timing.get("drone_physical_routes", {})
     if physical_routes:
-        for drone_id, route in sorted(physical_routes.items()):
-            lines.append(f"- physical_drone_{int(drone_id)}: {' -> '.join(str(int(node)) for node in route)}")
+        for drone_id, route in sorted(physical_routes.items(), key=lambda item: str(item[0])):
+            lines.append(f"- physical_{drone_id}: {' -> '.join(str(int(node)) for node in route)}")
     else:
         lines.append("- none")
     lines.append("")
@@ -578,51 +654,72 @@ def save_route_load_timeline_plot(
 ) -> None:
     van_rows = _van_load_timeline_rows(state, data, config)
     drone_rows = _drone_load_timeline_rows(state, data, config)
-    num_drone_lanes = min(
-        4,
-        max((int(row["sortie_id"]) for row in drone_rows), default=0),
+    van_ids = sorted({str(row["van_id"]) for row in van_rows})
+    max_route_len = max(
+        (sum(1 for row in van_rows if str(row["van_id"]) == van_id) for van_id in van_ids),
+        default=2,
     )
-    width = max(1200, 170 * max(len(van_rows), 2))
+    width = max(1200, 180 * max(max_route_len, 2))
     drone_lane_gap = 110
     pad_x = 80
-    y_drone_base = 140
-    y_van = max(360, y_drone_base + drone_lane_gap * num_drone_lanes + 70)
-    height = max(620, y_van + 180)
+    y_top = 230
+    van_lane_gap = 170
+    drone_lane_offset = 70
+    height = max(620, y_top + van_lane_gap * max(len(van_ids), 1) + 170)
     img = Image.new("RGB", (width, height), "white")
     draw = ImageDraw.Draw(img)
 
-    x_by_pos: Dict[int, int] = {}
-    for idx, row in enumerate(van_rows):
-        x_by_pos[int(row["position"])] = int(pad_x + idx / max(len(van_rows) - 1, 1) * (width - 2 * pad_x))
+    rows_by_van: Dict[str, List[Dict[str, object]]] = {
+        van_id: sorted(
+            [row for row in van_rows if str(row["van_id"]) == van_id],
+            key=lambda row: int(row["position"]),
+        )
+        for van_id in van_ids
+    }
+    y_by_van = {
+        van_id: y_top + van_idx * van_lane_gap
+        for van_idx, van_id in enumerate(van_ids)
+    }
+    x_by_van_pos: Dict[Tuple[str, int], int] = {}
+    for van_id, rows in rows_by_van.items():
+        for idx, row in enumerate(rows):
+            x_by_van_pos[(van_id, int(row["position"]))] = int(
+                pad_x + idx / max(len(rows) - 1, 1) * (width - 2 * pad_x)
+            )
 
     draw.text((pad_x, 28), "Route load timeline (D=delivery, P=pickup, T=total)", fill=(30, 30, 30))
     draw.text((pad_x, 48), f"Van capacity={config.fleet.van_capacity_kg:.1f} kg, Drone capacity={config.fleet.drone_capacity_kg:.1f} kg", fill=(80, 80, 80))
 
-    for idx in range(len(van_rows) - 1):
-        p1 = (x_by_pos[int(van_rows[idx]["position"])], y_van)
-        p2 = (x_by_pos[int(van_rows[idx + 1]["position"])], y_van)
-        _arrow(draw, p1, p2, fill=(31, 119, 180), width=3)
+    van_colors = [(31, 119, 180), (23, 190, 207), (66, 133, 244), (0, 150, 136)]
+    for van_idx, (van_id, rows) in enumerate(rows_by_van.items()):
+        y_van = y_by_van[van_id]
+        van_color = van_colors[van_idx % len(van_colors)]
+        draw.text((pad_x, y_van - 58), van_id, fill=van_color)
+        for idx in range(len(rows) - 1):
+            p1 = (x_by_van_pos[(van_id, int(rows[idx]["position"]))], y_van)
+            p2 = (x_by_van_pos[(van_id, int(rows[idx + 1]["position"]))], y_van)
+            _arrow(draw, p1, p2, fill=van_color, width=3)
 
-    for row in van_rows:
-        x = x_by_pos[int(row["position"])]
-        node = int(row["node"])
-        is_wh = node in data.transshipment_nodes
-        if node in data.customers:
-            _draw_centered_text(
-                draw,
-                x,
-                y_van - 40,
-                _customer_demand_label(data, node),
-                fill=(35, 35, 35),
-            )
-        box = (x - 18, y_van - 18, x + 18, y_van + 18)
-        fill = (255, 193, 7) if is_wh else (230, 240, 255)
-        draw.rectangle(box, fill=fill, outline=(20, 20, 20), width=2)
-        draw.text((x - 7, y_van - 7), str(node), fill=(0, 0, 0))
-        draw.text((x - 45, y_van + 28), f"t={float(row['time']):.1f}", fill=(70, 70, 70))
-        draw.text((x - 56, y_van + 44), f"D {float(row['delivery_after']):.1f}", fill=(31, 119, 180))
-        draw.text((x - 56, y_van + 60), f"P {float(row['pickup_after']):.1f}", fill=(255, 127, 14))
-        draw.text((x - 56, y_van + 76), f"T {float(row['payload_after']):.1f}", fill=(0, 0, 0))
+        for row in rows:
+            x = x_by_van_pos[(van_id, int(row["position"]))]
+            node = int(row["node"])
+            is_wh = node in data.transshipment_nodes
+            if node in data.customers:
+                _draw_centered_text(
+                    draw,
+                    x,
+                    y_van - 40,
+                    _customer_demand_label(data, node),
+                    fill=(35, 35, 35),
+                )
+            box = (x - 18, y_van - 18, x + 18, y_van + 18)
+            fill = (255, 193, 7) if is_wh else (230, 240, 255)
+            draw.rectangle(box, fill=fill, outline=(20, 20, 20), width=2)
+            draw.text((x - 7, y_van - 7), str(node), fill=(0, 0, 0))
+            draw.text((x - 45, y_van + 28), f"t={float(row['time']):.1f}", fill=(70, 70, 70))
+            draw.text((x - 56, y_van + 44), f"D {float(row['delivery_after']):.1f}", fill=(31, 119, 180))
+            draw.text((x - 56, y_van + 60), f"P {float(row['pickup_after']):.1f}", fill=(255, 127, 14))
+            draw.text((x - 56, y_van + 76), f"T {float(row['payload_after']):.1f}", fill=(0, 0, 0))
 
     rows_by_sortie: Dict[int, List[Dict[str, object]]] = {}
     for row in drone_rows:
@@ -631,20 +728,30 @@ def save_route_load_timeline_plot(
     colors = [(44, 160, 44), (148, 103, 189), (214, 39, 40), (23, 190, 207)]
     for sortie_idx, rows in sorted(rows_by_sortie.items()):
         color = colors[(sortie_idx - 1) % len(colors)]
-        y = y_drone_base + drone_lane_gap * ((sortie_idx - 1) % 4)
-        positions: List[Tuple[int, int, Dict[str, object]]] = []
         launch_row = rows[0]
         recovery_row = rows[-1]
-        launch_x = x_by_pos.get(int(launch_row.get("van_position", 0)), pad_x)
-        recovery_x = x_by_pos.get(int(recovery_row.get("van_position", 0)), width - pad_x)
+        launch_van_id = str(launch_row.get("launch_van_id", launch_row.get("van_id", "")))
+        recovery_van_id = str(recovery_row.get("recovery_van_id", recovery_row.get("van_id", launch_van_id)))
+        y = y_by_van.get(launch_van_id, y_top) - drone_lane_offset
+        positions: List[Tuple[int, int, Dict[str, object]]] = []
+        recovery_y = y_by_van.get(recovery_van_id, y_by_van.get(launch_van_id, y_top)) - drone_lane_offset
+        launch_x = x_by_van_pos.get((launch_van_id, int(launch_row.get("van_position", 0))), pad_x)
+        recovery_x = x_by_van_pos.get((recovery_van_id, int(recovery_row.get("van_position", 0))), width - pad_x)
+        same_anchor = launch_x == recovery_x and launch_van_id == recovery_van_id and len(rows) > 2
         for row_idx, row in enumerate(rows):
             if row_idx == 0:
                 x = launch_x
+                y_node = y
             elif row_idx == len(rows) - 1:
                 x = recovery_x
+                y_node = recovery_y
             else:
-                x = int(launch_x + row_idx / max(len(rows) - 1, 1) * (recovery_x - launch_x))
-            positions.append((x, y, row))
+                if same_anchor:
+                    x = min(width - pad_x, launch_x + 140 * row_idx)
+                else:
+                    x = int(launch_x + row_idx / max(len(rows) - 1, 1) * (recovery_x - launch_x))
+                y_node = int(y + row_idx / max(len(rows) - 1, 1) * (recovery_y - y))
+            positions.append((x, y_node, row))
 
         for idx in range(len(positions) - 1):
             x1, y1, _ = positions[idx]
@@ -742,8 +849,14 @@ def save_route_plan_detail(
         "num_transshipments": config.data.num_transshipments,
         "candidate_transshipment_nodes": data.transshipment_nodes,
         "owned_num_trucks": config.fleet.num_trucks,
-        "owned_num_vans": config.fleet.num_vans,
-        "owned_num_drones": config.fleet.num_drones,
+        "warehouse_num_vans": config.warehouse_num_vans(data.transshipment_nodes),
+        "drones_per_van": config.fleet.drones_per_van,
+        "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
+        "owned_num_vans": config.total_num_vans(data.transshipment_nodes),
+        "owned_num_drones": config.total_num_drones(data.transshipment_nodes),
+        "van_home": state.van_home,
+        "drone_initial_carrier": state.drone_initial_carrier,
+        "drone_home_warehouse": state.drone_home_warehouse,
         "used_trucks": metrics.get("used_trucks", 0),
         "used_vans": metrics.get("used_vans", 0),
         "used_drones": metrics.get("used_drones", 0),
@@ -878,6 +991,18 @@ def save_route_plan_detail(
 
     lines.append("三、二阶段 van 路线")
     lines.append(f"van_route: {' -> '.join(str(node) for node in state.van_route)}")
+    lines.append("van_routes by van_id:")
+    for van_id, route in sorted(state.van_routes.items()):
+        lines.append(f"{van_id}: {' -> '.join(str(node) for node in route)}")
+        _append_csv_row(
+            csv_rows,
+            "van_routes",
+            "van_route",
+            van_id,
+            "route",
+            list(route),
+        )
+    lines.append("")
     lines.append(
         "from | to | distance | travel_time | arrival_time_at_to | "
         "service_start | service_finish | time_window | time_window_ok | "
@@ -985,7 +1110,7 @@ def save_route_plan_detail(
             + config.fleet.drone_self_weight_kg
         )
         sortie_fields = {
-            "drone_id": int(sortie.get("drone_id", 0)) if isinstance(sortie, dict) else 0,
+            "drone_id": str(sortie.get("drone_id", "")) if isinstance(sortie, dict) else "",
             "launch_node": launch,
             "launch_position": launch_pos,
             "launch_time": float(sortie.get("launch_time", 0.0)) if isinstance(sortie, dict) else 0.0,
@@ -1139,13 +1264,13 @@ def save_route_plan_detail(
     warehouse_launch_counts = timing.get("drone_warehouse_launch_count", {})
     warehouse_return_counts = timing.get("drone_warehouse_return_count", {})
     if physical_routes:
-        for drone_id, route in sorted(physical_routes.items()):
-            lines.append(f"physical_drone_{int(drone_id)}: {' -> '.join(str(int(node)) for node in route)}")
+        for drone_id, route in sorted(physical_routes.items(), key=lambda item: str(item[0])):
+            lines.append(f"physical_{drone_id}: {' -> '.join(str(int(node)) for node in route)}")
             _append_csv_row(
                 csv_rows,
                 "physical_drones",
                 "physical_drone",
-                int(drone_id),
+                str(drone_id),
                 "route",
                 [int(node) for node in route],
             )
@@ -1153,13 +1278,13 @@ def save_route_plan_detail(
         lines.append("physical_drone_routes: []")
     lines.append("warehouse_launch_count per drone:")
     if warehouse_launch_counts:
-        for drone_id, count in sorted(warehouse_launch_counts.items()):
-            lines.append(f"physical_drone_{int(drone_id)}: {int(count)}")
+        for drone_id, count in sorted(warehouse_launch_counts.items(), key=lambda item: str(item[0])):
+            lines.append(f"physical_{drone_id}: {int(count)}")
             _append_csv_row(
                 csv_rows,
                 "physical_drones",
                 "warehouse_launch_count",
-                int(drone_id),
+                str(drone_id),
                 "warehouse_launch_count",
                 int(count),
             )
@@ -1167,13 +1292,13 @@ def save_route_plan_detail(
         lines.append("warehouse_launch_count: {}")
     lines.append("warehouse_return_count per drone:")
     if warehouse_return_counts:
-        for drone_id, count in sorted(warehouse_return_counts.items()):
-            lines.append(f"physical_drone_{int(drone_id)}: {int(count)}")
+        for drone_id, count in sorted(warehouse_return_counts.items(), key=lambda item: str(item[0])):
+            lines.append(f"physical_{drone_id}: {int(count)}")
             _append_csv_row(
                 csv_rows,
                 "physical_drones",
                 "warehouse_return_count",
-                int(drone_id),
+                str(drone_id),
                 "warehouse_return_count",
                 int(count),
             )
@@ -1366,7 +1491,7 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         effective_weight = delivery_payload + pickup_load_departure + config.fleet.drone_self_weight_kg
         drone_sortie_details.append(
             {
-                "drone_id": int(sortie.get("drone_id", 0)) if isinstance(sortie, dict) else 0,
+                "drone_id": str(sortie.get("drone_id", "")) if isinstance(sortie, dict) else "",
                 "launch": launch,
                 "launch_position": int(sortie.get("launch_position", -1)) if isinstance(sortie, dict) else -1,
                 "customers": customers,
@@ -1405,6 +1530,12 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         "transshipment_nodes": result.best_state.transshipment_nodes,
         "selected_transshipment": result.best_state.selected_transshipment,
         "candidate_transshipment_nodes": result.best_state.transshipment_nodes,
+        "warehouse_num_vans": config.warehouse_num_vans(data.transshipment_nodes),
+        "drones_per_van": config.fleet.drones_per_van,
+        "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
+        "van_home": result.best_state.van_home,
+        "drone_initial_carrier": result.best_state.drone_initial_carrier,
+        "drone_home_warehouse": result.best_state.drone_home_warehouse,
         "truck_arrival_time": timing.get("truck_arrival_time", 0.0),
         "van_start_time": timing.get("van_start_time", 0.0),
         "truck_arrival": timing.get("truck_arrival", {}),
@@ -1436,6 +1567,7 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         "violations": "; ".join(violations),
         "truck_route": result.best_state.truck_route,
         "van_route": result.best_state.van_route,
+        "van_routes": result.best_state.van_routes,
         "drone_sorties": result.best_state.drone_sorties,
         "container_assignment": result.best_state.container_assignment,
         "order_assignment": result.best_state.order_assignment,
