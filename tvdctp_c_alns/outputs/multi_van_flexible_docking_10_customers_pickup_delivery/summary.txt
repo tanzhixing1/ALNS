@@ -1,0 +1,79 @@
+best_objective: 689.153366610744
+truck_cost: 240.1799225814728
+truck_transport_cost: 74.17992258147278
+truck_fixed_cost: 166.0
+van_cost: 277.8934440292711
+van_transport_cost: 159.8934440292711
+van_fixed_cost: 118.0
+drone_cost: 171.08
+drone_transport_cost: 2.08
+drone_fixed_cost: 169.0
+truck_distance: 38.435193047395224
+van_distance: 182.73536460488125
+drone_distance: 40.0
+drone_energy: 1.9649999999999999
+used_trucks: 1
+used_vans: 2
+used_drones: 1
+used_drone_sorties: 1
+waiting_cost: 15.56
+waiting_cost_reported: 15.56
+penalty_cost: 0.0
+total_cost: 689.153366610744
+van_waiting_time: 24.0
+drone_waiting_time: 0.0
+early_waiting_time: 0.0
+num_time_window_violations: 0
+waiting_cost_reported_not_optimized: True
+feasible: True
+runtime_seconds: 0.0
+port_node: 0
+truck_depot_node: 1
+container_origin: 0
+transshipment_nodes: [2, 3]
+selected_transshipment: 2
+candidate_transshipment_nodes: [2, 3]
+warehouse_num_vans: {2: 2, 3: 2}
+drones_per_van: 2
+warehouse_num_drones: {2: 4, 3: 4}
+van_home: {'van_0': 2, 'van_1': 2, 'van_2': 3, 'van_3': 3}
+drone_initial_carrier: {'drone_0': 'van_0', 'drone_1': 'van_0', 'drone_2': 'van_1', 'drone_3': 'van_1', 'drone_4': 'van_2', 'drone_5': 'van_2', 'drone_6': 'van_3', 'drone_7': 'van_3'}
+drone_home_warehouse: {'drone_0': 2, 'drone_1': 2, 'drone_2': 2, 'drone_3': 2, 'drone_4': 3, 'drone_5': 3, 'drone_6': 3, 'drone_7': 3}
+truck_arrival_time: 76.87038609479045
+van_start_time: 76.87038609479045
+truck_arrival: {1: 0.0, 0: 17.204650534085253, 2: 76.87038609479045}
+van_arrival: {2: 184.06638047025535, 7: 99.38805921801759, 8: 125.7878023080927, 9: 160.05404356947176}
+van_arrival_sequence: [{'route_index': 0.0, 'node': 2.0, 'arrival_time': 76.87038609479045, 'service_start_time': 76.87038609479045, 'service_finish_time': 76.87038609479045, 'departure_time': 76.87038609479045}, {'route_index': 1.0, 'node': 7.0, 'arrival_time': 99.38805921801759, 'service_start_time': 99.38805921801759, 'service_finish_time': 99.38805921801759, 'departure_time': 99.38805921801759}, {'route_index': 2.0, 'node': 8.0, 'arrival_time': 125.7878023080927, 'service_start_time': 125.7878023080927, 'service_finish_time': 125.7878023080927, 'departure_time': 125.7878023080927}, {'route_index': 3.0, 'node': 9.0, 'arrival_time': 160.05404356947176, 'service_start_time': 160.05404356947176, 'service_finish_time': 160.05404356947176, 'departure_time': 160.05404356947176}, {'route_index': 4.0, 'node': 2.0, 'arrival_time': 184.06638047025535, 'service_start_time': 184.06638047025535, 'service_finish_time': 184.06638047025535, 'departure_time': 184.06638047025535}]
+drone_arrival: {6: 91.87038609479045}
+service_start: {7: 99.38805921801759, 8: 125.7878023080927, 9: 160.05404356947176, 4: 82.87038609479045, 5: 121.87038609479045, 10: 156.2867861525312, 11: 202.07177297250772, 12: 235.27926169094275, 13: 252.8030963833277, 6: 91.87038609479045}
+service_finish: {7: 99.38805921801759, 8: 125.7878023080927, 9: 160.05404356947176, 4: 82.87038609479045, 5: 121.87038609479045, 10: 156.2867861525312, 11: 202.07177297250772, 12: 235.27926169094275, 13: 252.8030963833277, 6: 91.87038609479045}
+time_windows: {4: (0.0, 10000.0), 5: (0.0, 10000.0), 6: (0.0, 10000.0), 7: (0.0, 10000.0), 8: (0.0, 10000.0), 9: (0.0, 10000.0), 10: (0.0, 10000.0), 11: (0.0, 10000.0), 12: (0.0, 10000.0), 13: (0.0, 10000.0)}
+time_window_violations: []
+total_early_waiting_time: 0.0
+num_orders: 10
+num_containers: 1
+num_van_customers: 9
+num_drone_customers: 1
+num_drone_sorties: 1
+number_of_same_node_sorties: 0
+number_of_cross_node_sorties: 1
+number_of_same_van_sorties: 0
+number_of_cross_van_sorties: 1
+number_of_multi_customer_sorties: 0
+total_van_waiting_time: 24.0
+total_drone_waiting_time: 0.0
+drone_sortie_details: [{'sortie_id': 1, 'drone_id': 'drone_0', 'launch_van_id': 'van_0', 'recovery_van_id': 'van_1', 'launch': 2, 'launch_position': 0, 'customers': [6], 'number_of_customers': 1, 'recovery': 4, 'recovery_position': 1, 'same_node': False, 'same_van_recovery': False, 'cross_van_recovery': True, 'delivery_load_departure': 4.0, 'pickup_load_departure': 0.0, 'effective_weight': 9.0, 'flight_hours': 0.5, 'energy_increment_kwh': 1.9649999999999999, 'cumulative_energy_kwh': 1.9649999999999999, 'total_delivery_payload': 4.0, 'total_pickup_payload': 1.0, 'peak_payload': 4.0, 'payload': 4.0, 'drone_distance': 40.0, 'drone_energy': 1.9649999999999999, 'energy': 1.9649999999999999, 'endurance_feasible': True, 'battery_feasible': True, 'payload_feasible': True, 'launch_time': 76.87038609479045, 'recovery_time': 106.87038609479045, 'van_waiting_time': 24.0, 'drone_waiting_time': 0.0, 'waiting_time': 24.0}]
+drone_physical_routes: {'drone_0': [2, 6, 4]}
+drone_warehouse_launch_count: {'drone_0': 1}
+drone_warehouse_return_count: {}
+violations: 
+truck_route: [1, 0, 2]
+van_route: [2, 7, 8, 9, 2]
+van_routes: {'van_0': [2, 7, 8, 9, 2], 'van_1': [2, 4, 5, 10, 11, 12, 13, 2]}
+drone_sorties: [{'launch': 2, 'customers': [6], 'recovery': 4, 'launch_van_id': 'van_0', 'recovery_van_id': 'van_1', 'launch_position': 0, 'recovery_position': 1, 'drone_id': 'drone_0', 'launch_time': 76.87038609479045, 'recovery_time': 106.87038609479045, 'van_waiting_time': 24.0, 'drone_waiting_time': 0.0, 'same_node': False, 'drone_arrival_time': 106.87038609479045, 'synchronized_recovery_time': 106.87038609479045}]
+container_assignment: {0: {'container_id': 0, 'origin_node': 0, 'origin_type': 'port', 'candidate_transshipments': [2, 3], 'selected_transshipment': 2, 'orders': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9], 'customers': [4, 5, 6, 7, 8, 9, 10, 11, 12, 13]}}
+order_assignment: {4: {'order_id': 0, 'customer_id': 4, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 18.0, 'pickup_demand': 6.0, 'service_required': True}, 5: {'order_id': 1, 'customer_id': 5, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 0.0, 'pickup_demand': 19.0, 'service_required': True}, 6: {'order_id': 2, 'customer_id': 6, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 17.0, 'pickup_demand': 13.0, 'service_required': True}, 7: {'order_id': 3, 'customer_id': 7, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 7.0, 'pickup_demand': 10.0, 'service_required': True}, 8: {'order_id': 4, 'customer_id': 8, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 18.0, 'pickup_demand': 15.0, 'service_required': True}, 9: {'order_id': 5, 'customer_id': 9, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 2.0, 'pickup_demand': 7.0, 'service_required': True}, 10: {'order_id': 6, 'customer_id': 10, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 7.0, 'pickup_demand': 6.0, 'service_required': True}, 11: {'order_id': 7, 'customer_id': 11, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 0.0, 'pickup_demand': 8.0, 'service_required': True}, 12: {'order_id': 8, 'customer_id': 12, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 2.0, 'pickup_demand': 12.0, 'service_required': True}, 13: {'order_id': 9, 'customer_id': 13, 'container_id': 0, 'container_origin': 0, 'assigned_transshipment': 2, 'demand': 2.0, 'pickup_demand': 20.0, 'service_required': True}}
+route_plan_detail_txt: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\multi_van_flexible_docking_10_customers_pickup_delivery\route_plan_detail.txt
+route_plan_detail_csv: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\multi_van_flexible_docking_10_customers_pickup_delivery\route_plan_detail.csv
+load_timeline_md: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\multi_van_flexible_docking_10_customers_pickup_delivery\load_timeline.md
+route_load_timeline_png: D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\multi_van_flexible_docking_10_customers_pickup_delivery\route_load_timeline.png

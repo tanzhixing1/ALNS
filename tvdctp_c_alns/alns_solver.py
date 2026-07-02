@@ -11,7 +11,7 @@ from config import TVDConfig
 from dataset_loader import InstanceData
 from initial_solution import initial_solution
 from objective import objective
-from operators import DESTROY_OPERATORS, REPAIR_OPERATORS
+from operators import DESTROY_OPERATORS, REPAIR_OPERATORS, consolidate_drone_sorties
 from state import TVDState
 
 
@@ -67,7 +67,7 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
     rng = np.random.default_rng(config.alns.random_seed)
     start = time.perf_counter()
 
-    initial = initial_solution(data, config)
+    initial = consolidate_drone_sorties(initial_solution(data, config), data, config)
     current = initial.copy()
     best = initial.copy()
     current_cost, _ = objective(current, data, config)

@@ -60,6 +60,18 @@ def _route_payload(route: List[int], data: InstanceData) -> float:
     )
 
 
+def _can_insert_customer(
+    route: List[int],
+    customer: int,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    demand = float(data.demands[customer]) + float(
+        getattr(data, "pickup_demands", {}).get(customer, 0.0)
+    )
+    return _route_payload(route, data) + demand <= config.fleet.van_capacity_kg + 1e-9
+
+
 def _build_initial_van_routes(
     data: InstanceData,
     config: TVDConfig,
@@ -74,33 +86,35 @@ def _build_initial_van_routes(
     if not selected_vans:
         selected_vans = [sorted(van_home, key=lambda item: int(item.split("_")[1]))[0]]
 
-    van_routes = {van_id: [selected_transshipment, selected_transshipment] for van_id in selected_vans}
-    route_loads = {van_id: 0.0 for van_id in selected_vans}
+    active_vans = [selected_vans[0]]
+    van_routes = {active_vans[0]: [selected_transshipment, selected_transshipment]}
 
     for customer in data.customers:
-        demand = float(data.demands[customer]) + float(
-            getattr(data, "pickup_demands", {}).get(customer, 0.0)
-        )
-        feasible_vans = [
-            van_id
-            for van_id in selected_vans
-            if route_loads[van_id] + demand <= config.fleet.van_capacity_kg + 1e-9
-        ]
-        candidate_vans = feasible_vans if feasible_vans else selected_vans
         best_van = None
         best_cost = None
         best_idx = 1
-        for van_id in candidate_vans:
+        for van_id in active_vans:
+            if not _can_insert_customer(van_routes[van_id], customer, data, config):
+                continue
             cost, idx = _route_insert_cost(van_routes[van_id], customer, data)
-            route_customer_count = sum(1 for node in van_routes[van_id] if node in data.customers)
-            balanced_cost = cost + 100.0 * route_customer_count
-            if best_cost is None or balanced_cost < best_cost:
+            if best_cost is None or cost < best_cost:
                 best_van = van_id
-                best_cost = balanced_cost
+                best_cost = cost
                 best_idx = idx
+        if best_van is None and len(active_vans) < len(selected_vans):
+            best_van = selected_vans[len(active_vans)]
+            active_vans.append(best_van)
+            van_routes[best_van] = [selected_transshipment, selected_transshipment]
+            best_idx = 1
+        if best_van is None:
+            for van_id in active_vans:
+                cost, idx = _route_insert_cost(van_routes[van_id], customer, data)
+                if best_cost is None or cost < best_cost:
+                    best_van = van_id
+                    best_cost = cost
+                    best_idx = idx
         assert best_van is not None
         van_routes[best_van].insert(best_idx, int(customer))
-        route_loads[best_van] += demand
 
     for van_id, route in van_routes.items():
         if len(route) > 1:
@@ -189,6 +203,142 @@ def _make_drone_sortie(
     }
 
 
+def _first_drone_for_van(state: TVDState, van_id: str) -> str:
+    return next(
+        (
+            drone_id
+            for drone_id, carrier in state.drone_initial_carrier.items()
+            if carrier == van_id
+        ),
+        "",
+    )
+
+
+def _remove_customers_from_van_routes(
+    routes: Dict[str, List[int]], customers: List[int]
+) -> Dict[str, List[int]]:
+    remove_set = {int(customer) for customer in customers}
+    return {
+        van_id: [node for node in route if int(node) not in remove_set]
+        for van_id, route in routes.items()
+    }
+
+
+def _candidate_sortie_is_feasible(
+    state: TVDState,
+    sortie: dict,
+    sortie_customers: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    trial = state.copy()
+    trial.van_routes = _remove_customers_from_van_routes(
+        trial.van_routes, sortie_customers
+    )
+    trial.sync_primary_van_route()
+    trial.drone_sorties.append(sortie)
+    for customer in sortie_customers:
+        trial.service_mode[int(customer)] = "drone"
+    feasible, violations = check_solution_feasible(trial, data, config)
+    if feasible:
+        return True
+    ignored = {
+        f"high-floor customer {customer} must be served by drone."
+        for customer, high_floor in data.is_high_floor.items()
+        if high_floor and customer not in sortie_customers
+    }
+    return all(violation in ignored for violation in violations)
+
+
+def _best_drone_sortie_for_customers(
+    state: TVDState,
+    sortie_customers: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> dict | None:
+    if not config.fleet.drone_enabled:
+        return None
+    if not sortie_customers or any(
+        not data.drone_eligible.get(int(customer), False)
+        for customer in sortie_customers
+    ):
+        return None
+
+    best_sortie = None
+    best_cost = None
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for launch_van_id, launch_route in routes.items():
+        drone_id = _first_drone_for_van(state, launch_van_id)
+        if not drone_id:
+            continue
+        for launch_pos, launch in enumerate(launch_route):
+            if launch_pos == len(launch_route) - 1:
+                continue
+            if int(launch) in sortie_customers:
+                continue
+            for recovery_van_id, recovery_route in routes.items():
+                for recovery_pos, recovery in enumerate(recovery_route):
+                    if int(recovery) in sortie_customers:
+                        continue
+                    if launch_van_id == recovery_van_id and recovery_pos < launch_pos:
+                        continue
+                    sortie = _make_drone_sortie(
+                        launch,
+                        sortie_customers,
+                        recovery,
+                        drone_id=drone_id,
+                        launch_van_id=launch_van_id,
+                        recovery_van_id=recovery_van_id,
+                    )
+                    sortie["launch_position"] = int(launch_pos)
+                    sortie["recovery_position"] = int(recovery_pos)
+                    if (
+                        drone_sortie_peak_payload(sortie, data, config)
+                        > config.fleet.drone_capacity_kg
+                        or drone_sortie_distance(sortie, data)
+                        > config.fleet.drone_endurance_km
+                        or drone_sortie_energy(sortie, data, config)
+                        > config.fleet.drone_battery_capacity_kwh
+                    ):
+                        continue
+                    if not _candidate_sortie_is_feasible(
+                        state, sortie, sortie_customers, data, config
+                    ):
+                        continue
+                    cost = (
+                        drone_sortie_distance(sortie, data)
+                        * config.cost.drone_cost_per_km
+                        + config.cost.drone_fixed_cost
+                    )
+                    if best_cost is None or cost < best_cost:
+                        best_cost = cost
+                        best_sortie = sortie
+    return best_sortie
+
+
+def _van_saving_for_customers(
+    state: TVDState,
+    customers: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> float:
+    saving = 0.0
+    for customer in customers:
+        for route in state.van_routes.values():
+            if customer not in route:
+                continue
+            pos = route.index(customer)
+            pred = route[pos - 1]
+            succ = route[pos + 1]
+            saving += (
+                data.ground_distance_matrix[pred, customer]
+                + data.ground_distance_matrix[customer, succ]
+                - data.ground_distance_matrix[pred, succ]
+            ) * config.cost.van_cost_per_km
+            break
+    return float(saving)
+
+
 def _build_assignments(data: InstanceData, selected_transshipment: int):
     order_assignment = {}
     container_assignment = copy_container_assignment(data, selected_transshipment)
@@ -275,35 +425,9 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
     drone_candidates = []
 
     for customer in candidates:
-        if not _can_make_transshipment_sortie(
-            customer, selected_transshipment, data, config
-        ):
+        if not config.fleet.drone_enabled or not data.drone_eligible.get(customer, False):
             continue
-
-        route_owner = next(
-            (
-                van_id
-                for van_id, route in state.van_routes.items()
-                if customer in route
-            ),
-            None,
-        )
-        if route_owner is None:
-            continue
-        route = state.van_routes[route_owner]
-        pos = route.index(customer)
-        pred = route[pos - 1]
-        succ = route[pos + 1]
-        van_saving = (
-            data.ground_distance_matrix[pred, customer]
-            + data.ground_distance_matrix[customer, succ]
-            - data.ground_distance_matrix[pred, succ]
-        ) * config.cost.van_cost_per_km
-        drone_extra = drone_sortie_distance(
-            (selected_transshipment, customer, selected_transshipment), data
-        ) * config.cost.drone_cost_per_km + config.cost.drone_fixed_cost
-
-        if data.is_high_floor[customer] or van_saving > drone_extra:
+        if any(customer in route for route in state.van_routes.values()):
             drone_candidates.append(customer)
 
     while drone_candidates:
@@ -318,7 +442,6 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         )
         if route_owner is None:
             continue
-        route = state.van_routes[route_owner]
         sortie_customers = [seed]
 
         changed = True
@@ -327,26 +450,12 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             best_candidate = None
             best_distance = None
             for candidate in drone_candidates:
-                candidate_owner = next(
-                    (
-                        van_id
-                        for van_id, candidate_route in state.van_routes.items()
-                        if candidate in candidate_route
-                    ),
-                    None,
-                )
-                if candidate_owner != route_owner:
-                    continue
                 trial_customers = sortie_customers + [candidate]
-                if not _can_make_transshipment_sortie(
-                    trial_customers, selected_transshipment, data, config
-                ):
-                    continue
-                trial_sortie = _make_drone_sortie(
-                    selected_transshipment,
-                    trial_customers,
-                    selected_transshipment,
+                trial_sortie = _best_drone_sortie_for_customers(
+                    state, trial_customers, data, config
                 )
+                if trial_sortie is None:
+                    continue
                 distance = drone_sortie_distance(trial_sortie, data)
                 if best_distance is None or distance < best_distance:
                     best_candidate = candidate
@@ -357,33 +466,28 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
                 drone_candidates.remove(best_candidate)
                 changed = True
 
-        if _can_make_transshipment_sortie(
-            sortie_customers, selected_transshipment, data, config
-        ):
+        sortie = _best_drone_sortie_for_customers(
+            state, sortie_customers, data, config
+        )
+        if sortie is not None:
+            drone_cost = (
+                drone_sortie_distance(sortie, data) * config.cost.drone_cost_per_km
+                + config.cost.drone_fixed_cost
+            )
+            van_saving = _van_saving_for_customers(
+                state, sortie_customers, data, config
+            )
+            if (
+                not any(data.is_high_floor[customer] for customer in sortie_customers)
+                and van_saving <= drone_cost
+            ):
+                continue
             for customer in sortie_customers:
-                state.van_routes[route_owner] = [
-                    node for node in state.van_routes[route_owner] if node != customer
-                ]
                 state.service_mode[customer] = "drone"
+            state.van_routes = _remove_customers_from_van_routes(
+                state.van_routes, sortie_customers
+            )
             state.sync_primary_van_route()
-            drone_id = next(
-                (
-                    candidate_drone
-                    for candidate_drone, carrier in drone_initial_carrier.items()
-                    if carrier == route_owner
-                ),
-                "",
-            )
-            sortie = _make_drone_sortie(
-                selected_transshipment,
-                sortie_customers,
-                selected_transshipment,
-                drone_id=drone_id,
-                launch_van_id=route_owner,
-                recovery_van_id=route_owner,
-            )
-            sortie["launch_position"] = 0
-            sortie["recovery_position"] = 0
             state.drone_sorties.append(sortie)
 
     feasible, _ = check_solution_feasible(state, data, config)

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from itertools import combinations
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
@@ -182,9 +183,26 @@ def cascade_aware_removal(
                 removal |= deps
                 changed = True
 
+    bundles = []
+    assigned = set()
+    for sortie in destroyed.drone_sorties:
+        launch, drone_customers, recovery = sortie_nodes(sortie)
+        related = set(drone_customers)
+        if launch in data.customers:
+            related.add(launch)
+        if recovery in data.customers:
+            related.add(recovery)
+        bundle = sorted(related & removal)
+        if bundle:
+            bundles.append(bundle)
+            assigned.update(bundle)
+    for customer in sorted(removal - assigned):
+        bundles.append([customer])
+
     destroyed = _remove_customers(destroyed, removal)
     _remove_duplicate_unassigned(destroyed)
     destroyed.metadata["cascade_removed"] = sorted(removal)
+    destroyed.metadata["cascade_bundles"] = bundles
     return destroyed
 
 
@@ -270,9 +288,19 @@ def _can_van_insert(
     return current_delivery + current_pickup + data.demands[customer] + customer_pickup <= config.fleet.van_capacity_kg
 
 
+def _repair_van_routes(state: TVDState) -> Dict[str, List[int]]:
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    repaired = {str(van_id): route.copy() for van_id, route in routes.items()}
+    selected = int(state.selected_transshipment)
+    for van_id, home in sorted(state.van_home.items(), key=lambda item: int(item[0].split("_")[1])):
+        if int(home) == selected and van_id not in repaired:
+            repaired[van_id] = [selected, selected]
+    return repaired
+
+
 def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
     best: Optional[InsertionMove] = None
-    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    routes = _repair_van_routes(state)
     for van_id, route in routes.items():
         if not _can_van_insert(customer, route, data, config):
             continue
@@ -303,6 +331,17 @@ def _can_make_drone_sortie(sortie: dict, data: InstanceData, config: TVDConfig) 
         drone_sortie_distance(sortie, data) <= config.fleet.drone_endurance_km
         and drone_sortie_energy(sortie, data, config)
         <= config.fleet.drone_battery_capacity_kwh
+    )
+
+
+def _first_drone_for_van(state: TVDState, van_id: str) -> str:
+    return next(
+        (
+            candidate_drone
+            for candidate_drone, carrier in state.drone_initial_carrier.items()
+            if carrier == van_id
+        ),
+        "",
     )
 
 
@@ -341,60 +380,313 @@ def _extend_drone_customers(
     return customers
 
 
+def _best_drone_move_for_customers(
+    customers: List[int],
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[InsertionMove]:
+    if not config.fleet.drone_enabled or not customers:
+        return None
+    if any(not data.drone_eligible.get(customer, False) for customer in customers):
+        return None
+    if _drone_payload(customers, data) > config.fleet.drone_capacity_kg:
+        return None
+
+    best: Optional[InsertionMove] = None
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    existing_drone_ids = {
+        str(existing.get("drone_id"))
+        for existing in state.drone_sorties
+        if isinstance(existing, dict)
+    }
+    existing_van_ids = {
+        van_id
+        for van_id, route in routes.items()
+        if len(route) > 2
+        or any(
+            isinstance(sortie, dict)
+            and (
+                sortie.get("launch_van_id") == van_id
+                or sortie.get("recovery_van_id") == van_id
+            )
+            for sortie in state.drone_sorties
+        )
+    }
+
+    for launch_van_id, launch_route in routes.items():
+        drone_id = _first_drone_for_van(state, launch_van_id)
+        if not drone_id:
+            continue
+        for launch_pos, launch in enumerate(launch_route):
+            if launch_pos == len(launch_route) - 1:
+                continue
+            if int(launch) in customers:
+                continue
+            for recovery_van_id, recovery_route in routes.items():
+                for recovery_pos, recovery in enumerate(recovery_route):
+                    if int(recovery) in customers:
+                        continue
+                    if launch_van_id == recovery_van_id:
+                        if recovery_pos < launch_pos:
+                            continue
+                        if launch == recovery and recovery_pos != launch_pos:
+                            continue
+                    sortie = _make_drone_sortie(
+                        launch,
+                        customers,
+                        recovery,
+                        drone_id=drone_id,
+                        launch_van_id=launch_van_id,
+                        recovery_van_id=recovery_van_id,
+                    )
+                    sortie["launch_position"] = int(launch_pos)
+                    sortie["recovery_position"] = int(recovery_pos)
+                    if not _can_make_drone_sortie(sortie, data, config):
+                        continue
+                    fixed_delta = (
+                        0.0
+                        if drone_id in existing_drone_ids
+                        else config.cost.drone_fixed_cost
+                    )
+                    van_fixed_delta = sum(
+                        config.cost.van_fixed_cost
+                        for van_id in {launch_van_id, recovery_van_id}
+                        if van_id not in existing_van_ids
+                    )
+                    cost = (
+                        drone_sortie_distance(sortie, data) * config.cost.drone_cost_per_km
+                        + fixed_delta
+                        + van_fixed_delta
+                    )
+                    move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
+                    if best is None or cost < best.cost:
+                        best = move
+    return best
+
+
+def _sortie_van_id(sortie: dict, field: str, fallback: str = "") -> str:
+    value = sortie.get(field, fallback) if isinstance(sortie, dict) else fallback
+    return str(value or fallback)
+
+
+def _sortie_drone_id(sortie: dict) -> str:
+    value = sortie.get("drone_id", "") if isinstance(sortie, dict) else ""
+    return str(value or "")
+
+
+def _copy_sortie_with_route(template: dict, launch: int, customers: List[int], recovery: int) -> dict:
+    launch_pos = template.get("launch_position", 0)
+    recovery_pos = template.get("recovery_position", launch_pos)
+    return _make_drone_sortie(
+        launch,
+        customers,
+        recovery,
+        drone_id=_sortie_drone_id(template),
+        launch_van_id=_sortie_van_id(template, "launch_van_id"),
+        recovery_van_id=_sortie_van_id(
+            template,
+            "recovery_van_id",
+            _sortie_van_id(template, "launch_van_id"),
+        ),
+    ) | {
+        "launch_position": int(launch_pos),
+        "recovery_position": int(recovery_pos),
+    }
+
+
+def _state_is_feasible_and_no_worse(
+    base: TVDState,
+    candidate: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    feasible, _ = check_solution_feasible(candidate, data, config)
+    if not feasible:
+        return False
+    base_cost, _ = objective(base.copy(), data, config)
+    candidate_cost, _ = objective(candidate, data, config)
+    return candidate_cost <= base_cost + 1e-9
+
+
+def _replace_sorties_with_merged(
+    state: TVDState,
+    indices: List[int],
+    merged_sortie: dict,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    candidate = state.copy()
+    remove_set = set(indices)
+    candidate.drone_sorties = [
+        sortie for idx, sortie in enumerate(candidate.drone_sorties) if idx not in remove_set
+    ]
+    candidate.drone_sorties.append(merged_sortie)
+    for customer in sortie_nodes(merged_sortie)[1]:
+        candidate.service_mode[int(customer)] = "drone"
+    if _state_is_feasible_and_no_worse(state, candidate, data, config):
+        return candidate
+    return None
+
+
+def _merge_sortie_group(
+    state: TVDState,
+    group: List[Tuple[int, dict]],
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    ordered = sorted(
+        group,
+        key=lambda item: (
+            float(item[1].get("launch_time", 0.0)),
+            int(item[1].get("launch_position", 0)),
+            int(item[0]),
+        ),
+    )
+    for candidate_group in [ordered] + [
+        list(pair) for pair in combinations(ordered, 2)
+    ]:
+        customers: List[int] = []
+        for _, sortie in candidate_group:
+            customers.extend(sortie_nodes(sortie)[1])
+        if len(set(customers)) != len(customers):
+            continue
+        first_sortie = candidate_group[0][1]
+        launch, _, recovery = sortie_nodes(first_sortie)
+        merged_sortie = _copy_sortie_with_route(first_sortie, launch, customers, recovery)
+        if not _can_make_drone_sortie(merged_sortie, data, config):
+            continue
+        merged = _replace_sorties_with_merged(
+            state,
+            [idx for idx, _ in candidate_group],
+            merged_sortie,
+            data,
+            config,
+        )
+        if merged is not None:
+            return merged
+    return None
+
+
+def _merge_adjacent_same_van_pair(
+    state: TVDState,
+    group: List[Tuple[int, dict]],
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    ordered = sorted(
+        group,
+        key=lambda item: (
+            int(item[1].get("launch_position", 0)),
+            int(item[1].get("recovery_position", 0)),
+            float(item[1].get("launch_time", 0.0)),
+        ),
+    )
+    for left, right in zip(ordered, ordered[1:]):
+        left_idx, left_sortie = left
+        right_idx, right_sortie = right
+        launch, left_customers, _ = sortie_nodes(left_sortie)
+        _, right_customers, recovery = sortie_nodes(right_sortie)
+        customers = left_customers + right_customers
+        if len(set(customers)) != len(customers):
+            continue
+        merged_sortie = _copy_sortie_with_route(left_sortie, launch, customers, recovery)
+        merged_sortie["recovery_position"] = int(right_sortie.get("recovery_position", 0))
+        merged_sortie["recovery"] = int(recovery)
+        merged_sortie["recovery_van_id"] = _sortie_van_id(
+            right_sortie,
+            "recovery_van_id",
+            _sortie_van_id(left_sortie, "recovery_van_id"),
+        )
+        if not _can_make_drone_sortie(merged_sortie, data, config):
+            continue
+        merged = _replace_sorties_with_merged(
+            state,
+            [left_idx, right_idx],
+            merged_sortie,
+            data,
+            config,
+        )
+        if merged is not None:
+            return merged
+    return None
+
+
+def consolidate_drone_sorties(
+    state: TVDState, data: InstanceData, config: TVDConfig
+) -> TVDState:
+    """Merge compatible drone sorties when doing so is feasible and no worse."""
+
+    feasible, _ = check_solution_feasible(state, data, config)
+    if not feasible or len(state.drone_sorties) < 2:
+        return state
+
+    consolidated = state.copy()
+    progress = True
+    while progress:
+        progress = False
+        exact_groups: Dict[Tuple[object, ...], List[Tuple[int, dict]]] = {}
+        same_van_groups: Dict[Tuple[object, ...], List[Tuple[int, dict]]] = {}
+        for idx, sortie in enumerate(consolidated.drone_sorties):
+            if not isinstance(sortie, dict):
+                continue
+            launch, _, recovery = sortie_nodes(sortie)
+            launch_van = _sortie_van_id(sortie, "launch_van_id")
+            recovery_van = _sortie_van_id(sortie, "recovery_van_id", launch_van)
+            exact_groups.setdefault(
+                (launch_van, recovery_van, int(launch), int(recovery)),
+                [],
+            ).append((idx, sortie))
+            same_van_groups.setdefault((launch_van, recovery_van), []).append(
+                (idx, sortie)
+            )
+
+        for group in exact_groups.values():
+            if len(group) < 2:
+                continue
+            merged = _merge_sortie_group(consolidated, group, data, config)
+            if merged is not None:
+                consolidated = merged
+                progress = True
+                break
+        if progress:
+            continue
+
+        for group in same_van_groups.values():
+            if len(group) < 2:
+                continue
+            merged = _merge_adjacent_same_van_pair(consolidated, group, data, config)
+            if merged is not None:
+                consolidated = merged
+                progress = True
+                break
+
+    return consolidated
+
+
 def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
     if not config.fleet.drone_enabled or not data.drone_eligible.get(customer, False):
         return None
     if data.demands[customer] + getattr(data, "pickup_demands", {}).get(customer, 0.0) > config.fleet.drone_capacity_kg:
         return None
 
-    best_cross: Optional[InsertionMove] = None
-    best_same: Optional[InsertionMove] = None
+    best: Optional[InsertionMove] = None
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
-    for van_id, route in routes.items():
-        route_positions = list(enumerate(route))
-        drone_id = next(
-            (
-                candidate_drone
-                for candidate_drone, carrier in state.drone_initial_carrier.items()
-                if carrier == van_id
-            ),
-            "",
-        )
-        for launch_pos, launch in route_positions:
-            if launch_pos == len(route) - 1:
+    for launch_route in routes.values():
+        for launch_pos, launch in enumerate(launch_route):
+            if launch_pos == len(launch_route) - 1:
                 continue
-            for recovery_pos, recovery in route_positions[launch_pos:]:
-                if launch == recovery and recovery_pos != launch_pos:
-                    continue
-                sortie_customers = _extend_drone_customers(
-                    customer, launch, recovery, state, data, config
-                )
-                sortie = _make_drone_sortie(
-                    launch,
-                    sortie_customers,
-                    recovery,
-                    drone_id=drone_id,
-                    launch_van_id=van_id,
-                    recovery_van_id=van_id,
-                )
-                sortie["launch_position"] = int(launch_pos)
-                sortie["recovery_position"] = int(recovery_pos)
-                if not _can_make_drone_sortie(sortie, data, config):
-                    continue
-                dist = drone_sortie_distance(sortie, data)
-                fixed_delta = 0.0 if drone_id in {
-                    str(existing.get("drone_id"))
-                    for existing in state.drone_sorties
-                    if isinstance(existing, dict)
-                } else config.cost.drone_fixed_cost
-                cost = dist * config.cost.drone_cost_per_km + fixed_delta
-                move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
-                if launch != recovery:
-                    if best_cross is None or cost < best_cross.cost:
-                        best_cross = move
-                elif best_same is None or cost < best_same.cost:
-                    best_same = move
-    return best_cross if best_cross is not None else best_same
+            for recovery_route in routes.values():
+                for recovery in recovery_route:
+                    sortie_customers = _extend_drone_customers(
+                        customer, launch, recovery, state, data, config
+                    )
+                    move = _best_drone_move_for_customers(
+                        sortie_customers, state, data, config
+                    )
+                    if move is not None and (best is None or move.cost < best.cost):
+                        best = move
+    return best
 
 
 def _make_drone_sortie(
@@ -435,10 +727,18 @@ def _all_moves(customer: int, state: TVDState, data: InstanceData, config: TVDCo
     return sorted(moves, key=lambda move: move.cost)
 
 
+def _finalize_repair(state: TVDState, data: InstanceData, config: TVDConfig) -> TVDState:
+    return consolidate_drone_sorties(state, data, config)
+
+
 def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
     if move.mode == "van":
         assert move.index is not None
         assert move.van_id is not None
+        state.van_routes.setdefault(
+            move.van_id,
+            [int(state.van_home.get(move.van_id, state.selected_transshipment)), int(state.selected_transshipment)],
+        )
         state.van_routes[move.van_id].insert(move.index, customer)
         state.sync_primary_van_route()
         state.service_mode[customer] = "van"
@@ -462,10 +762,12 @@ def greedy_van_repair(
     for customer in repaired.unassigned.copy():
         if customer not in repaired.unassigned:
             continue
+        if config.fleet.drone_enabled and data.is_high_floor.get(customer, False):
+            continue
         move = _best_van_move(customer, repaired, data, config)
         if move is not None:
             _apply_move(repaired, customer, move)
-    return repaired
+    return _finalize_repair(repaired, data, config)
 
 
 def greedy_drone_repair(
@@ -480,7 +782,7 @@ def greedy_drone_repair(
             _apply_move(repaired, customer, move)
     if repaired.unassigned:
         repaired = greedy_van_repair(repaired, rng, data, config)
-    return repaired
+    return _finalize_repair(repaired, data, config)
 
 
 def best_mode_repair(
@@ -493,7 +795,7 @@ def best_mode_repair(
         moves = _all_moves(customer, repaired, data, config)
         if moves:
             _apply_move(repaired, customer, moves[0])
-    return repaired
+    return _finalize_repair(repaired, data, config)
 
 
 def regret_repair(
@@ -515,13 +817,181 @@ def regret_repair(
             break
         _, customer, move = best_choice
         _apply_move(repaired, customer, move)
-    return repaired
+    return _finalize_repair(repaired, data, config)
+
+
+def _finish_repair(
+    state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+) -> TVDState:
+    finished = state.copy()
+    progress = True
+    while finished.unassigned and progress:
+        progress = False
+        for customer in finished.unassigned.copy():
+            moves = _all_moves(customer, finished, data, config)
+            if moves:
+                _apply_move(finished, customer, moves[0])
+                progress = True
+    return finished
+
+
+def _candidate_score(
+    state: TVDState, data: InstanceData, config: TVDConfig
+) -> Optional[float]:
+    feasible, _ = check_solution_feasible(state, data, config)
+    if not feasible:
+        return None
+    total, _ = objective(state, data, config)
+    return float(total)
+
+
+def _repair_bundle_all_van(
+    state: TVDState,
+    bundle: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    candidate = state.copy()
+    for customer in bundle:
+        if customer not in candidate.unassigned:
+            continue
+        move = _best_van_move(customer, candidate, data, config)
+        if move is None:
+            return None
+        _apply_move(candidate, customer, move)
+    return candidate
+
+
+def _repair_bundle_best_modes(
+    state: TVDState,
+    bundle: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    candidate = state.copy()
+    for customer in bundle:
+        if customer not in candidate.unassigned:
+            continue
+        moves = _all_moves(customer, candidate, data, config)
+        if not moves:
+            return None
+        _apply_move(candidate, customer, moves[0])
+    return candidate
+
+
+def _repair_bundle_as_drone(
+    state: TVDState,
+    bundle: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    if any(customer not in state.unassigned for customer in bundle):
+        return None
+    candidate = state.copy()
+    move = _best_drone_move_for_customers(bundle, candidate, data, config)
+    if move is None:
+        return None
+    _apply_move(candidate, bundle[0], move)
+    return candidate
+
+
+def _repair_bundle_partial_candidates(
+    state: TVDState,
+    bundle: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[TVDState]:
+    if len(bundle) < 2 or len(bundle) > 3:
+        return []
+
+    candidates: List[TVDState] = []
+    bundle_set = set(bundle)
+    for size in range(1, len(bundle)):
+        for drone_part_tuple in combinations(bundle, size):
+            drone_part = list(drone_part_tuple)
+            van_part = [customer for customer in bundle if customer not in drone_part_tuple]
+            candidate = state.copy()
+            move = _best_drone_move_for_customers(drone_part, candidate, data, config)
+            if move is None:
+                continue
+            _apply_move(candidate, drone_part[0], move)
+            failed = False
+            for customer in van_part:
+                if customer not in candidate.unassigned:
+                    continue
+                van_move = _best_van_move(customer, candidate, data, config)
+                if van_move is None:
+                    failed = True
+                    break
+                _apply_move(candidate, customer, van_move)
+            if failed:
+                continue
+            if bundle_set.isdisjoint(candidate.unassigned):
+                candidates.append(candidate)
+    return candidates
+
+
+def _best_bundle_repair(
+    state: TVDState,
+    bundle: List[int],
+    rng: np.random.Generator,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[TVDState]:
+    candidates = []
+    builders = (
+        _repair_bundle_all_van,
+        _repair_bundle_best_modes,
+        _repair_bundle_as_drone,
+    )
+    for builder in builders:
+        candidate = builder(state, bundle, data, config)
+        if candidate is None:
+            continue
+        candidate = _finish_repair(candidate, rng, data, config)
+        score = _candidate_score(candidate, data, config)
+        if score is not None:
+            candidates.append((score, candidate))
+    for candidate in _repair_bundle_partial_candidates(state, bundle, data, config):
+        candidate = _finish_repair(candidate, rng, data, config)
+        score = _candidate_score(candidate, data, config)
+        if score is not None:
+            candidates.append((score, candidate))
+    if not candidates:
+        return None
+    return min(candidates, key=lambda item: item[0])[1]
 
 
 def cascade_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     repaired = state.copy()
+    raw_bundles = repaired.metadata.get("cascade_bundles") or [
+        repaired.unassigned.copy()
+    ]
+    bundles = [
+        sorted(
+            {int(customer) for customer in bundle if int(customer) in repaired.unassigned},
+            key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
+        )
+        for bundle in raw_bundles
+        if bundle
+    ]
+    for bundle in bundles:
+        bundle = [customer for customer in bundle if customer in repaired.unassigned]
+        if not bundle:
+            continue
+        candidate = _best_bundle_repair(repaired, bundle, rng, data, config)
+        if candidate is not None:
+            repaired = candidate
+        else:
+            for customer in bundle:
+                if customer not in repaired.unassigned:
+                    continue
+                moves = _all_moves(customer, repaired, data, config)
+                if moves:
+                    _apply_move(repaired, customer, moves[0])
+
     ordered = sorted(
         repaired.unassigned.copy(),
         key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
@@ -532,7 +1002,7 @@ def cascade_repair(
         moves = _all_moves(customer, repaired, data, config)
         if moves:
             _apply_move(repaired, customer, moves[0])
-    return repaired
+    return _finalize_repair(repaired, data, config)
 
 
 DESTROY_OPERATORS: Dict[str, DestroyOperator] = {

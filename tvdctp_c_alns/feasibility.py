@@ -652,14 +652,21 @@ def compute_timing(
     timing["van_start_time"] = float(truck_arrival_time)
 
     routes = _active_van_routes(state)
-    van_arrival_by_van: Dict[str, Dict[int, float]] = {}
-    van_sequence_by_van: Dict[str, List[Dict[str, float]]] = {}
-    service_start = timing["service_start"]  # type: ignore[assignment]
-    service_finish = timing["service_finish"]  # type: ignore[assignment]
-    drone_arrival: Dict[int, float] = timing["drone_arrival"]  # type: ignore[assignment]
+    sorted_route_items = sorted(routes.items(), key=lambda item: _van_id_sort_key(item[0]))
 
-    launch_sorties_by_van_pos: Dict[Tuple[str, int], List[dict]] = {}
-    for sortie in state.drone_sorties:
+    def _service_finish_without_record(customer: int, arrival_time: float) -> float:
+        earliest, _ = data.time_windows.get(customer, (0.0, float("inf")))
+        service_time = data.service_times.get(customer, 0.0)
+        return float(max(arrival_time, float(earliest)) + float(service_time))
+
+    def _position_for_sortie(sortie: dict, route: List[int], node: int, field: str) -> int:
+        hint = _sortie_position_hint(sortie, field)
+        if hint is not None and 0 <= hint < len(route) and int(route[hint]) == int(node):
+            return int(hint)
+        return _route_position(route, int(node))
+
+    sortie_specs: List[Dict[str, object]] = []
+    for sortie_idx, sortie in enumerate(state.drone_sorties):
         if not isinstance(sortie, dict):
             continue
         launch, _, recovery = sortie_nodes(sortie)
@@ -667,12 +674,21 @@ def compute_timing(
         recovery_van = _sortie_van_id(sortie, "recovery_van_id", launch_van)
         if launch_van not in routes or recovery_van not in routes:
             continue
-        launch_pos = _route_position(routes[launch_van], launch)
-        recovery_pos = _route_position(routes[recovery_van], recovery)
+        launch_pos = _position_for_sortie(sortie, routes[launch_van], launch, "launch_position")
+        recovery_pos = _position_for_sortie(sortie, routes[recovery_van], recovery, "recovery_position")
         if launch_pos >= 0 and recovery_pos >= 0:
             sortie["launch_position"] = int(launch_pos)
             sortie["recovery_position"] = int(recovery_pos)
-            launch_sorties_by_van_pos.setdefault((launch_van, launch_pos), []).append(sortie)
+            sortie_specs.append(
+                {
+                    "sortie_idx": sortie_idx,
+                    "sortie": sortie,
+                    "launch_van": launch_van,
+                    "launch_pos": int(launch_pos),
+                    "recovery_van": recovery_van,
+                    "recovery_pos": int(recovery_pos),
+                }
+            )
 
     initial_by_van: Dict[str, List[str]] = {}
     for drone_id, van_id in state.drone_initial_carrier.items():
@@ -680,104 +696,217 @@ def compute_timing(
     for drones in initial_by_van.values():
         drones.sort(key=_drone_id_sort_key)
 
-    drone_location: Dict[str, str] = {
-        str(drone_id): str(van_id)
-        for drone_id, van_id in state.drone_initial_carrier.items()
-    }
-    drone_available_time: Dict[str, float] = {
-        str(drone_id): float(truck_arrival_time)
-        for drone_id in state.drone_initial_carrier
-    }
-    physical_routes: Dict[str, List[int]] = timing["drone_physical_routes"]  # type: ignore[assignment]
-    physical_sorties: Dict[str, List[Dict[str, object]]] = timing["drone_physical_sorties"]  # type: ignore[assignment]
-    warehouse_launch_count: Dict[str, int] = timing["drone_warehouse_launch_count"]  # type: ignore[assignment]
-    warehouse_return_count: Dict[str, int] = timing["drone_warehouse_return_count"]  # type: ignore[assignment]
+    RecoveryEvents = Dict[Tuple[str, int, int], float]
+    Timeline = Dict[str, List[Dict[str, float]]]
 
-    for van_id, route in sorted(routes.items(), key=lambda item: _van_id_sort_key(item[0])):
-        current_time = float(truck_arrival_time)
-        van_arrival_by_van[van_id] = {}
-        van_sequence_by_van[van_id] = []
-        for idx, node in enumerate(route):
-            node = int(node)
-            if idx > 0:
-                pred = int(route[idx - 1])
-                current_time += _travel_minutes(
-                    data.ground_distance_matrix[pred, node],
-                    config.fleet.van_speed_kmph,
-                )
+    def _position_recovery_wait(
+        recovery_events: RecoveryEvents,
+        van_id: str,
+        position: int,
+        exclude_sortie_idx: Optional[int] = None,
+        exclude_sortie_idxs: Optional[List[int]] = None,
+    ) -> float:
+        wait_until = 0.0
+        excluded = set(exclude_sortie_idxs or [])
+        if exclude_sortie_idx is not None:
+            excluded.add(int(exclude_sortie_idx))
+        for (event_van, event_pos, event_sortie_idx), event_time in recovery_events.items():
+            if event_van != van_id or int(event_pos) != int(position):
+                continue
+            if int(event_sortie_idx) in excluded:
+                continue
+            wait_until = max(wait_until, float(event_time))
+        return float(wait_until)
 
-            arrival_time = float(current_time)
-            van_arrival_by_van[van_id][node] = arrival_time
-            van_sequence_by_van[van_id].append(
-                {
-                    "route_index": float(idx),
-                    "node": float(node),
-                    "arrival_time": arrival_time,
-                }
-            )
-
-            finish_time = arrival_time
-            if node in data.customers and state.service_mode.get(node) == "van":
-                finish_time = _record_customer_service(timing, node, arrival_time, data)
-
-            latest_departure = float(finish_time)
-            for sortie in launch_sorties_by_van_pos.get((van_id, idx), []):
-                launch, sortie_customers, recovery = sortie_nodes(sortie)
-                recovery_van = _sortie_van_id(sortie, "recovery_van_id", van_id)
-                recovery_route = routes.get(recovery_van, route)
-                recovery_pos = _route_position(recovery_route, recovery)
-                requested_drone_id = _sortie_drone_id(sortie)
-                available = [
-                    drone_id
-                    for drone_id in initial_by_van.get(van_id, [])
-                    if drone_location.get(drone_id) == van_id
-                    and drone_available_time.get(drone_id, 0.0) <= latest_departure + 1e-9
-                ]
-                drone_id = requested_drone_id if requested_drone_id in available else (available[0] if available else requested_drone_id)
-                if not drone_id:
-                    drone_id = f"missing_drone_for_{van_id}"
-                sortie["drone_id"] = drone_id
-                sortie["launch_van_id"] = van_id
-                sortie["recovery_van_id"] = recovery_van
-
-                launch_time = max(latest_departure, drone_available_time.get(drone_id, latest_departure))
-                drone_time = float(launch_time)
-                prev = launch
-                for customer in sortie_customers:
-                    drone_time += _travel_minutes(
-                        data.drone_distance_matrix[prev, customer],
-                        config.fleet.drone_speed_kmph,
+    def _build_van_timelines(
+        recovery_events: RecoveryEvents,
+        record_services: bool,
+        target_timing: Optional[Dict[str, object]] = None,
+    ) -> Tuple[Dict[str, Dict[int, float]], Timeline]:
+        van_arrivals: Dict[str, Dict[int, float]] = {}
+        van_sequences: Timeline = {}
+        for van_id, route in sorted_route_items:
+            current_time = float(truck_arrival_time)
+            van_arrivals[van_id] = {}
+            van_sequences[van_id] = []
+            for idx, node in enumerate(route):
+                node = int(node)
+                if idx > 0:
+                    pred = int(route[idx - 1])
+                    current_time += _travel_minutes(
+                        data.ground_distance_matrix[pred, node],
+                        config.fleet.van_speed_kmph,
                     )
-                    drone_arrival[int(customer)] = float(drone_time)
+
+                arrival_time = float(current_time)
+                if node in data.customers and state.service_mode.get(node) == "van":
+                    if record_services and target_timing is not None:
+                        service_finish_time = _record_customer_service(
+                            target_timing, node, arrival_time, data
+                        )
+                    else:
+                        service_finish_time = _service_finish_without_record(node, arrival_time)
+                    service_start_time = service_finish_time - float(data.service_times.get(node, 0.0))
+                else:
+                    service_start_time = arrival_time
+                    service_finish_time = arrival_time
+
+                recovery_wait_until = _position_recovery_wait(recovery_events, van_id, idx)
+                departure_time = max(float(service_finish_time), float(recovery_wait_until))
+                van_arrivals[van_id][node] = arrival_time
+                van_sequences[van_id].append(
+                    {
+                        "route_index": float(idx),
+                        "node": float(node),
+                        "arrival_time": arrival_time,
+                        "service_start_time": float(service_start_time),
+                        "service_finish_time": float(service_finish_time),
+                        "departure_time": float(departure_time),
+                    }
+                )
+                current_time = float(departure_time)
+        return van_arrivals, van_sequences
+
+    def _compute_sortie_events(
+        van_sequences: Timeline,
+        recovery_events: RecoveryEvents,
+        record_results: bool,
+        target_timing: Optional[Dict[str, object]] = None,
+    ) -> RecoveryEvents:
+        new_events: RecoveryEvents = {}
+        drone_location: Dict[str, str] = {
+            str(drone_id): str(van_id)
+            for drone_id, van_id in state.drone_initial_carrier.items()
+        }
+        drone_available_time: Dict[str, float] = {
+            str(drone_id): float(truck_arrival_time)
+            for drone_id in state.drone_initial_carrier
+        }
+        launch_records: List[Tuple[float, int, int, int, Dict[str, object]]] = []
+        for spec in sortie_specs:
+            launch_van = str(spec["launch_van"])
+            launch_pos = int(spec["launch_pos"])
+            sortie_idx = int(spec["sortie_idx"])
+            same_anchor_sortie_idxs = [
+                int(other["sortie_idx"])
+                for other in sortie_specs
+                if str(other["launch_van"]) == launch_van
+                and int(other["launch_pos"]) == launch_pos
+            ]
+            entry = van_sequences[launch_van][launch_pos]
+            node_ready_time = max(
+                float(entry["service_finish_time"]),
+                _position_recovery_wait(
+                    recovery_events,
+                    launch_van,
+                    launch_pos,
+                    exclude_sortie_idxs=same_anchor_sortie_idxs,
+                ),
+            )
+            launch_records.append(
+                (
+                    float(node_ready_time),
+                    _van_id_sort_key(launch_van),
+                    launch_pos,
+                    sortie_idx,
+                    spec,
+                )
+            )
+        launch_records.sort(key=lambda item: (item[0], item[1], item[2], item[3]))
+
+        physical_routes: Dict[str, List[int]] = {}
+        physical_sorties: Dict[str, List[Dict[str, object]]] = {}
+        warehouse_launch_count: Dict[str, int] = {}
+        warehouse_return_count: Dict[str, int] = {}
+        drone_arrival: Dict[int, float] = (
+            target_timing["drone_arrival"] if target_timing is not None else {}
+        )  # type: ignore[assignment]
+
+        for node_ready_time, _, _, sortie_idx, spec in launch_records:
+            sortie = spec["sortie"]
+            if not isinstance(sortie, dict):
+                continue
+            launch, sortie_customers, recovery = sortie_nodes(sortie)
+            launch_van = str(spec["launch_van"])
+            launch_pos = int(spec["launch_pos"])
+            recovery_van = str(spec["recovery_van"])
+            recovery_pos = int(spec["recovery_pos"])
+            requested_drone_id = _sortie_drone_id(sortie)
+            same_van_drones = [
+                drone_id
+                for drone_id in sorted(drone_location, key=_drone_id_sort_key)
+                if drone_location.get(drone_id) == launch_van
+            ]
+            ready_drones = [
+                drone_id
+                for drone_id in same_van_drones
+                if drone_available_time.get(drone_id, 0.0) <= node_ready_time + 1e-9
+            ]
+            if requested_drone_id in ready_drones:
+                drone_id = requested_drone_id
+            elif ready_drones:
+                drone_id = ready_drones[0]
+            elif requested_drone_id in same_van_drones:
+                drone_id = requested_drone_id
+            elif same_van_drones:
+                drone_id = same_van_drones[0]
+            else:
+                drone_id = requested_drone_id or f"missing_drone_for_{launch_van}"
+
+            launch_time = max(
+                float(node_ready_time),
+                float(drone_available_time.get(drone_id, node_ready_time)),
+            )
+            drone_time = float(launch_time)
+            prev = launch
+            for customer in sortie_customers:
+                drone_time += _travel_minutes(
+                    data.drone_distance_matrix[prev, customer],
+                    config.fleet.drone_speed_kmph,
+                )
+                drone_arrival[int(customer)] = float(drone_time)
+                if record_results and target_timing is not None:
                     drone_time = _record_customer_service(
-                        timing,
+                        target_timing,
                         int(customer),
                         float(drone_time),
                         data,
                     )
-                    prev = customer
-                drone_time += _travel_minutes(
-                    data.drone_distance_matrix[prev, recovery],
-                    config.fleet.drone_speed_kmph,
+                else:
+                    drone_time = _service_finish_without_record(int(customer), float(drone_time))
+                prev = customer
+            drone_time += _travel_minutes(
+                data.drone_distance_matrix[prev, recovery],
+                config.fleet.drone_speed_kmph,
+            )
+
+            recovery_entry = van_sequences[recovery_van][recovery_pos]
+            recovery_arrival = float(recovery_entry["arrival_time"])
+            synchronized_recovery_time = max(float(drone_time), recovery_arrival)
+            new_events[(recovery_van, recovery_pos, sortie_idx)] = float(
+                synchronized_recovery_time
+            )
+            van_waiting = max(0.0, float(drone_time) - recovery_arrival)
+            drone_waiting = max(0.0, recovery_arrival - float(drone_time))
+            drone_location[drone_id] = recovery_van
+            drone_available_time[drone_id] = float(synchronized_recovery_time)
+
+            if record_results and target_timing is not None:
+                target_timing["van_waiting_time"] = (
+                    float(target_timing["van_waiting_time"]) + van_waiting
                 )
-
-                recovery_arrival = None
-                if recovery_van in van_arrival_by_van:
-                    recovery_arrival = van_arrival_by_van[recovery_van].get(int(recovery))
-                if recovery_arrival is None:
-                    recovery_arrival = drone_time
-                van_waiting = max(0.0, drone_time - float(recovery_arrival))
-                drone_waiting = max(0.0, float(recovery_arrival) - drone_time)
-                timing["van_waiting_time"] = float(timing["van_waiting_time"]) + van_waiting
-                timing["drone_waiting_time"] = float(timing["drone_waiting_time"]) + drone_waiting
-
-                latest_departure = max(latest_departure, drone_time) if recovery_van == van_id and recovery_pos == idx else latest_departure
-                drone_location[drone_id] = recovery_van
-                drone_available_time[drone_id] = max(float(recovery_arrival), drone_time)
-                physical_route = physical_routes.setdefault(drone_id, [int(state.van_home.get(van_id, route[0]))])
+                target_timing["drone_waiting_time"] = (
+                    float(target_timing["drone_waiting_time"]) + drone_waiting
+                )
+                physical_route = physical_routes.setdefault(
+                    drone_id,
+                    [int(state.van_home.get(launch_van, routes[launch_van][0]))],
+                )
                 if not physical_route or int(physical_route[-1]) != int(launch):
                     physical_route.append(int(launch))
-                physical_route.extend([int(customer) for customer in sortie_customers] + [int(recovery)])
+                physical_route.extend(
+                    [int(customer) for customer in sortie_customers] + [int(recovery)]
+                )
                 if _is_warehouse_node(state, launch):
                     warehouse_launch_count[drone_id] = warehouse_launch_count.get(drone_id, 0) + 1
                 if _is_warehouse_node(state, recovery):
@@ -785,24 +914,110 @@ def compute_timing(
                 physical_sorties.setdefault(drone_id, []).append(
                     {
                         "launch_node": int(launch),
-                        "launch_van_id": van_id,
-                        "launch_position": int(idx),
+                        "launch_van_id": launch_van,
+                        "launch_position": int(launch_pos),
                         "recovery_node": int(recovery),
                         "recovery_van_id": recovery_van,
                         "recovery_position": int(recovery_pos),
                         "customers": [int(customer) for customer in sortie_customers],
                         "launch_time": float(launch_time),
-                        "recovery_time": float(drone_time),
+                        "drone_arrival_time": float(drone_time),
+                        "recovery_time": float(synchronized_recovery_time),
                     }
                 )
+                sortie["drone_id"] = drone_id
+                sortie["launch_van_id"] = launch_van
+                sortie["recovery_van_id"] = recovery_van
+                sortie["launch_position"] = int(launch_pos)
+                sortie["recovery_position"] = int(recovery_pos)
                 sortie["launch_time"] = float(launch_time)
-                sortie["recovery_time"] = float(drone_time)
+                sortie["drone_arrival_time"] = float(drone_time)
+                sortie["recovery_time"] = float(synchronized_recovery_time)
                 sortie["van_waiting_time"] = float(van_waiting)
                 sortie["drone_waiting_time"] = float(drone_waiting)
                 sortie["same_node"] = bool(launch == recovery)
-                sortie["synchronized_recovery_time"] = float(max(float(recovery_arrival), drone_time))
+                sortie["synchronized_recovery_time"] = float(synchronized_recovery_time)
 
-            current_time = max(current_time, latest_departure)
+        if record_results and target_timing is not None:
+            target_timing["drone_physical_routes"] = physical_routes
+            target_timing["drone_physical_sorties"] = physical_sorties
+            target_timing["drone_warehouse_launch_count"] = warehouse_launch_count
+            target_timing["drone_warehouse_return_count"] = warehouse_return_count
+        return new_events
+
+    def _events_close(left: RecoveryEvents, right: RecoveryEvents) -> bool:
+        if set(left) != set(right):
+            return False
+        return all(abs(float(left[key]) - float(right[key])) <= 1e-7 for key in left)
+
+    max_iterations = max(10, 2 * (sum(len(route) for route in routes.values()) + len(sortie_specs) + 1))
+    recovery_events: RecoveryEvents = {}
+    converged = False
+    iterations_used = 0
+    for iteration in range(1, max_iterations + 1):
+        _, iteration_sequences = _build_van_timelines(
+            recovery_events,
+            record_services=False,
+        )
+        next_events = _compute_sortie_events(
+            iteration_sequences,
+            recovery_events,
+            record_results=False,
+        )
+        iterations_used = iteration
+        if _events_close(recovery_events, next_events):
+            recovery_events = next_events
+            converged = True
+            break
+        recovery_events = next_events
+
+    van_arrival_by_van, van_sequence_by_van = _build_van_timelines(
+        recovery_events,
+        record_services=True,
+        target_timing=timing,
+    )
+    final_events = _compute_sortie_events(
+        van_sequence_by_van,
+        recovery_events,
+        record_results=True,
+        target_timing=timing,
+    )
+    if not converged or not _events_close(recovery_events, final_events):
+        timing["time_window_violations"].append(
+            f"timing fixed-point did not converge within {max_iterations} iterations."
+        )
+    timing["timing_scheduler"] = "fixed-point"
+    timing["timing_iterations"] = int(iterations_used)
+    timing["recovery_events_by_van_position"] = {
+        f"{van_id}:{position}:{sortie_idx}": float(event_time)
+        for (van_id, position, sortie_idx), event_time in final_events.items()
+    }
+
+    for sortie in state.drone_sorties:
+        if not isinstance(sortie, dict):
+            continue
+        recovery_van = _sortie_van_id(sortie, "recovery_van_id")
+        recovery_pos = int(sortie.get("recovery_position", -1))
+        recovery_time = float(sortie.get("recovery_time", 0.0))
+        sequence = van_sequence_by_van.get(recovery_van, [])
+        if 0 <= recovery_pos < len(sequence):
+            departure_time = float(sequence[recovery_pos]["departure_time"])
+            if departure_time + 1e-9 < recovery_time:
+                timing["time_window_violations"].append(
+                    f"{recovery_van} departs position {recovery_pos} before recovery_time {recovery_time:.3f}."
+                )
+            if recovery_pos + 1 < len(sequence):
+                current_node = int(sequence[recovery_pos]["node"])
+                next_node = int(sequence[recovery_pos + 1]["node"])
+                next_arrival = float(sequence[recovery_pos + 1]["arrival_time"])
+                required_arrival = recovery_time + _travel_minutes(
+                    data.ground_distance_matrix[current_node, next_node],
+                    config.fleet.van_speed_kmph,
+                )
+                if next_arrival + 1e-9 < required_arrival:
+                    timing["time_window_violations"].append(
+                        f"{recovery_van} position {recovery_pos + 1} arrival {next_arrival:.3f} is before propagated recovery arrival {required_arrival:.3f}."
+                    )
 
     timing["van_arrival_by_van"] = van_arrival_by_van
     timing["van_arrival_sequence_by_van"] = van_sequence_by_van

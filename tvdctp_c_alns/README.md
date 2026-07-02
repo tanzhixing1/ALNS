@@ -24,6 +24,14 @@ The current v6 toy version models:
 - Strict customer time windows.
 - Arrival-time propagation for truck, van, and drone moves.
 - Simplified van-drone timing synchronization.
+- Flexible docking data fields and feasibility checks for
+  `launch_van_id != recovery_van_id`.
+- Repair operators that enumerate cross-van recovery candidates when inserting
+  drone sorties.
+- An optional post-repair drone-sortie consolidation pass. This is a local
+  improvement engineering step, not a separate paper-defined C-ALNS operator.
+  It merges compatible sorties only when the merged solution remains feasible
+  and does not worsen `total_cost`.
 - A selected-transshipment switch destroy operator inside ALNS.
 - Vehicle fixed usage costs plus distance-based transportation costs.
 
@@ -119,9 +127,11 @@ Drone sorties keep the format:
 Drone sorties can continuously serve multiple customers when payload,
 endurance, route order, strict customer time windows, and simplified
 synchronization remain feasible. The code does not impose an artificial upper
-bound on the number of customers in one sortie. Repair operators first try
-cross-node sorties (`launch != recovery`). Same-node sorties are kept as a
-fallback so small toy instances remain feasible.
+bound on the number of customers in one sortie. Repair operators enumerate both
+same-van and cross-van recovery candidates through `launch_van_id` and
+`recovery_van_id`; actual runs are not guaranteed to contain cross-van docking,
+because the selected move still depends on cost and feasibility. Same-node
+sorties are kept as a fallback so small toy instances remain feasible.
 
 Physical drone identities are assigned during timing propagation:
 
@@ -159,6 +169,25 @@ candidate warehouse. It rebuilds `truck_route`, resets customer service, updates
 `order_assignment` and `container_assignment`, and then lets the selected repair
 operator rebuild the van route and drone sorties. Infeasible switched candidates
 are rejected by the ALNS acceptance logic.
+
+The initial solution uses a staged greedy construction:
+
+- Stage 1 remains a simplified truck/container stage: one toy container is moved
+  from its origin to the selected transshipment by `truck_route`.
+- Stage 2 builds van routes by inserting customers into active feasible van
+  routes first; a new van is activated only when existing active routes cannot
+  accept the customer.
+- Stage 3 shifts feasible customers from van service to drone sorties, including
+  multi-customer and cross-van recovery candidates when they pass feasibility
+  and cost checks.
+
+The paper-level concept is bundle-based multi-node cascade repair. This toy
+implementation includes a simplified bundle-based cascade repair and an
+optional post-repair drone sortie consolidation step. The simplified bundle
+repair tries all-van, all-drone, best-mode, and partial van/drone combinations
+for 2-3 customers before falling back to per-customer insertion. The
+consolidation step is a local improvement heuristic layered after repair; it
+should not be read as a full reproduction of the paper's cascade repair.
 
 ## Strict Time Windows and Timing
 
@@ -269,7 +298,7 @@ battery capacity `13.8 kWh`.
 - Multiple containers.
 - Multiple trucks, trailers, or containers.
 - Trailer-tractor binding.
-- Multi-van cross-vehicle recovery.
+- Full tractor/trailer/container first-stage drayage.
 - Gurobi MILP.
 - RL/PPO operator selection.
 
