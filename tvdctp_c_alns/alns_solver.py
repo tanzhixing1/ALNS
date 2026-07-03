@@ -126,6 +126,7 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
     )
 
     loop_start = time.perf_counter()
+    setattr(config.alns, "_inside_alns_loop", True)
     for iteration in range(1, config.alns.max_iterations + 1):
         actual_iterations = iteration
         destroy_name = _roulette_choice(rng, destroy_names, destroy_weights)
@@ -140,6 +141,17 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
         candidate = REPAIR_OPERATORS[repair_name](destroyed, rng, data, config)
         candidate_cost, candidate_breakdown = objective(candidate, data, config)
         candidate_feasible = bool(candidate_breakdown.get("feasible", False))
+        shadow_failures = []
+        if bool(getattr(config.alns, "diagnostics_shadow", False)):
+            from drone_repair_diagnostics import (
+                shadow_state_failures,
+                summarize_failure_reasons,
+            )
+
+            shadow_failures = shadow_state_failures(candidate, data, config)
+            shadow_summary = summarize_failure_reasons(shadow_failures)
+        else:
+            shadow_summary = {}
         if not candidate_feasible:
             record_repair_rejection("rejected_by_full_feasibility")
             for violation in candidate_breakdown.get("violations", [])[:20]:
@@ -184,6 +196,9 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
                 "best_cost": best_cost,
                 "accepted": accepted,
                 "candidate_feasible": candidate_feasible,
+                "shadow_failed": bool(shadow_failures),
+                "shadow_fail_reasons": shadow_summary,
+                "shadow_fail_samples": shadow_failures[:20],
                 "destroy": destroy_name,
                 "repair": repair_name,
                 "temperature": temperature,
@@ -228,6 +243,7 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
             early_stop_triggered = True
             break
 
+    setattr(config.alns, "_inside_alns_loop", False)
     phase_timings["t_alns_loop"] = time.perf_counter() - loop_start
     runtime = time.perf_counter() - start
     phase_start = time.perf_counter()

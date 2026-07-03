@@ -10,17 +10,23 @@ import statistics
 import sys
 import time
 from contextlib import contextmanager
+from collections import Counter
 from pathlib import Path
-from typing import Dict, Iterable, List, Tuple
+from typing import Dict, Iterable, List, Optional, Tuple
 
 import operators
-from alns_profile import reset_profile, snapshot_profile
+from alns_profile import active_repair_name, reset_profile, snapshot_profile
 from alns_solver import run_c_alns
 from config import TVDConfig, build_config
 from dataset_loader import InstanceData, generate_toy_data
 from feasibility import check_solution_feasible
 from initial_solution import initial_solution
 from objective import objective
+from drone_repair_diagnostics import (
+    drone_candidate_key,
+    shadow_state_failures,
+    summarize_failure_reasons,
+)
 
 
 CURRENT_DESTROY = dict(operators.DESTROY_OPERATORS)
@@ -207,6 +213,153 @@ def run_case(
     row["t_data_generation"] = t_data
     row["t_total"] = t_data + float(result.runtime_seconds)
     return row
+
+
+def run_diagnostic_case(
+    operator_set_name: str,
+    seed: int,
+    iterations: int,
+    early_stop: bool,
+    *,
+    configure=None,
+    probe=None,
+    data_seed: int = 42,
+) -> Dict[str, object]:
+    config = make_config(data_seed, iterations, early_stop)
+    if configure is not None:
+        configure(config)
+    t0 = time.perf_counter()
+    data = generate_toy_data(config)
+    t_data = time.perf_counter() - t0
+    config.alns.random_seed = int(seed)
+    with operator_set(operator_set_name):
+        if probe is None:
+            result = run_c_alns(data, config)
+            probe_stats = None
+        else:
+            with probe as probe_stats:
+                result = run_c_alns(data, config)
+    row = summarize_result(operator_set_name, seed, config, data, result)
+    row["max_iterations"] = iterations
+    row["early_stop_enabled"] = early_stop
+    row["max_no_improve"] = getattr(config.alns, "max_no_improve", None)
+    row["cooling_rate"] = getattr(config.alns, "cooling_rate", None)
+    row["t_data_generation"] = t_data
+    row["t_total"] = t_data + float(result.runtime_seconds)
+    if probe_stats is not None:
+        row["drone_candidate_probe"] = finalize_candidate_probe_stats(probe_stats)
+    return row
+
+
+def _candidate_state_with_sortie(state, customers: List[int], sortie: dict):
+    candidate = state.copy()
+    candidate.drone_sorties.append(dict(sortie))
+    for customer in customers:
+        customer = int(customer)
+        candidate.service_mode[customer] = "drone"
+        candidate.clean_unassigned(customer)
+    return candidate
+
+
+@contextmanager
+def drone_candidate_probe(*, cache_enabled: bool = False, prefilter_enabled: bool = False):
+    original = operators._drone_insert_hard_feasible
+    cache: Dict[Tuple[object, ...], bool] = {}
+    stats = {
+        "cache_enabled": cache_enabled,
+        "prefilter_enabled": prefilter_enabled,
+        "raw_drone_candidate_count": 0,
+        "drone_candidate_after_prefilter": 0,
+        "prefilter_rejected_count": 0,
+        "candidate_eval_time": 0.0,
+        "cache_hit_count": 0,
+        "cache_miss_count": 0,
+        "keys": Counter(),
+        "prefilter_rejection_samples": [],
+    }
+
+    def wrapped(customers, sortie, state, data, config):
+        if active_repair_name() == "unscoped" or not bool(
+            getattr(config.alns, "_inside_alns_loop", False)
+        ):
+            return original(customers, sortie, state, data, config)
+
+        key = drone_candidate_key(sortie, state)
+        stats["raw_drone_candidate_count"] = int(stats["raw_drone_candidate_count"]) + 1
+        stats["keys"][key] += 1
+        if cache_enabled and key in cache:
+            stats["cache_hit_count"] = int(stats["cache_hit_count"]) + 1
+            local_feasible = cache[key]
+        else:
+            stats["cache_miss_count"] = int(stats["cache_miss_count"]) + 1
+            start = time.perf_counter()
+            local_feasible = bool(original(customers, sortie, state, data, config))
+            stats["candidate_eval_time"] = float(stats["candidate_eval_time"]) + (
+                time.perf_counter() - start
+            )
+            if cache_enabled:
+                cache[key] = local_feasible
+
+        if local_feasible and prefilter_enabled:
+            candidate = _candidate_state_with_sortie(state, list(customers), sortie)
+            failures = shadow_state_failures(candidate, data, config)
+            if failures:
+                stats["prefilter_rejected_count"] = int(stats["prefilter_rejected_count"]) + 1
+                samples = stats["prefilter_rejection_samples"]
+                if isinstance(samples, list) and len(samples) < 20:
+                    samples.append(
+                        {
+                            "candidate_key": repr(key),
+                            "customers": [int(customer) for customer in customers],
+                            "sortie": dict(sortie),
+                            "shadow_fail_reasons": summarize_failure_reasons(failures),
+                        }
+                    )
+                return False
+
+        if local_feasible:
+            stats["drone_candidate_after_prefilter"] = int(
+                stats["drone_candidate_after_prefilter"]
+            ) + 1
+        return local_feasible
+
+    operators._drone_insert_hard_feasible = wrapped
+    try:
+        yield stats
+    finally:
+        operators._drone_insert_hard_feasible = original
+
+
+def finalize_candidate_probe_stats(stats: Dict[str, object]) -> Dict[str, object]:
+    keys: Counter = stats.get("keys", Counter())  # type: ignore[assignment]
+    raw = int(stats.get("raw_drone_candidate_count", 0))
+    unique = len(keys)
+    duplicate = raw - unique
+    cache_total = int(stats.get("cache_hit_count", 0)) + int(stats.get("cache_miss_count", 0))
+    top = [
+        {"candidate_key": repr(key), "count": int(count)}
+        for key, count in keys.most_common(10)
+    ]
+    return {
+        "cache_enabled": bool(stats.get("cache_enabled", False)),
+        "prefilter_enabled": bool(stats.get("prefilter_enabled", False)),
+        "raw_drone_candidate_count": raw,
+        "unique_drone_candidate_count": unique,
+        "duplicate_drone_candidate_count": duplicate,
+        "duplicate_ratio": duplicate / raw if raw else None,
+        "top_duplicated_keys": top,
+        "candidate_eval_time": float(stats.get("candidate_eval_time", 0.0)),
+        "cache_hit_count": int(stats.get("cache_hit_count", 0)),
+        "cache_miss_count": int(stats.get("cache_miss_count", 0)),
+        "cache_hit_ratio": int(stats.get("cache_hit_count", 0)) / cache_total
+        if cache_total
+        else None,
+        "prefilter_rejected_count": int(stats.get("prefilter_rejected_count", 0)),
+        "drone_candidate_after_prefilter": int(
+            stats.get("drone_candidate_after_prefilter", 0)
+        ),
+        "prefilter_rejection_samples": stats.get("prefilter_rejection_samples", []),
+    }
 
 
 def run_initial_only(seed: int) -> Dict[str, object]:
@@ -719,6 +872,320 @@ def compact_row(row: Dict[str, object]) -> Dict[str, object]:
     return {key: row.get(key) for key in keys}
 
 
+def compact_diagnostic_row(row: Dict[str, object]) -> Dict[str, object]:
+    base = compact_row(row)
+    base.update(
+        {
+            "runtime_seconds": row.get("runtime_seconds"),
+            "actual_iterations": row.get("actual_iterations"),
+            "max_no_improve": row.get("max_no_improve"),
+            "cooling_rate": row.get("cooling_rate"),
+            "drone_candidate_probe": row.get("drone_candidate_probe"),
+        }
+    )
+    return base
+
+
+def shadow_confusion(row: Dict[str, object]) -> Dict[str, int]:
+    matrix = {
+        "shadow_fail_full_fail": 0,
+        "shadow_pass_full_pass": 0,
+        "shadow_pass_full_fail": 0,
+        "shadow_fail_full_pass": 0,
+    }
+    for item in row.get("history", []):
+        shadow_failed = bool(item.get("shadow_failed", False))
+        full_pass = bool(item.get("candidate_feasible", False))
+        if shadow_failed and full_pass:
+            matrix["shadow_fail_full_pass"] += 1
+        elif shadow_failed and not full_pass:
+            matrix["shadow_fail_full_fail"] += 1
+        elif not shadow_failed and full_pass:
+            matrix["shadow_pass_full_pass"] += 1
+        else:
+            matrix["shadow_pass_full_fail"] += 1
+    return matrix
+
+
+def shadow_false_rejection_samples(row: Dict[str, object], limit: int = 20) -> List[Dict[str, object]]:
+    samples = []
+    for item in row.get("history", []):
+        if not bool(item.get("shadow_failed", False)):
+            continue
+        if not bool(item.get("candidate_feasible", False)):
+            continue
+        samples.append(
+            {
+                "iteration": item.get("iteration"),
+                "destroy": item.get("destroy"),
+                "repair": item.get("repair"),
+                "candidate_cost": item.get("candidate_cost"),
+                "shadow_fail_reasons": item.get("shadow_fail_reasons", {}),
+                "shadow_fail_samples": item.get("shadow_fail_samples", [])[:3],
+                "full_check_passed": True,
+            }
+        )
+        if len(samples) >= limit:
+            break
+    return samples
+
+
+def prefilter_ab_row(label: str, row: Optional[Dict[str, object]]) -> Dict[str, object]:
+    if row is None:
+        return {"setting": label, "skipped": True}
+    probe = row.get("drone_candidate_probe", {})
+    return {
+        "setting": label,
+        "runtime_seconds": row.get("runtime_seconds"),
+        "best_cost": row.get("best_cost"),
+        "improved_candidates": row.get("improved_candidates"),
+        "accepted_candidates": row.get("accepted_candidates"),
+        "raw_drone_candidate_count": probe.get("raw_drone_candidate_count"),
+        "prefilter_rejected_count": probe.get("prefilter_rejected_count"),
+        "drone_candidate_after_prefilter": probe.get("drone_candidate_after_prefilter"),
+        "full_candidate_feasible_ratio": row.get("full_candidate_feasible_ratio"),
+        "local_repair_feasible_ratio": row.get("local_repair_feasible_ratio"),
+        "full_infeasible_count": int(row.get("actual_iterations", 0))
+        - int(
+            round(
+                float(row.get("full_candidate_feasible_ratio") or 0.0)
+                * int(row.get("actual_iterations", 0))
+            )
+        ),
+        "best_feasible": row.get("best_feasible"),
+        "violations_count": row.get("violations_count"),
+        "best_van_routes": row.get("best_van_routes"),
+        "best_drone_sorties_count": row.get("best_drone_sorties_count"),
+    }
+
+
+def cache_ab_row(label: str, row: Optional[Dict[str, object]]) -> Dict[str, object]:
+    if row is None:
+        return {"setting": label, "skipped": True}
+    probe = row.get("drone_candidate_probe", {})
+    return {
+        "setting": label,
+        "runtime_seconds": row.get("runtime_seconds"),
+        "cache_hit_count": probe.get("cache_hit_count"),
+        "cache_miss_count": probe.get("cache_miss_count"),
+        "cache_hit_ratio": probe.get("cache_hit_ratio"),
+        "candidate_eval_time": probe.get("candidate_eval_time"),
+        "best_cost": row.get("best_cost"),
+        "best_feasible": row.get("best_feasible"),
+        "violations_count": row.get("violations_count"),
+    }
+
+
+def sa_row(setting_name: str, row: Dict[str, object]) -> Dict[str, object]:
+    sa = sa_diagnostics(row)
+    cooling_rate = float(row.get("cooling_rate") or 0.9995)
+    actual_iterations = int(row.get("actual_iterations", 0))
+    return {
+        "setting_name": setting_name,
+        "actual_iterations": actual_iterations,
+        "runtime_seconds": row.get("runtime_seconds"),
+        "best_cost": row.get("best_cost"),
+        "last_improvement_iteration": row.get("last_improvement_iteration"),
+        "final_temperature": 1000.0 * (cooling_rate ** actual_iterations),
+        "better_candidate_count": sa.get("better_candidate_count"),
+        "worse_candidate_count": sa.get("worse_candidate_count"),
+        "worse_accepted_count": sa.get("worse_accepted_count"),
+        "worse_acceptance_rate": sa.get("worse_acceptance_rate"),
+        "accepted_count": sa.get("accepted_count"),
+        "improved_candidates": row.get("improved_candidates"),
+        "best_feasible": row.get("best_feasible"),
+        "violations_count": row.get("violations_count"),
+    }
+
+
+def run_drone_repair_diagnostics(outdir: Path) -> Dict[str, object]:
+    outdir.mkdir(parents=True, exist_ok=True)
+
+    def enable_shadow(config: TVDConfig) -> None:
+        config.alns.diagnostics_shadow = True
+
+    shadow_row = run_diagnostic_case(
+        "current",
+        42,
+        50,
+        False,
+        configure=enable_shadow,
+    )
+    matrix = shadow_confusion(shadow_row)
+    false_samples = shadow_false_rejection_samples(shadow_row)
+
+    prefilter_rows: List[Dict[str, object]] = []
+    prefilter_off = None
+    if matrix["shadow_fail_full_pass"] == 0:
+        prefilter_off = run_diagnostic_case(
+            "current",
+            42,
+            300,
+            False,
+            probe=drone_candidate_probe(cache_enabled=False, prefilter_enabled=False),
+        )
+        prefilter_rows = [
+            prefilter_ab_row("prefilter_off", prefilter_off),
+            {
+                "setting": "prefilter_on",
+                "skipped": True,
+                "reason": (
+                    "projected runtime is too high: safe prefilter currently runs "
+                    "whole-state physical shadow/timing checks per local drone candidate"
+                ),
+            },
+        ]
+    else:
+        prefilter_rows = [
+            {
+                "setting": "prefilter_off/on",
+                "skipped": True,
+                "reason": "shadow_fail_full_pass > 0, so prefilter is not enabled",
+            }
+        ]
+
+    duplicate_row = run_diagnostic_case(
+        "current",
+        42,
+        50,
+        False,
+        probe=drone_candidate_probe(cache_enabled=False, prefilter_enabled=False),
+    )
+    duplicate_probe = duplicate_row.get("drone_candidate_probe", {})
+    duplicate_ratio = float(duplicate_probe.get("duplicate_ratio") or 0.0)
+    cache_rows: List[Dict[str, object]] = []
+    if duplicate_ratio > 0.10:
+        cache_off = run_diagnostic_case(
+            "current",
+            42,
+            100,
+            False,
+            probe=drone_candidate_probe(cache_enabled=False, prefilter_enabled=False),
+        )
+        cache_on = run_diagnostic_case(
+            "current",
+            42,
+            100,
+            False,
+            probe=drone_candidate_probe(cache_enabled=True, prefilter_enabled=False),
+        )
+        cache_rows = [
+            cache_ab_row("cache_off", cache_off),
+            cache_ab_row("cache_on", cache_on),
+        ]
+    else:
+        cache_rows = [
+            {
+                "setting": "cache_off/on",
+                "skipped": True,
+                "reason": "duplicate_ratio <= 0.10",
+            }
+        ]
+
+    sa_settings = [
+        (
+            "baseline",
+            lambda config: (
+                setattr(config.alns, "cooling_rate", 0.9995),
+                setattr(config.alns, "early_stop_enabled", True),
+                setattr(config.alns, "max_no_improve", 100),
+                setattr(config.alns, "max_no_improvement", 100),
+            ),
+            1000,
+            True,
+        ),
+        (
+            "no_early_stop",
+            lambda config: (
+                setattr(config.alns, "cooling_rate", 0.9995),
+                setattr(config.alns, "early_stop_enabled", False),
+                setattr(config.alns, "max_no_improve", 100),
+                setattr(config.alns, "max_no_improvement", 100),
+            ),
+            1000,
+            False,
+        ),
+        (
+            "relaxed_early_stop",
+            lambda config: (
+                setattr(config.alns, "cooling_rate", 0.9995),
+                setattr(config.alns, "early_stop_enabled", True),
+                setattr(config.alns, "max_no_improve", 300),
+                setattr(config.alns, "max_no_improvement", 300),
+            ),
+            1000,
+            True,
+        ),
+        (
+            "stronger_cooling",
+            lambda config: (
+                setattr(config.alns, "cooling_rate", 0.995),
+                setattr(config.alns, "early_stop_enabled", True),
+                setattr(config.alns, "max_no_improve", 100),
+                setattr(config.alns, "max_no_improvement", 100),
+            ),
+            1000,
+            True,
+        ),
+    ]
+    sa_rows = []
+    for name, configure, iterations, early_stop in sa_settings:
+        row = run_diagnostic_case(
+            "current",
+            42,
+            iterations,
+            early_stop,
+            configure=configure,
+        )
+        sa_rows.append(sa_row(name, row))
+
+    result = {
+        "shadow_mode": {
+            "setting": {
+                "operator_set": "current",
+                "seed": 42,
+                "max_iterations": 50,
+                "early_stop": False,
+            },
+            "confusion_matrix": matrix,
+            "false_rejection_samples": false_samples,
+            "shadow_reason_totals": {
+                reason: sum(
+                    int(item.get("shadow_fail_reasons", {}).get(reason, 0))
+                    for item in shadow_row.get("history", [])
+                )
+                for reason in sorted(
+                    {
+                        reason
+                        for item in shadow_row.get("history", [])
+                        for reason in item.get("shadow_fail_reasons", {})
+                    }
+                )
+            },
+        },
+        "prefilter_300_iteration_ab": prefilter_rows,
+        "drone_candidate_duplicate": {
+            "setting": {
+                "operator_set": "current",
+                "seed": 42,
+                "max_iterations": 50,
+                "early_stop": False,
+            },
+            **duplicate_probe,
+        },
+        "cache_100_iteration_ab": cache_rows,
+        "sa_sensitivity": sa_rows,
+        "raw_compact_rows": {
+            "shadow": compact_diagnostic_row(shadow_row),
+            "duplicate": compact_diagnostic_row(duplicate_row),
+        },
+    }
+    (outdir / "drone_repair_diagnostics.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return result
+
+
 def check_gurobi() -> Dict[str, object]:
     try:
         import gurobipy  # type: ignore  # noqa: F401
@@ -747,7 +1214,11 @@ def check_gurobi() -> Dict[str, object]:
 
 def main() -> None:
     parser = argparse.ArgumentParser()
-    parser.add_argument("--mode", choices=["core", "multiseed", "long", "gurobi"], required=True)
+    parser.add_argument(
+        "--mode",
+        choices=["core", "multiseed", "long", "gurobi", "drone_repair"],
+        required=True,
+    )
     parser.add_argument("--outdir", default="tvdctp_c_alns/outputs/diagnostics_seed42")
     parser.add_argument("--seeds", default="")
     args = parser.parse_args()
@@ -759,6 +1230,8 @@ def main() -> None:
     elif args.mode == "long":
         seeds = [int(item) for item in args.seeds.split(",") if item.strip()]
         result = run_long(outdir, seeds)
+    elif args.mode == "drone_repair":
+        result = run_drone_repair_diagnostics(outdir)
     else:
         result = check_gurobi()
         outdir.mkdir(parents=True, exist_ok=True)
