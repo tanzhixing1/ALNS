@@ -6,6 +6,14 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 
 import numpy as np
 
+from alns_profile import (
+    enter_repair,
+    exit_repair,
+    increment,
+    record_destroy_result,
+    record_repair_candidate,
+    record_repair_rejection,
+)
 from config import TVDConfig
 from dataset_loader import InstanceData
 from feasibility import (
@@ -38,6 +46,27 @@ def _removal_count(data: InstanceData, config: TVDConfig) -> int:
 
 def _served_customers(state: TVDState) -> List[int]:
     return sorted(set(state.get_van_customers() + state.get_drone_customers()))
+
+
+def _record_destroy_diagnostics(
+    state: TVDState,
+    customers: Iterable[int],
+    data: InstanceData,
+    *,
+    cascade_expansion_count: int = 0,
+) -> None:
+    selected = sorted({int(customer) for customer in customers})
+    drone_customers = set(state.get_drone_customers())
+    van_customers = set(state.get_van_customers())
+    record_destroy_result(
+        removed_customers=selected,
+        high_floor_customers=[
+            customer for customer in selected if data.is_high_floor.get(customer, False)
+        ],
+        drone_customers=[customer for customer in selected if customer in drone_customers],
+        van_customers=[customer for customer in selected if customer in van_customers],
+        cascade_expansion_count=cascade_expansion_count,
+    )
 
 
 def _remove_customer(state: TVDState, customer: int) -> None:
@@ -85,6 +114,7 @@ def random_customer_removal(
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     selected = rng.choice(served, size=count, replace=False).tolist() if served else []
+    _record_destroy_diagnostics(destroyed, selected, data)
     return _remove_customers(destroyed, selected)
 
 
@@ -105,6 +135,7 @@ def greedy_removal(
 
     count = min(_removal_count(data, config), len(scores))
     selected = [customer for _, customer in sorted(scores, reverse=True)[:count]]
+    _record_destroy_diagnostics(destroyed, selected, data)
     return _remove_customers(destroyed, selected)
 
 
@@ -121,6 +152,7 @@ def related_customer_removal(
     selected = sorted(
         served, key=lambda customer: data.ground_distance_matrix[seed, customer]
     )[:count]
+    _record_destroy_diagnostics(destroyed, selected, data)
     return _remove_customers(destroyed, selected)
 
 
@@ -135,6 +167,7 @@ def route_segment_removal(
     count = min(_removal_count(data, config), len(internal))
     start = int(rng.integers(0, len(internal) - count + 1))
     selected = internal[start : start + count]
+    _record_destroy_diagnostics(destroyed, selected, data)
     return _remove_customers(destroyed, selected)
 
 
@@ -151,6 +184,7 @@ def drone_task_removal(
     for idx in selected_idx:
         _, sortie_customers, _ = sortie_nodes(destroyed.drone_sorties[int(idx)])
         selected.extend(sortie_customers)
+    _record_destroy_diagnostics(destroyed, selected, data)
     return _remove_customers(destroyed, selected)
 
 
@@ -171,7 +205,9 @@ def cascade_aware_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
-    initial = random_customer_removal(destroyed, rng, data, config).unassigned
+    served = _served_customers(destroyed)
+    count = min(_removal_count(data, config), len(served))
+    initial = rng.choice(served, size=count, replace=False).tolist() if served else []
     removal = set(initial)
 
     changed = True
@@ -199,6 +235,12 @@ def cascade_aware_removal(
     for customer in sorted(removal - assigned):
         bundles.append([customer])
 
+    _record_destroy_diagnostics(
+        destroyed,
+        removal,
+        data,
+        cascade_expansion_count=max(0, len(removal) - len(initial)),
+    )
     destroyed = _remove_customers(destroyed, removal)
     _remove_duplicate_unassigned(destroyed)
     destroyed.metadata["cascade_removed"] = sorted(removal)
@@ -216,12 +258,19 @@ def _rebuild_assignments_for_transshipment(
     state: TVDState, data: InstanceData, selected_transshipment: int
 ) -> None:
     for assignment in state.order_assignment.values():
-        assignment["assigned_transshipment"] = selected_transshipment
+        container_id = int(assignment.get("container_id", -1))
+        container_route = state.container_routes.get(container_id, {})
+        assignment["assigned_transshipment"] = int(
+            container_route.get("destination_warehouse", selected_transshipment)
+        )
 
-    for assignment in state.container_assignment.values():
+    for container_id, assignment in state.container_assignment.items():
+        container_route = state.container_routes.get(int(container_id), {})
+        destination = int(container_route.get("destination_warehouse", selected_transshipment))
         assignment["origin_node"] = data.container_origin
         assignment["candidate_transshipments"] = data.transshipment_nodes.copy()
-        assignment["selected_transshipment"] = selected_transshipment
+        assignment["selected_transshipment"] = destination
+        assignment["destination_warehouse"] = destination
 
 
 def switch_transshipment_operator(
@@ -240,8 +289,26 @@ def switch_transshipment_operator(
 
     new_transshipment = int(rng.choice(alternatives))
     old_transshipment = switched.selected_transshipment
+    from initial_solution import _build_stage1_drayage
+
+    destinations = {
+        int(container_id): new_transshipment
+        for container_id in data.container_assignment
+    }
+    (
+        tractor_routes,
+        container_routes,
+        tractor_home,
+        trailer_home,
+        truck_route,
+        warehouse_ready_time,
+    ) = _build_stage1_drayage(data, config, destinations)
     switched.selected_transshipment = new_transshipment
-    switched.truck_route = _truck_route_for_transshipment(data, new_transshipment)
+    switched.truck_route = truck_route
+    switched.tractor_routes = tractor_routes
+    switched.tractor_home = tractor_home
+    switched.trailer_home = trailer_home
+    switched.container_routes = container_routes
     van_home = config.build_van_home(data.transshipment_nodes)
     drone_initial_carrier = config.build_drone_initial_carrier(data.transshipment_nodes)
     drone_home_warehouse = config.build_drone_home_warehouse(data.transshipment_nodes)
@@ -255,12 +322,14 @@ def switch_transshipment_operator(
     }
     switched.sync_primary_van_route()
     switched.drone_sorties = []
+    _record_destroy_diagnostics(state, data.customers, data)
     switched.unassigned = data.customers.copy()
     switched.service_mode = {customer: "unassigned" for customer in data.customers}
     switched.metadata["route_endpoints"] = sorted(set(data.transshipment_nodes))
     switched.metadata["warehouse_num_vans"] = config.warehouse_num_vans(data.transshipment_nodes)
     switched.metadata["warehouse_num_drones"] = config.warehouse_num_drones(data.transshipment_nodes)
     switched.metadata["drones_per_van"] = config.fleet.drones_per_van
+    switched.metadata["warehouse_ready_time"] = warehouse_ready_time
     switched.metadata["transshipment_switched_from"] = old_transshipment
     switched.metadata["transshipment_switched_to"] = new_transshipment
     switched.timing = default_timing()
@@ -288,6 +357,91 @@ def _can_van_insert(
     return current_delivery + current_pickup + data.demands[customer] + customer_pickup <= config.fleet.van_capacity_kg
 
 
+def _travel_minutes(distance: float, speed_kmph: float) -> float:
+    return float(distance) / speed_kmph * 60.0
+
+
+def _route_payload(route: List[int], data: InstanceData) -> float:
+    return float(
+        sum(float(data.demands.get(node, 0.0)) for node in route if node in data.customers)
+        + sum(
+            float(getattr(data, "pickup_demands", {}).get(node, 0.0))
+            for node in route
+            if node in data.customers
+        )
+    )
+
+
+def _warehouse_ready_times(state: TVDState) -> Dict[int, float]:
+    ready = {
+        int(warehouse): float(ready_time)
+        for warehouse, ready_time in state.metadata.get("warehouse_ready_time", {}).items()
+    }
+    for container in getattr(state, "container_routes", {}).values():
+        if not isinstance(container, dict):
+            continue
+        warehouse = int(container.get("destination_warehouse", state.selected_transshipment))
+        ready[warehouse] = max(ready.get(warehouse, 0.0), float(container.get("unload_complete", 0.0)))
+    return ready
+
+
+def _van_route_timing_feasible(
+    route: List[int],
+    start_time: float,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    if len(route) < 2:
+        return False
+    current_time = float(start_time)
+    previous = int(route[0])
+    for idx, node in enumerate(route):
+        node = int(node)
+        if idx > 0:
+            current_time += _travel_minutes(
+                data.ground_distance_matrix[previous, node],
+                config.fleet.van_speed_kmph,
+            )
+        if node in data.customers:
+            earliest, latest = data.time_windows.get(node, (0.0, float("inf")))
+            service_start = max(current_time, float(earliest))
+            if service_start > float(latest) + 1e-9:
+                return False
+            current_time = service_start + float(data.service_times.get(node, 0.0))
+        previous = node
+    return True
+
+
+def _route_service_time_at_position(
+    route: List[int],
+    position: int,
+    start_time: float,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[float]:
+    if not route or position < 0 or position >= len(route):
+        return None
+    current_time = float(start_time)
+    previous = int(route[0])
+    for idx, node in enumerate(route):
+        node = int(node)
+        if idx > 0:
+            current_time += _travel_minutes(
+                data.ground_distance_matrix[previous, node],
+                config.fleet.van_speed_kmph,
+            )
+        if node in data.customers:
+            earliest, latest = data.time_windows.get(node, (0.0, float("inf")))
+            service_start = max(current_time, float(earliest))
+            if service_start > float(latest) + 1e-9:
+                return None
+            current_time = service_start + float(data.service_times.get(node, 0.0))
+        if idx == position:
+            return float(current_time)
+        previous = node
+    return None
+
+
 def _repair_van_routes(state: TVDState) -> Dict[str, List[int]]:
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
     repaired = {str(van_id): route.copy() for van_id, route in routes.items()}
@@ -298,7 +452,156 @@ def _repair_van_routes(state: TVDState) -> Dict[str, List[int]]:
     return repaired
 
 
+def _is_allowed_partial_repair_violation(violation: str, state: TVDState) -> bool:
+    if violation.startswith("unassigned customers remain:"):
+        return True
+    prefix = "high-floor customer "
+    if violation.startswith(prefix) and " must be served by drone." in violation:
+        try:
+            customer = int(violation[len(prefix):].split()[0])
+        except (IndexError, ValueError):
+            return False
+        return customer in state.unassigned
+    return False
+
+
+def _partial_repair_hard_feasible(
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    feasible, violations = check_solution_feasible(state, data, config)
+    return feasible or all(
+        _is_allowed_partial_repair_violation(str(violation), state)
+        for violation in violations
+    )
+
+
+def _van_insert_hard_feasible(
+    customer: int,
+    van_id: str,
+    candidate_route: List[int],
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    if data.is_high_floor.get(int(customer), False):
+        record_repair_rejection("van_high_floor")
+        return False
+    if _route_payload(candidate_route, data) > config.fleet.van_capacity_kg + 1e-9:
+        record_repair_rejection("rejected_by_capacity")
+        return False
+    if not candidate_route or int(candidate_route[0]) not in state.transshipment_nodes:
+        record_repair_rejection("van_bad_route_endpoint")
+        return False
+    if int(candidate_route[-1]) not in state.transshipment_nodes:
+        record_repair_rejection("van_bad_route_endpoint")
+        return False
+    start_time = _warehouse_ready_times(state).get(int(candidate_route[0]), 0.0)
+    feasible = _van_route_timing_feasible(candidate_route, start_time, data, config)
+    if not feasible:
+        record_repair_rejection("rejected_by_time_window")
+    return feasible
+
+
+def _drone_insert_hard_feasible(
+    customers: List[int],
+    sortie: dict,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    if not customers:
+        record_repair_rejection("drone_empty_sortie")
+        return False
+    if any(not data.drone_eligible.get(int(customer), False) for customer in customers):
+        record_repair_rejection("drone_ineligible")
+        return False
+    if drone_sortie_peak_payload(sortie, data, config) > config.fleet.drone_capacity_kg:
+        record_repair_rejection("rejected_by_drone_payload")
+        return False
+    if drone_sortie_distance(sortie, data) > config.fleet.drone_endurance_km:
+        record_repair_rejection("rejected_by_drone_endurance")
+        return False
+    if drone_sortie_energy(sortie, data, config) > config.fleet.drone_battery_capacity_kwh:
+        record_repair_rejection("rejected_by_drone_energy")
+        return False
+    if not _can_make_drone_sortie(sortie, data, config):
+        record_repair_rejection("drone_basic_feasibility")
+        return False
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    launch_van_id = str(sortie.get("launch_van_id", ""))
+    recovery_van_id = str(sortie.get("recovery_van_id", launch_van_id))
+    launch_route = routes.get(launch_van_id)
+    recovery_route = routes.get(recovery_van_id)
+    if launch_route is None or recovery_route is None:
+        record_repair_rejection("rejected_by_sync")
+        return False
+    launch = int(sortie.get("launch", -1))
+    recovery = int(sortie.get("recovery", -1))
+    launch_pos = int(sortie.get("launch_position", -1))
+    recovery_pos = int(sortie.get("recovery_position", -1))
+    if not (0 <= launch_pos < len(launch_route) and int(launch_route[launch_pos]) == launch):
+        record_repair_rejection("rejected_by_sync")
+        return False
+    if not (0 <= recovery_pos < len(recovery_route) and int(recovery_route[recovery_pos]) == recovery):
+        record_repair_rejection("rejected_by_sync")
+        return False
+    if launch_pos == len(launch_route) - 1:
+        record_repair_rejection("rejected_by_sync")
+        return False
+    if launch_van_id == recovery_van_id:
+        if recovery_pos < launch_pos:
+            record_repair_rejection("rejected_by_sync")
+            return False
+        if launch == recovery and recovery_pos != launch_pos:
+            record_repair_rejection("rejected_by_sync")
+            return False
+
+    ready = _warehouse_ready_times(state)
+    launch_time = _route_service_time_at_position(
+        launch_route,
+        launch_pos,
+        ready.get(int(launch_route[0]), 0.0),
+        data,
+        config,
+    )
+    recovery_arrival = _route_service_time_at_position(
+        recovery_route,
+        recovery_pos,
+        ready.get(int(recovery_route[0]), 0.0),
+        data,
+        config,
+    )
+    if launch_time is None or recovery_arrival is None:
+        record_repair_rejection("rejected_by_sync")
+        return False
+
+    drone_time = float(launch_time)
+    previous = launch
+    for sortie_customer in customers:
+        sortie_customer = int(sortie_customer)
+        drone_time += _travel_minutes(
+            data.drone_distance_matrix[previous, sortie_customer],
+            config.fleet.drone_speed_kmph,
+        )
+        earliest, latest = data.time_windows.get(sortie_customer, (0.0, float("inf")))
+        service_start = max(drone_time, float(earliest))
+        if service_start > float(latest) + 1e-9:
+            record_repair_rejection("rejected_by_time_window")
+            return False
+        drone_time = service_start + float(data.service_times.get(sortie_customer, 0.0))
+        previous = sortie_customer
+    drone_time += _travel_minutes(
+        data.drone_distance_matrix[previous, recovery],
+        config.fleet.drone_speed_kmph,
+    )
+    return drone_time >= 0.0 and float(recovery_arrival) >= 0.0
+
+
 def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
+    if data.is_high_floor.get(int(customer), False):
+        return None
     best: Optional[InsertionMove] = None
     routes = _repair_van_routes(state)
     for van_id, route in routes.items():
@@ -306,6 +609,22 @@ def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: T
             continue
         fixed_delta = 0.0 if len(route) > 2 else config.cost.van_fixed_cost
         for idx in range(1, len(route)):
+            increment("van_insert_candidates")
+            increment("service_mode_switch_candidates")
+            if len(route) <= 2:
+                increment("new_van_activation_candidates")
+            candidate_route = route[:idx] + [int(customer)] + route[idx:]
+            feasible = _van_insert_hard_feasible(
+                customer,
+                van_id,
+                candidate_route,
+                state,
+                data,
+                config,
+            )
+            record_repair_candidate("van", feasible)
+            if not feasible:
+                continue
             delta = _van_insert_cost(customer, route, idx, data)
             cost = delta * config.cost.van_cost_per_km + fixed_delta
             if best is None or cost < best.cost:
@@ -442,7 +761,22 @@ def _best_drone_move_for_customers(
                     )
                     sortie["launch_position"] = int(launch_pos)
                     sortie["recovery_position"] = int(recovery_pos)
-                    if not _can_make_drone_sortie(sortie, data, config):
+                    increment("drone_insert_candidates")
+                    increment("service_mode_switch_candidates")
+                    if launch_van_id != recovery_van_id:
+                        increment("cross_van_docking_candidates")
+                    for van_id in {launch_van_id, recovery_van_id}:
+                        if van_id not in existing_van_ids:
+                            increment("new_van_activation_candidates")
+                    feasible = _drone_insert_hard_feasible(
+                        customers,
+                        sortie,
+                        state,
+                        data,
+                        config,
+                    )
+                    record_repair_candidate("drone", feasible)
+                    if not feasible:
                         continue
                     fixed_delta = (
                         0.0
@@ -671,6 +1005,12 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
         return None
 
     best: Optional[InsertionMove] = None
+    single_customer_move = _best_drone_move_for_customers(
+        [int(customer)], state, data, config
+    )
+    if single_customer_move is not None:
+        best = single_customer_move
+
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
     for launch_route in routes.values():
         for launch_pos, launch in enumerate(launch_route):
@@ -722,8 +1062,6 @@ def _all_moves(customer: int, state: TVDState, data: InstanceData, config: TVDCo
         moves.append(van)
     if drone is not None:
         moves.append(drone)
-    if van is not None and not config.fleet.drone_enabled:
-        moves.append(van)
     return sorted(moves, key=lambda move: move.cost)
 
 
@@ -757,67 +1095,83 @@ def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
 def greedy_van_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
-    repaired = state.copy()
-    rng.shuffle(repaired.unassigned)
-    for customer in repaired.unassigned.copy():
-        if customer not in repaired.unassigned:
-            continue
-        if config.fleet.drone_enabled and data.is_high_floor.get(customer, False):
-            continue
-        move = _best_van_move(customer, repaired, data, config)
-        if move is not None:
-            _apply_move(repaired, customer, move)
-    return _finalize_repair(repaired, data, config)
+    enter_repair("greedy_van_repair")
+    try:
+        repaired = state.copy()
+        rng.shuffle(repaired.unassigned)
+        for customer in repaired.unassigned.copy():
+            if customer not in repaired.unassigned:
+                continue
+            if data.is_high_floor.get(customer, False):
+                continue
+            move = _best_van_move(customer, repaired, data, config)
+            if move is not None:
+                _apply_move(repaired, customer, move)
+        return _finalize_repair(repaired, data, config)
+    finally:
+        exit_repair("greedy_van_repair")
 
 
 def greedy_drone_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
-    repaired = state.copy()
-    for customer in repaired.unassigned.copy():
-        if customer not in repaired.unassigned:
-            continue
-        move = _best_drone_move(customer, repaired, data, config)
-        if move is not None:
-            _apply_move(repaired, customer, move)
-    if repaired.unassigned:
-        repaired = greedy_van_repair(repaired, rng, data, config)
-    return _finalize_repair(repaired, data, config)
+    enter_repair("greedy_drone_repair")
+    try:
+        repaired = state.copy()
+        for customer in repaired.unassigned.copy():
+            if customer not in repaired.unassigned:
+                continue
+            move = _best_drone_move(customer, repaired, data, config)
+            if move is not None:
+                _apply_move(repaired, customer, move)
+        if repaired.unassigned:
+            repaired = greedy_van_repair(repaired, rng, data, config)
+        return _finalize_repair(repaired, data, config)
+    finally:
+        exit_repair("greedy_drone_repair")
 
 
 def best_mode_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
-    repaired = state.copy()
-    for customer in repaired.unassigned.copy():
-        if customer not in repaired.unassigned:
-            continue
-        moves = _all_moves(customer, repaired, data, config)
-        if moves:
-            _apply_move(repaired, customer, moves[0])
-    return _finalize_repair(repaired, data, config)
+    enter_repair("best_mode_repair")
+    try:
+        repaired = state.copy()
+        for customer in repaired.unassigned.copy():
+            if customer not in repaired.unassigned:
+                continue
+            moves = _all_moves(customer, repaired, data, config)
+            if moves:
+                _apply_move(repaired, customer, moves[0])
+        return _finalize_repair(repaired, data, config)
+    finally:
+        exit_repair("best_mode_repair")
 
 
 def regret_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
-    repaired = state.copy()
-    while repaired.unassigned:
-        best_choice = None
-        for customer in repaired.unassigned:
-            moves = _all_moves(customer, repaired, data, config)
-            if not moves:
-                continue
-            regret = (moves[1].cost - moves[0].cost) if len(moves) > 1 else moves[0].cost
-            candidate = (regret, customer, moves[0])
-            if best_choice is None or candidate[0] > best_choice[0]:
-                best_choice = candidate
+    enter_repair("regret_repair")
+    try:
+        repaired = state.copy()
+        while repaired.unassigned:
+            best_choice = None
+            for customer in repaired.unassigned:
+                moves = _all_moves(customer, repaired, data, config)
+                if not moves:
+                    continue
+                regret = (moves[1].cost - moves[0].cost) if len(moves) > 1 else moves[0].cost
+                candidate = (regret, customer, moves[0])
+                if best_choice is None or candidate[0] > best_choice[0]:
+                    best_choice = candidate
 
-        if best_choice is None:
-            break
-        _, customer, move = best_choice
-        _apply_move(repaired, customer, move)
-    return _finalize_repair(repaired, data, config)
+            if best_choice is None:
+                break
+            _, customer, move = best_choice
+            _apply_move(repaired, customer, move)
+        return _finalize_repair(repaired, data, config)
+    finally:
+        exit_repair("regret_repair")
 
 
 def _finish_repair(
@@ -965,44 +1319,48 @@ def _best_bundle_repair(
 def cascade_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
-    repaired = state.copy()
-    raw_bundles = repaired.metadata.get("cascade_bundles") or [
-        repaired.unassigned.copy()
-    ]
-    bundles = [
-        sorted(
-            {int(customer) for customer in bundle if int(customer) in repaired.unassigned},
+    enter_repair("cascade_repair")
+    try:
+        repaired = state.copy()
+        raw_bundles = repaired.metadata.get("cascade_bundles") or [
+            repaired.unassigned.copy()
+        ]
+        bundles = [
+            sorted(
+                {int(customer) for customer in bundle if int(customer) in repaired.unassigned},
+                key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
+            )
+            for bundle in raw_bundles
+            if bundle
+        ]
+        for bundle in bundles:
+            bundle = [customer for customer in bundle if customer in repaired.unassigned]
+            if not bundle:
+                continue
+            candidate = _best_bundle_repair(repaired, bundle, rng, data, config)
+            if candidate is not None:
+                repaired = candidate
+            else:
+                for customer in bundle:
+                    if customer not in repaired.unassigned:
+                        continue
+                    moves = _all_moves(customer, repaired, data, config)
+                    if moves:
+                        _apply_move(repaired, customer, moves[0])
+
+        ordered = sorted(
+            repaired.unassigned.copy(),
             key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
         )
-        for bundle in raw_bundles
-        if bundle
-    ]
-    for bundle in bundles:
-        bundle = [customer for customer in bundle if customer in repaired.unassigned]
-        if not bundle:
-            continue
-        candidate = _best_bundle_repair(repaired, bundle, rng, data, config)
-        if candidate is not None:
-            repaired = candidate
-        else:
-            for customer in bundle:
-                if customer not in repaired.unassigned:
-                    continue
-                moves = _all_moves(customer, repaired, data, config)
-                if moves:
-                    _apply_move(repaired, customer, moves[0])
-
-    ordered = sorted(
-        repaired.unassigned.copy(),
-        key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
-    )
-    for customer in ordered:
-        if customer not in repaired.unassigned:
-            continue
-        moves = _all_moves(customer, repaired, data, config)
-        if moves:
-            _apply_move(repaired, customer, moves[0])
-    return _finalize_repair(repaired, data, config)
+        for customer in ordered:
+            if customer not in repaired.unassigned:
+                continue
+            moves = _all_moves(customer, repaired, data, config)
+            if moves:
+                _apply_move(repaired, customer, moves[0])
+        return _finalize_repair(repaired, data, config)
+    finally:
+        exit_repair("cascade_repair")
 
 
 DESTROY_OPERATORS: Dict[str, DestroyOperator] = {

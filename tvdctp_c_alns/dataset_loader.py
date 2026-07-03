@@ -16,6 +16,8 @@ Coord = Tuple[float, float]
 class InstanceData:
     port_node: int
     truck_depot_node: int
+    tractor_depot_node: int
+    trailer_depot_node: int
     transshipment_nodes: List[int]
     container_origin: int
     container_origin_type: str
@@ -29,6 +31,7 @@ class InstanceData:
     is_high_floor: Dict[int, bool]
     drone_eligible: Dict[int, bool]
     orders: List[Dict[str, object]]
+    container_data: Dict[int, Dict[str, object]]
     container_assignment: Dict[int, Dict[str, object]]
     ground_distance_matrix: np.ndarray
     drone_distance_matrix: np.ndarray
@@ -75,20 +78,44 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
     rng = np.random.default_rng(config.alns.random_seed)
     port_node = config.data.port_node
     truck_depot_node = config.data.truck_depot_node
+    tractor_depot_node = (
+        int(config.data.tractor_depot_node)
+        if config.data.tractor_depot_node is not None
+        else truck_depot_node
+    )
+    trailer_depot_node = (
+        int(config.data.trailer_depot_node)
+        if config.data.trailer_depot_node is not None
+        else int(config.data.transshipment_start_node - 1)
+    )
+    transshipment_start_node = int(config.data.transshipment_start_node)
+    if trailer_depot_node >= transshipment_start_node:
+        transshipment_start_node = trailer_depot_node + 1
     transshipment_nodes = list(
         range(
-            config.data.transshipment_start_node,
-            config.data.transshipment_start_node + config.data.num_transshipments,
+            transshipment_start_node,
+            transshipment_start_node + config.data.num_transshipments,
         )
     )
-    customer_start = config.data.transshipment_start_node + config.data.num_transshipments
+    customer_start = transshipment_start_node + config.data.num_transshipments
     customers = list(range(customer_start, customer_start + config.data.num_customers))
-    nodes = [port_node, truck_depot_node] + transshipment_nodes + customers
+    truck_depot_node = tractor_depot_node
+    nodes = (
+        [port_node, tractor_depot_node, trailer_depot_node]
+        + transshipment_nodes
+        + customers
+    )
+    if len(set(nodes)) != len(nodes):
+        raise ValueError(
+            "Node ids must be unique across port, tractor depot, trailer depot, warehouses, and customers."
+        )
 
     coordinates: Dict[int, Coord] = {
         port_node: (5.0, 5.0),
         truck_depot_node: (0.0, 12.0),
     }
+    coordinates[tractor_depot_node] = coordinates.get(tractor_depot_node, (0.0, 12.0))
+    coordinates[trailer_depot_node] = (8.0, 18.0)
 
     for idx, transshipment in enumerate(transshipment_nodes):
         coordinates[transshipment] = (
@@ -127,7 +154,11 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
         for customer in customers
     }
 
-    high_count = max(1, round(len(customers) * config.data.high_floor_ratio))
+    high_count = (
+        0
+        if config.data.high_floor_ratio <= 0
+        else max(1, round(len(customers) * config.data.high_floor_ratio))
+    )
     high_floor_customers = set(rng.choice(customers, high_count, replace=False).tolist())
 
     is_high_floor: Dict[int, bool] = {}
@@ -148,14 +179,16 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
         container_origin = port_node
         container_origin_type = "port"
 
+    num_containers = max(1, int(config.data.num_containers))
     orders = []
     order_count = min(config.data.num_orders, len(customers))
     for order_id, customer in enumerate(customers[:order_count]):
+        container_id = int(order_id % num_containers)
         orders.append(
             {
                 "order_id": order_id,
                 "customer_id": customer,
-                "container_id": 0,
+                "container_id": container_id,
                 "origin_port": port_node,
                 "container_origin": container_origin,
                 "assigned_transshipment": None,
@@ -165,16 +198,33 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
             }
         )
 
-    container_assignment = {
-        0: {
-            "container_id": 0,
+    container_assignment: Dict[int, Dict[str, object]] = {}
+    for container_id in range(num_containers):
+        container_orders = [
+            int(order["order_id"])
+            for order in orders
+            if int(order["container_id"]) == int(container_id)
+        ]
+        container_customers = [
+            int(order["customer_id"])
+            for order in orders
+            if int(order["container_id"]) == int(container_id)
+        ]
+        container_assignment[container_id] = {
+            "container_id": int(container_id),
             "origin_node": container_origin,
+            "origin": container_origin,
             "origin_type": container_origin_type,
             "candidate_transshipments": transshipment_nodes.copy(),
             "selected_transshipment": None,
-            "orders": [int(order["order_id"]) for order in orders],
-            "customers": [int(order["customer_id"]) for order in orders],
+            "destination_warehouse": None,
+            "assigned_orders": container_orders,
+            "orders": container_orders,
+            "customers": container_customers,
         }
+    container_data = {
+        int(container_id): dict(assignment)
+        for container_id, assignment in container_assignment.items()
     }
 
     ground = _build_distance_matrix(
@@ -185,6 +235,8 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
     return InstanceData(
         port_node=port_node,
         truck_depot_node=truck_depot_node,
+        tractor_depot_node=tractor_depot_node,
+        trailer_depot_node=trailer_depot_node,
         transshipment_nodes=transshipment_nodes,
         container_origin=container_origin,
         container_origin_type=container_origin_type,
@@ -198,6 +250,7 @@ def generate_toy_data(config: TVDConfig) -> InstanceData:
         is_high_floor=is_high_floor,
         drone_eligible=drone_eligible,
         orders=orders,
+        container_data=container_data,
         container_assignment=container_assignment,
         ground_distance_matrix=ground,
         drone_distance_matrix=drone,

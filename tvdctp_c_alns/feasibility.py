@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 from config import TVDConfig
 from dataset_loader import InstanceData
 from state import TVDState
+from alns_profile import get_cache, increment, set_cache
 
 
 def sortie_nodes(sortie) -> Tuple[int, List[int], int]:
@@ -320,6 +321,15 @@ def compute_timing(
     late service starts are recorded as infeasible violations.
     """
 
+    increment("compute_timing_calls")
+    signature = state.cache_signature()
+    cached = get_cache("timing", state, signature)
+    if cached is not None:
+        increment("compute_timing_cache_hits")
+        state.timing = cached
+        state.metadata["timing"] = cached
+        return cached
+
     timing = _empty_timing()
 
     truck_time = 0.0
@@ -499,6 +509,7 @@ def compute_timing(
 
     state.timing = timing
     state.metadata["timing"] = timing
+    set_cache("timing", state, signature, timing)
     return timing
 
 
@@ -632,6 +643,15 @@ def _van_load_trace(state: TVDState, data: InstanceData) -> Tuple[List[Dict[str,
 def compute_timing(
     state: TVDState, data: InstanceData, config: TVDConfig
 ) -> Dict[str, object]:
+    increment("compute_timing_calls")
+    signature = state.cache_signature()
+    cached = get_cache("timing", state, signature)
+    if cached is not None:
+        increment("compute_timing_cache_hits")
+        state.timing = cached
+        state.metadata["timing"] = cached
+        return cached
+
     timing = _empty_timing()
 
     truck_time = 0.0
@@ -649,10 +669,31 @@ def compute_timing(
 
     truck_arrival_time = truck_arrival.get(state.selected_transshipment, truck_time)
     timing["truck_arrival_time"] = float(truck_arrival_time)
-    timing["van_start_time"] = float(truck_arrival_time)
+    warehouse_ready_time = {
+        int(warehouse): float(ready_time)
+        for warehouse, ready_time in state.metadata.get("warehouse_ready_time", {}).items()
+    }
+    for container in getattr(state, "container_routes", {}).values():
+        if not isinstance(container, dict):
+            continue
+        warehouse = int(container.get("destination_warehouse", state.selected_transshipment))
+        warehouse_ready_time[warehouse] = max(
+            warehouse_ready_time.get(warehouse, 0.0),
+            float(container.get("unload_complete", 0.0)),
+        )
+    timing["warehouse_ready_time"] = warehouse_ready_time
+    timing["van_start_time"] = float(
+        warehouse_ready_time.get(int(state.selected_transshipment), truck_arrival_time)
+    )
 
     routes = _active_van_routes(state)
     sorted_route_items = sorted(routes.items(), key=lambda item: _van_id_sort_key(item[0]))
+    van_start_time_by_van = {
+        van_id: float(warehouse_ready_time.get(int(route[0]), truck_arrival_time))
+        for van_id, route in sorted_route_items
+        if route
+    }
+    timing["van_start_time_by_van"] = van_start_time_by_van
 
     def _service_finish_without_record(customer: int, arrival_time: float) -> float:
         earliest, _ = data.time_windows.get(customer, (0.0, float("inf")))
@@ -726,7 +767,7 @@ def compute_timing(
         van_arrivals: Dict[str, Dict[int, float]] = {}
         van_sequences: Timeline = {}
         for van_id, route in sorted_route_items:
-            current_time = float(truck_arrival_time)
+            current_time = float(van_start_time_by_van.get(van_id, truck_arrival_time))
             van_arrivals[van_id] = {}
             van_sequences[van_id] = []
             for idx, node in enumerate(route):
@@ -779,8 +820,10 @@ def compute_timing(
             for drone_id, van_id in state.drone_initial_carrier.items()
         }
         drone_available_time: Dict[str, float] = {
-            str(drone_id): float(truck_arrival_time)
-            for drone_id in state.drone_initial_carrier
+            str(drone_id): float(
+                van_start_time_by_van.get(str(van_id), truck_arrival_time)
+            )
+            for drone_id, van_id in state.drone_initial_carrier.items()
         }
         launch_records: List[Tuple[float, int, int, int, Dict[str, object]]] = []
         for spec in sortie_specs:
@@ -1027,6 +1070,7 @@ def compute_timing(
     state.timing = timing
     state.metadata["timing"] = timing
     state.sync_primary_van_route()
+    set_cache("timing", state, signature, timing)
     return timing
 
 
@@ -1052,6 +1096,14 @@ def compute_waiting_minutes(state: TVDState, data: InstanceData, config: TVDConf
 def check_solution_feasible(
     state: TVDState, data: InstanceData, config: TVDConfig
 ) -> Tuple[bool, List[str]]:
+    increment("check_solution_feasible_calls")
+    signature = state.cache_signature()
+    cached = get_cache("feasibility", state, signature)
+    if cached is not None:
+        increment("check_solution_feasible_cache_hits")
+        feasible, violations = cached
+        return bool(feasible), list(violations)
+
     violations: List[str] = []
     customers = set(data.customers)
     routes = _active_van_routes(state)
@@ -1073,10 +1125,96 @@ def check_solution_feasible(
         if state.container_origin == state.selected_transshipment
         else [state.truck_depot_node, state.container_origin, state.selected_transshipment]
     )
-    if state.truck_route != expected_truck_route:
+    if not getattr(state, "tractor_routes", {}) and state.truck_route != expected_truck_route:
         violations.append(
             f"truck_route must be {expected_truck_route} for the selected transshipment."
         )
+
+    container_load_events: Dict[int, Tuple[str, Dict[str, object]]] = {}
+    container_unload_events: Dict[int, Tuple[str, Dict[str, object]]] = {}
+    used_trailers = set()
+    for tractor_id, tractor_route in getattr(state, "tractor_routes", {}).items():
+        if not tractor_route:
+            continue
+        home = int(state.tractor_home.get(tractor_id, getattr(data, "tractor_depot_node", data.truck_depot_node)))
+        if int(tractor_route[0].get("node", -1)) != home:
+            violations.append(f"{tractor_id} route must start at tractor_home {home}.")
+        if int(tractor_route[-1].get("node", -1)) != home:
+            violations.append(f"{tractor_id} route must return to tractor_home {home}.")
+        attached_trailer = ""
+        saw_attach = False
+        saw_detach = False
+        active_loaded_container = None
+        previous_departure = -1.0
+        for event in tractor_route:
+            arrival = float(event.get("arrival_time", 0.0))
+            departure = float(event.get("departure_time", arrival))
+            if arrival + 1e-9 < previous_departure:
+                violations.append(f"{tractor_id} route times are not nondecreasing.")
+            previous_departure = departure
+            event_name = str(event.get("event", ""))
+            trailer_id = str(event.get("trailer_id", "") or "")
+            if event_name == "attach_trailer":
+                if attached_trailer:
+                    violations.append(f"{tractor_id} attaches {trailer_id} while already hauling {attached_trailer}.")
+                attached_trailer = trailer_id
+                used_trailers.add(trailer_id)
+                saw_attach = True
+            elif event_name == "load_container":
+                if not attached_trailer:
+                    violations.append(f"{tractor_id} loads container before attaching a trailer.")
+                if trailer_id and trailer_id != attached_trailer:
+                    violations.append(f"{tractor_id} load uses trailer {trailer_id} but attached trailer is {attached_trailer}.")
+                container_id = int(event.get("container_id", -1))
+                active_loaded_container = container_id
+                if container_id in container_load_events:
+                    violations.append(f"container {container_id} has multiple load_container events.")
+                container_load_events[container_id] = (tractor_id, event)
+            elif event_name == "unload_container":
+                if not attached_trailer:
+                    violations.append(f"{tractor_id} unloads container before attaching a trailer.")
+                container_id = int(event.get("container_id", -1))
+                if active_loaded_container != container_id:
+                    violations.append(f"{tractor_id} unloads container {container_id} without matching loaded trailer movement.")
+                if container_id in container_unload_events:
+                    violations.append(f"container {container_id} has multiple unload_container events.")
+                container_unload_events[container_id] = (tractor_id, event)
+                active_loaded_container = None
+            elif event_name == "detach_trailer":
+                if not attached_trailer:
+                    violations.append(f"{tractor_id} detaches trailer before attach_trailer.")
+                if trailer_id and trailer_id != attached_trailer:
+                    violations.append(f"{tractor_id} detaches {trailer_id} but attached trailer is {attached_trailer}.")
+                attached_trailer = ""
+                saw_detach = True
+        if saw_attach and not saw_detach:
+            violations.append(f"{tractor_id} route has attach_trailer but no detach_trailer.")
+        if attached_trailer:
+            violations.append(f"{tractor_id} ends while still hauling trailer {attached_trailer}.")
+
+    for container_id, container_route in getattr(state, "container_routes", {}).items():
+        container_id = int(container_id)
+        origin = int(container_route.get("origin", -1))
+        destination = int(container_route.get("destination_warehouse", -1))
+        if destination not in state.transshipment_nodes:
+            violations.append(f"container {container_id} destination_warehouse must be a candidate warehouse.")
+        if "unload_complete" not in container_route:
+            violations.append(f"container {container_id} has no unload_complete time.")
+        load_event = container_load_events.get(container_id)
+        unload_event = container_unload_events.get(container_id)
+        if load_event is None or unload_event is None:
+            violations.append(f"container {container_id} must have exactly one tractor/trailer movement.")
+            continue
+        if int(load_event[1].get("node", -1)) != origin:
+            violations.append(f"container {container_id} load node does not match predefined origin {origin}.")
+        if int(unload_event[1].get("node", -1)) != destination:
+            violations.append(f"container {container_id} unload node does not match destination_warehouse {destination}.")
+        if str(container_route.get("tractor_id", "")) != load_event[0]:
+            violations.append(f"container {container_id} tractor_id does not match tractor route.")
+        if str(container_route.get("trailer_id", "")) != str(load_event[1].get("trailer_id", "")):
+            violations.append(f"container {container_id} trailer_id does not match load event.")
+        if float(container_route.get("unload_complete", -1.0)) + 1e-9 < float(unload_event[1].get("departure_time", 0.0)):
+            violations.append(f"container {container_id} unload_complete is earlier than unload event departure.")
 
     used_vans_by_home: Dict[int, int] = {}
     for van_id, van_route in routes.items():
@@ -1129,18 +1267,29 @@ def check_solution_feasible(
             violations.append(f"customer {customer} has no order_assignment.")
 
     for customer, assignment in state.order_assignment.items():
-        if assignment.get("assigned_transshipment") != state.selected_transshipment:
+        container_id = int(assignment.get("container_id", -1))
+        container_route = getattr(state, "container_routes", {}).get(container_id)
+        expected_destination = (
+            int(container_route["destination_warehouse"])
+            if isinstance(container_route, dict) and "destination_warehouse" in container_route
+            else state.selected_transshipment
+        )
+        if int(assignment.get("assigned_transshipment", expected_destination)) != expected_destination:
             violations.append(
-                f"order for customer {customer} is assigned to wrong transshipment."
+                f"order for customer {customer} is assigned to wrong destination warehouse."
             )
-        if assignment.get("container_id") != 0:
-            violations.append(f"order for customer {customer} must belong to container 0.")
+        if container_id not in getattr(state, "container_routes", {}):
+            violations.append(f"order for customer {customer} references missing container {container_id}.")
 
     for container_id, assignment in state.container_assignment.items():
+        container_route = getattr(state, "container_routes", {}).get(int(container_id), {})
+        expected_destination = container_route.get("destination_warehouse")
         if assignment.get("origin_node") != state.container_origin:
             violations.append(f"container {container_id} has wrong origin node.")
-        if assignment.get("selected_transshipment") != state.selected_transshipment:
+        if expected_destination is not None and int(assignment.get("selected_transshipment", -1)) != int(expected_destination):
             violations.append(f"container {container_id} has wrong selected transshipment.")
+        if expected_destination is not None and int(assignment.get("destination_warehouse", -1)) != int(expected_destination):
+            violations.append(f"container {container_id} has wrong destination_warehouse.")
         if assignment.get("candidate_transshipments") != state.transshipment_nodes:
             violations.append(f"container {container_id} has wrong candidate transshipments.")
 
@@ -1194,6 +1343,15 @@ def check_solution_feasible(
             continue
         _, latest = data.time_windows.get(customer, (0.0, float("inf")))
         service_start = float(timing["service_start"][customer])
+        order = state.order_assignment.get(customer, {})
+        container_id = int(order.get("container_id", -1)) if isinstance(order, dict) else -1
+        container_route = getattr(state, "container_routes", {}).get(container_id)
+        if isinstance(container_route, dict):
+            unload_complete = float(container_route.get("unload_complete", 0.0))
+            if service_start + 1e-9 < unload_complete:
+                violations.append(
+                    f"customer {customer} service_start {service_start:.3f} is before container {container_id} unload_complete {unload_complete:.3f}."
+                )
         if service_start > float(latest) + 1e-9:
             already_reported = any(
                 f"customer {customer}" in str(violation) and "latest" in str(violation)
@@ -1212,6 +1370,22 @@ def check_solution_feasible(
     truck_arrival_time = float(timing.get("truck_arrival_time", 0.0))
     if van_start_time + 1e-9 < truck_arrival_time:
         violations.append("van starts before the container arrives at selected_transshipment.")
+    warehouse_ready_time = timing.get("warehouse_ready_time", {})
+    sequences_by_van = timing.get("van_arrival_sequence_by_van", {})
+    if isinstance(warehouse_ready_time, dict) and isinstance(sequences_by_van, dict):
+        for van_id, sequence in sequences_by_van.items():
+            if not sequence:
+                continue
+            first = sequence[0]
+            if not isinstance(first, dict):
+                continue
+            warehouse = int(first.get("node", -1))
+            ready_time = float(warehouse_ready_time.get(warehouse, 0.0))
+            departure_time = float(first.get("departure_time", first.get("arrival_time", 0.0)))
+            if departure_time + 1e-9 < ready_time:
+                violations.append(
+                    f"{van_id} departs warehouse {warehouse} at {departure_time:.3f} before warehouse_ready_time {ready_time:.3f}."
+                )
 
     for sortie in state.drone_sorties:
         launch, sortie_customers, recovery = sortie_nodes(sortie)
@@ -1342,14 +1516,15 @@ def check_solution_feasible(
     if float(timing.get("drone_waiting_time", 0.0)) < -1e-9:
         violations.append("total drone waiting time is negative.")
 
-    if config.fleet.drone_enabled:
-        used_drones = len(timing.get("drone_physical_routes", {}))
-        if used_drones > config.total_num_drones(data.transshipment_nodes):
-            violations.append(
-                f"used physical drones {used_drones} exceed owned drones {config.total_num_drones(data.transshipment_nodes)}."
-            )
-        for customer, high_floor in data.is_high_floor.items():
-            if high_floor and state.service_mode.get(customer) != "drone":
-                violations.append(f"high-floor customer {customer} must be served by drone.")
+    used_drones = len(timing.get("drone_physical_routes", {}))
+    if used_drones > config.total_num_drones(data.transshipment_nodes):
+        violations.append(
+            f"used physical drones {used_drones} exceed owned drones {config.total_num_drones(data.transshipment_nodes)}."
+        )
+    for customer, high_floor in data.is_high_floor.items():
+        if high_floor and state.service_mode.get(customer) != "drone":
+            violations.append(f"high-floor customer {customer} must be served by drone.")
 
-    return len(violations) == 0, violations
+    feasible = len(violations) == 0
+    set_cache("feasibility", state, signature, (feasible, list(violations)))
+    return feasible, violations

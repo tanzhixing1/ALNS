@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 
+import numpy as np
 import pytest
 
 from alns_solver import run_c_alns
@@ -17,7 +18,13 @@ from feasibility import (
 )
 from initial_solution import initial_solution
 from objective import objective
-from operators import _best_drone_move, consolidate_drone_sorties
+from operators import (
+    _best_drone_move,
+    _best_van_move,
+    best_mode_repair,
+    consolidate_drone_sorties,
+    switch_transshipment_operator,
+)
 from evaluation import _active_plot_van_routes, evaluate_and_save
 
 
@@ -119,7 +126,7 @@ def test_tiny_multi_van_resource_model() -> None:
         num_containers=1,
         iterations=40,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
     )
     config.data.high_floor_ratio = 0.15
@@ -166,6 +173,318 @@ def test_tiny_multi_van_resource_model() -> None:
     assert total_cost == pytest.approx(objective_without_waiting)
 
 
+def test_container_destination_is_decided_not_preset() -> None:
+    config = build_config(
+        num_customers=4,
+        num_orders=4,
+        num_transshipments=2,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+    )
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    first_warehouse, second_warehouse = data.transshipment_nodes[:2]
+    origin = data.container_origin
+    data.ground_distance_matrix[origin, first_warehouse] = 100.0
+    data.ground_distance_matrix[first_warehouse, origin] = 100.0
+    data.ground_distance_matrix[origin, second_warehouse] = 1.0
+    data.ground_distance_matrix[second_warehouse, origin] = 1.0
+    for customer in data.customers:
+        data.ground_distance_matrix[second_warehouse, customer] = 1.0
+        data.ground_distance_matrix[customer, second_warehouse] = 1.0
+        data.ground_distance_matrix[first_warehouse, customer] = 100.0
+        data.ground_distance_matrix[customer, first_warehouse] = 100.0
+
+    state = initial_solution(data, config)
+    destination = int(state.container_routes[0]["destination_warehouse"])
+
+    assert destination in data.transshipment_nodes
+    assert destination == second_warehouse
+    assert destination != first_warehouse
+
+
+def test_initial_solution_rejects_infeasible_high_floor_without_drone() -> None:
+    config = build_config(
+        num_customers=6,
+        num_orders=6,
+        num_transshipments=2,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+    )
+    config.data.high_floor_ratio = 0.5
+    data = generate_toy_data(config)
+
+    with pytest.raises(ValueError, match="high-floor customer"):
+        initial_solution(data, config)
+
+
+def test_initial_solution_rejects_van_capacity_fallback_insert() -> None:
+    config = build_config(
+        num_customers=2,
+        num_orders=2,
+        num_transshipments=1,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+        warehouse_num_vans={3: 1},
+    )
+    config.data.high_floor_ratio = 0.0
+    config.fleet.van_capacity_kg = 10.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    for customer in data.customers:
+        data.demands[customer] = 9.0
+        data.pickup_demands[customer] = 0.0
+        data.time_windows[customer] = (0.0, 10_000.0)
+
+    with pytest.raises(ValueError, match="van capacity/time window"):
+        initial_solution(data, config)
+
+
+def test_initial_solution_rejects_time_window_insert() -> None:
+    config = build_config(
+        num_customers=1,
+        num_orders=1,
+        num_transshipments=1,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+        warehouse_num_vans={3: 1},
+    )
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    customer = data.customers[0]
+    warehouse = data.transshipment_nodes[0]
+    data.is_high_floor = {customer: False}
+    data.demands[customer] = 1.0
+    data.pickup_demands[customer] = 0.0
+    data.service_times[customer] = 0.0
+    data.time_windows[customer] = (0.0, 1.0)
+    data.ground_distance_matrix[warehouse, customer] = 1000.0
+    data.ground_distance_matrix[customer, warehouse] = 1000.0
+
+    with pytest.raises(ValueError, match="van capacity/time window"):
+        initial_solution(data, config)
+
+
+def test_best_van_move_rejects_time_window_infeasible_candidate() -> None:
+    config = build_config(
+        num_customers=2,
+        num_orders=2,
+        num_transshipments=1,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+        warehouse_num_vans={3: 1},
+    )
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    for customer in data.customers:
+        data.demands[customer] = 1.0
+        data.pickup_demands[customer] = 0.0
+        data.service_times[customer] = 0.0
+        data.time_windows[customer] = (0.0, 10_000.0)
+    state = initial_solution(data, config)
+
+    customer = data.customers[0]
+    warehouse = data.transshipment_nodes[0]
+    state.van_routes = {
+        van_id: [node for node in route if node != customer]
+        for van_id, route in state.van_routes.items()
+    }
+    state.sync_primary_van_route()
+    state.mark_unassigned(customer)
+    data.time_windows[customer] = (0.0, 1.0)
+    data.ground_distance_matrix[warehouse, customer] = 1000.0
+    data.ground_distance_matrix[customer, warehouse] = 1000.0
+
+    move = _best_van_move(customer, state, data, config)
+
+    assert move is None
+
+
+def test_switch_transshipment_rebuilds_stage1_for_all_candidate_warehouses() -> None:
+    config = build_config(
+        num_customers=9,
+        num_orders=9,
+        num_transshipments=3,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+    )
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    for customer in data.customers:
+        data.time_windows[customer] = (0.0, 10_000.0)
+    state = initial_solution(data, config)
+    rng = np.random.default_rng(3)
+    seen = {state.selected_transshipment}
+
+    for _ in range(20):
+        switched = switch_transshipment_operator(state, rng, data, config)
+        repaired = best_mode_repair(switched, rng, data, config)
+        feasible, violations = check_solution_feasible(repaired, data, config)
+        seen.add(repaired.selected_transshipment)
+
+        assert feasible is True, violations
+        assert {
+            int(route["destination_warehouse"])
+            for route in repaired.container_routes.values()
+        } == {int(repaired.selected_transshipment)}
+        assert all(
+            assignment["candidate_transshipments"] == data.transshipment_nodes
+            for assignment in repaired.container_assignment.values()
+        )
+
+    assert seen == set(data.transshipment_nodes)
+
+
+def test_tractor_attaches_trailer_before_container_transport() -> None:
+    config = build_config(num_customers=4, num_orders=4, num_containers=1, iterations=1, seed=42, drone_enabled=False)
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    for customer in data.customers:
+        data.time_windows[customer] = (0.0, 10_000.0)
+    state = initial_solution(data, config)
+    route = next(iter(state.tractor_routes.values()))
+    events = [item["event"] for item in route]
+
+    assert events.index("attach_trailer") < events.index("load_container")
+    assert events.index("load_container") < events.index("unload_container")
+
+
+def test_trailer_cannot_move_without_tractor() -> None:
+    config = build_config(num_customers=4, num_orders=4, num_containers=1, iterations=1, seed=42, drone_enabled=False)
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    for customer in data.customers:
+        data.time_windows[customer] = (0.0, 10_000.0)
+    state = initial_solution(data, config)
+    tractor_id = next(iter(state.tractor_routes))
+    state.tractor_routes[tractor_id] = [
+        item for item in state.tractor_routes[tractor_id] if item.get("event") != "attach_trailer"
+    ]
+
+    feasible, violations = check_solution_feasible(state, data, config)
+
+    assert feasible is False
+    assert any("before attaching a trailer" in item for item in violations)
+
+
+def test_container_unload_time_gates_van_departure() -> None:
+    config = build_config(num_customers=4, num_orders=4, num_containers=1, iterations=1, seed=42, drone_enabled=False)
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    for customer in data.customers:
+        data.time_windows[customer] = (0.0, 10_000.0)
+    state = initial_solution(data, config)
+    container = state.container_routes[0]
+    warehouse = int(container["destination_warehouse"])
+    container["unload_complete"] = 999.0
+    state.metadata["warehouse_ready_time"] = {warehouse: 999.0}
+
+    timing = state.timing = {}
+    from feasibility import compute_timing
+    timing = compute_timing(state, data, config)
+    first_van = next(van_id for van_id, route in state.van_routes.items() if int(route[0]) == warehouse)
+    first_departure = float(timing["van_arrival_sequence_by_van"][first_van][0]["departure_time"])
+    feasible, violations = check_solution_feasible(state, data, config)
+
+    assert first_departure >= 999.0
+    assert feasible is True, violations
+
+
+def test_single_container_stage1_route_pattern() -> None:
+    config = build_config(num_customers=4, num_orders=4, num_containers=1, iterations=1, seed=42, drone_enabled=False)
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    state = initial_solution(data, config)
+    route = next(iter(state.tractor_routes.values()))
+    events = [item["event"] for item in route]
+    container = state.container_routes[0]
+
+    assert data.nodes[: 3 + len(data.transshipment_nodes)] == [
+        data.port_node,
+        data.tractor_depot_node,
+        data.trailer_depot_node,
+        *data.transshipment_nodes,
+    ]
+    assert events == [
+        "depart_tractor_depot",
+        "attach_trailer",
+        "load_container",
+        "unload_container",
+        "detach_trailer",
+        "return_tractor_depot",
+    ]
+    assert int(route[0]["node"]) == data.tractor_depot_node
+    assert int(route[1]["node"]) == data.trailer_depot_node
+    assert int(route[2]["node"]) == int(container["origin"])
+    assert int(route[3]["node"]) == int(container["destination_warehouse"])
+    assert int(route[-2]["node"]) == data.trailer_depot_node
+    assert int(route[-1]["node"]) == data.tractor_depot_node
+    assert int(container["destination_warehouse"]) in data.transshipment_nodes
+
+
+def test_initial_solution_serves_default_high_floor_customers_by_drone() -> None:
+    config = build_config(
+        num_customers=10,
+        num_orders=10,
+        num_transshipments=2,
+        num_containers=1,
+        iterations=1,
+        seed=42,
+    )
+    data = generate_toy_data(config)
+    state = initial_solution(data, config)
+    feasible, violations = check_solution_feasible(state, data, config)
+    high_floor_customers = [
+        customer for customer in data.customers if data.is_high_floor.get(customer, False)
+    ]
+
+    assert feasible is True, violations
+    assert high_floor_customers
+    assert state.unassigned == []
+    assert all(state.service_mode.get(customer) == "drone" for customer in high_floor_customers)
+
+
+def test_multiple_containers_have_assignments_if_enabled() -> None:
+    config = build_config(
+        num_customers=6,
+        num_orders=6,
+        num_containers=2,
+        iterations=1,
+        seed=42,
+        drone_enabled=False,
+    )
+    config.data.high_floor_ratio = 0.0
+    data = generate_toy_data(config)
+    data.is_high_floor = {customer: False for customer in data.customers}
+    state = initial_solution(data, config)
+
+    assert set(state.container_routes) == {0, 1}
+    for container_id, route in state.container_routes.items():
+        assert route["origin"] == data.container_assignment[container_id]["origin_node"]
+        assert route["destination_warehouse"] in data.transshipment_nodes
+        assert route["tractor_id"]
+        assert route["trailer_id"]
+        assert "unload_complete" in route
+
+
 def test_initial_solution_does_not_balance_into_second_van_when_one_van_is_feasible() -> None:
     config = build_config(
         num_customers=6,
@@ -174,7 +493,7 @@ def test_initial_solution_does_not_balance_into_second_van_when_one_van_is_feasi
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
         drone_enabled=False,
     )
@@ -262,7 +581,7 @@ def test_manual_cross_van_flexible_docking_feasible_when_recovery_van_visits_nod
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
     )
     config.data.high_floor_ratio = 0.0
@@ -291,7 +610,7 @@ def test_manual_cross_van_flexible_docking_infeasible_when_recovery_van_misses_n
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
     )
     config.data.high_floor_ratio = 0.0
@@ -316,7 +635,7 @@ def _cross_van_timing_fixture(num_drone_customers: int = 1):
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
     )
     config.data.high_floor_ratio = 0.0
@@ -464,7 +783,7 @@ def test_best_drone_move_can_generate_cross_van_recovery() -> None:
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drones_per_van=2,
     )
     config.data.high_floor_ratio = 0.0
@@ -541,7 +860,7 @@ def test_routes_plot_active_van_filter_excludes_inactive_empty_van() -> None:
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drone_enabled=False,
     )
     config.data.high_floor_ratio = 0.0
@@ -579,7 +898,7 @@ def test_drone_sortie_consolidation_merges_feasible_same_anchor_sorties() -> Non
         num_containers=1,
         iterations=1,
         seed=42,
-        warehouse_num_vans={2: 2, 3: 2},
+        warehouse_num_vans={3: 2, 4: 2},
         drone_enabled=False,
     )
     config.data.high_floor_ratio = 0.0

@@ -4,16 +4,21 @@ This project is a readable Python toy implementation for the paper problem:
 **Truck-Van-Drone Collaborative Transportation Problem with Transshipment
 (TVDCTP-T)**.
 
-## Current v6 Scope
+## Current v7 Scope
 
-The current v6 toy version models:
+The current v7 toy version models:
 
-- 1 container.
+- 1 container by default, with deterministic multi-container grouping when
+  `num_containers > 1`.
 - 6 orders/customers by default.
-- 1 truck depot.
+- 1 tractor depot, mapped to the legacy truck depot by default.
+- 1 trailer depot, generated as an additional depot node.
 - 1 port node.
 - 2 candidate transshipment warehouses.
-- 1 selected transshipment warehouse for each toy container.
+- A container destination warehouse decided by `initial_solution.py`, not a
+  fixed input selected transshipment.
+- Tractor-trailer-container drayage skeleton routes with
+  attach/load/unload/detach events.
 - Multiple van routes from the selected warehouse, with open-route endings.
 - Per-warehouse van availability and derived drone availability.
 - Paper-style drone resources: `num_drones = num_vans * drones_per_van`;
@@ -35,8 +40,13 @@ The current v6 toy version models:
 - A selected-transshipment switch destroy operator inside ALNS.
 - Vehicle fixed usage costs plus distance-based transportation costs.
 
-The container is **not split**. All orders belong to container `0`, and the
-container is assigned to exactly one selected transshipment warehouse.
+`selected_transshipment` and `truck_route` are retained as legacy compatibility
+views. They no longer represent the full Stage-1 state. The full drayage state
+is stored in `tractor_routes` and `container_routes`.
+
+`truck_cost` is also retained as a compatibility name; it currently represents
+tractor-trailer drayage cost, including tractor distance and used tractor/trailer
+fixed cost components.
 
 ## Default Node Numbering
 
@@ -46,6 +56,7 @@ container is assigned to exactly one selected transshipment warehouse.
 | `1` | Truck/tractor depot node. |
 | `2, 3` | Candidate transshipment warehouses. |
 | `4..9` | Customer/order service nodes. |
+| after customers | Trailer depot node by default. |
 
 ## Container and Order Semantics
 
@@ -55,16 +66,18 @@ Each order is stored in `order_assignment`:
 order_assignment[customer_id] = {
     "order_id": ...,
     "customer_id": customer_id,
-    "container_id": 0,
+    "container_id": ...,
     "container_origin": container_origin,
-    "assigned_transshipment": selected_transshipment,
+    "assigned_transshipment": decided_destination_warehouse,
     "demand": ...,
     "pickup_demand": ...,
     "service_required": True,
 }
 ```
 
-The single toy container is stored in `container_assignment`:
+Toy containers are stored in `container_assignment` and mirrored in
+`container_routes` after `initial_solution.py` decides the destination warehouse
+and drayage assignment:
 
 ```python
 container_assignment[0] = {
@@ -72,7 +85,8 @@ container_assignment[0] = {
     "origin_node": container_origin,
     "origin_type": "port" or "transshipment",
     "candidate_transshipments": [2, 3],
-    "selected_transshipment": selected_transshipment,
+    "selected_transshipment": decided_destination_warehouse,
+    "destination_warehouse": decided_destination_warehouse,
     "orders": [0, 1, 2, 3, 4, 5],
     "customers": [4, 5, 6, 7, 8, 9],
 }
@@ -80,18 +94,37 @@ container_assignment[0] = {
 
 ## Route Semantics
 
-The truck route is based on the selected transshipment:
+The legacy `truck_route` is a simplified node-only view of the first tractor
+route. The full Stage-1 route is:
 
 ```python
-truck_route = [truck_depot_node, container_origin, selected_transshipment]
+tractor_routes = {
+    "tractor_0": [
+        {"event": "depart_tractor_depot", ...},
+        {"event": "attach_trailer", ...},
+        {"event": "load_container", ...},
+        {"event": "unload_container", ...},
+        {"event": "detach_trailer", ...},
+        {"event": "return_tractor_depot", ...},
+    ]
+}
 ```
-
-If the container is already at the selected transshipment, the route is
-simplified to:
 
 ```python
-truck_route = [truck_depot_node, selected_transshipment]
+container_routes = {
+    0: {
+        "origin": container_origin,
+        "destination_warehouse": decided_destination_warehouse,
+        "tractor_id": "tractor_0",
+        "trailer_id": "trailer_0",
+        "unload_complete": ...,
+    }
+}
 ```
+
+Vans and drones assigned to orders in a container cannot depart/service before
+that container's `unload_complete` time. Per-warehouse van start time is gated
+by `warehouse_ready_time = max(unload_complete for containers assigned there)`.
 
 Each van route starts at the van's home transshipment warehouse and may end at
 any candidate transshipment warehouse. This is the toy project's open-route

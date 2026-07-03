@@ -12,6 +12,7 @@ class CostConfig:
     van_cost_per_km: float = 0.875
     drone_cost_per_km: float = 0.052
     tractor_fixed_cost: float = 166.0
+    trailer_fixed_cost: float = 0.0
     van_fixed_cost: float = 59.0
     drone_fixed_cost: float = 169.0
     time_penalty_per_hour: float = 38.9
@@ -33,8 +34,14 @@ class FleetConfig:
     drone_base_energy_coeff: float = 0.18
     drone_self_weight_kg: float = 5.0
     num_trucks: int = 1
+    num_tractors: int = 1
+    num_trailers: int = 1
     drones_per_van: int = 2
     drone_enabled: bool = True
+    trailer_attach_time: float = 0.0
+    trailer_detach_time: float = 0.0
+    container_load_time: float = 0.0
+    container_unload_time: float = 0.0
 
 
 @dataclass
@@ -47,14 +54,18 @@ class ALNSConfig:
     weight_update_interval: int = 50
     reaction_coefficient: float = 0.2
     scores: tuple[float, float, float, float] = (5.0, 3.0, 1.0, 0.0)
-    max_no_improvement: int = 100
+    max_no_improve: Optional[int] = 100
+    max_no_improvement: Optional[int] = 100
+    early_stop_enabled: bool = True
 
 
 @dataclass
 class ToyDataConfig:
     port_node: int = 0
     truck_depot_node: int = 1
-    transshipment_start_node: int = 2
+    tractor_depot_node: Optional[int] = None
+    trailer_depot_node: Optional[int] = None
+    transshipment_start_node: int = 3
     num_transshipments: int = 2
     num_customers: int = 6
     num_orders: int = 6
@@ -144,6 +155,30 @@ class TVDConfig:
             for drone_id, van_id in self.build_drone_initial_carrier(transshipment_nodes).items()
         }
 
+    def build_tractor_home(self) -> Dict[str, int]:
+        depot = (
+            int(self.data.tractor_depot_node)
+            if self.data.tractor_depot_node is not None
+            else int(self.data.truck_depot_node)
+        )
+        return {
+            f"tractor_{idx}": depot
+            for idx in range(int(self.fleet.num_tractors))
+        }
+
+    def build_trailer_home(self, trailer_depot_node: Optional[int] = None) -> Dict[str, int]:
+        depot = (
+            int(trailer_depot_node)
+            if trailer_depot_node is not None
+            else int(self.data.trailer_depot_node)
+            if self.data.trailer_depot_node is not None
+            else int(self.data.transshipment_start_node - 1)
+        )
+        return {
+            f"trailer_{idx}": depot
+            for idx in range(int(self.fleet.num_trailers))
+        }
+
     @property
     def num_vans(self) -> int:
         return self.total_num_vans()
@@ -164,7 +199,11 @@ def build_config(
     drone_enabled: bool = True,
     output_dir: str = "outputs",
     drones_per_van: int = 2,
+    num_tractors: int = 1,
+    num_trailers: int = 1,
     warehouse_num_vans: Optional[Dict[int, int]] = None,
+    max_no_improve: Optional[int] = 100,
+    early_stop_enabled: bool = True,
 ) -> TVDConfig:
     config = TVDConfig()
     config.data.num_customers = num_customers
@@ -174,8 +213,14 @@ def build_config(
     config.data.container_origin = container_origin
     config.alns.max_iterations = iterations
     config.alns.random_seed = seed
+    config.alns.max_no_improve = max_no_improve
+    config.alns.max_no_improvement = max_no_improve
+    config.alns.early_stop_enabled = bool(early_stop_enabled)
     config.fleet.drone_enabled = drone_enabled
     config.fleet.drones_per_van = int(drones_per_van)
+    config.fleet.num_tractors = int(num_tractors)
+    config.fleet.num_trailers = int(num_trailers)
+    config.fleet.num_trucks = int(num_tractors)
     if warehouse_num_vans is not None:
         config.data.warehouse_num_vans = {
             int(warehouse): int(count)

@@ -24,6 +24,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--num_containers", type=int, default=1)
     parser.add_argument("--container_origin", type=str, default="port")
     parser.add_argument("--iterations", type=int, default=300)
+    parser.add_argument("--max_no_improve", type=int, default=100)
+    parser.add_argument("--early_stop", type=_parse_bool, nargs="?", const=True, default=True)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--drone_enabled", type=_parse_bool, nargs="?", const=True, default=True)
     parser.add_argument("--output_dir", type=str, default="outputs")
@@ -43,6 +45,8 @@ def main() -> None:
         seed=args.seed,
         drone_enabled=args.drone_enabled,
         output_dir=args.output_dir,
+        max_no_improve=args.max_no_improve,
+        early_stop_enabled=args.early_stop,
     )
     if not Path(config.output_dir).is_absolute():
         config.output_dir = str(Path(__file__).resolve().parent / config.output_dir)

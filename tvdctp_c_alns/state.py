@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import copy
+import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Tuple
+
+from alns_profile import add_value, increment
 
 
 DroneSortie = Dict[str, object]
@@ -39,6 +42,10 @@ class TVDState:
     container_origin: int
     truck_route: List[int]
     van_route: List[int]
+    tractor_routes: Dict[str, List[Dict[str, object]]] = field(default_factory=dict)
+    tractor_home: Dict[str, int] = field(default_factory=dict)
+    trailer_home: Dict[str, int] = field(default_factory=dict)
+    container_routes: Dict[int, Dict[str, object]] = field(default_factory=dict)
     van_routes: Dict[str, List[int]] = field(default_factory=dict)
     van_home: Dict[str, int] = field(default_factory=dict)
     drone_initial_carrier: Dict[str, str] = field(default_factory=dict)
@@ -71,7 +78,78 @@ class TVDState:
     def route_for_van(self, van_id: str) -> List[int]:
         return self.van_routes.setdefault(str(van_id), [])
 
+    def cache_signature(self) -> Tuple[object, ...]:
+        start = time.perf_counter()
+        def _sortie_signature(sortie: DroneSortie) -> Tuple[object, ...]:
+            if isinstance(sortie, dict):
+                return (
+                    int(sortie.get("launch", -1)),
+                    tuple(int(customer) for customer in sortie.get("customers", [])),
+                    int(sortie.get("recovery", -1)),
+                    str(sortie.get("drone_id", "")),
+                    str(sortie.get("launch_van_id", "")),
+                    str(sortie.get("recovery_van_id", "")),
+                    int(sortie.get("launch_position", -1)),
+                    int(sortie.get("recovery_position", -1)),
+                )
+            return tuple(sortie)  # type: ignore[arg-type]
+
+        container_signature = tuple(
+            (
+                int(container_id),
+                int(route.get("origin", -1)),
+                int(route.get("destination_warehouse", -1)),
+                float(route.get("unload_complete", 0.0)),
+                tuple(int(customer) for customer in route.get("customers", [])),
+            )
+            for container_id, route in sorted(self.container_routes.items())
+        )
+        tractor_signature = tuple(
+            (
+                str(tractor_id),
+                tuple(
+                    (
+                        str(event.get("event", "")),
+                        int(event.get("node", -1)),
+                        str(event.get("trailer_id", "")),
+                        int(event.get("container_id", -1)),
+                        round(float(event.get("arrival_time", 0.0)), 9),
+                        round(float(event.get("departure_time", 0.0)), 9),
+                    )
+                    for event in route
+                ),
+            )
+            for tractor_id, route in sorted(self.tractor_routes.items())
+        )
+        warehouse_ready_time = self.metadata.get("warehouse_ready_time", {})
+        if isinstance(warehouse_ready_time, dict):
+            warehouse_ready_signature = tuple(
+                (int(warehouse), round(float(ready_time), 9))
+                for warehouse, ready_time in sorted(warehouse_ready_time.items())
+            )
+        else:
+            warehouse_ready_signature = ()
+        signature = (
+            int(self.selected_transshipment),
+            int(self.container_origin),
+            tuple(int(node) for node in self.truck_route),
+            tuple((str(van_id), tuple(int(node) for node in route)) for van_id, route in sorted(self.van_routes.items())),
+            tuple(_sortie_signature(sortie) for sortie in self.drone_sorties),
+            tuple((int(customer), str(mode)) for customer, mode in sorted(self.service_mode.items())),
+            tuple(int(customer) for customer in self.unassigned),
+            tuple((str(van_id), int(home)) for van_id, home in sorted(self.van_home.items())),
+            tuple((str(drone_id), str(van_id)) for drone_id, van_id in sorted(self.drone_initial_carrier.items())),
+            container_signature,
+            tractor_signature,
+            warehouse_ready_signature,
+        )
+        increment("state_signature_calls")
+        add_value("state_signature_time_total", time.perf_counter() - start)
+        return signature
+
     def copy(self) -> "TVDState":
+        increment("state_copy_calls")
+        increment("state_deepcopy_calls", 7)
         return TVDState(
             port_node=self.port_node,
             truck_depot_node=self.truck_depot_node,
@@ -80,6 +158,10 @@ class TVDState:
             container_origin=self.container_origin,
             truck_route=self.truck_route.copy(),
             van_route=self.van_route.copy(),
+            tractor_routes=copy.deepcopy(self.tractor_routes),
+            tractor_home=self.tractor_home.copy(),
+            trailer_home=self.trailer_home.copy(),
+            container_routes=copy.deepcopy(self.container_routes),
             van_routes=copy.deepcopy(self.van_routes),
             van_home=self.van_home.copy(),
             drone_initial_carrier=self.drone_initial_carrier.copy(),
@@ -110,6 +192,8 @@ class TVDState:
     def pretty_print(self) -> str:
         lines = [
             f"truck_route={self.truck_route}",
+            f"tractor_routes={self.tractor_routes}",
+            f"container_routes={self.container_routes}",
             f"van_route={self.van_route}",
             f"van_routes={self.van_routes}",
             f"drone_sorties={self.drone_sorties}",

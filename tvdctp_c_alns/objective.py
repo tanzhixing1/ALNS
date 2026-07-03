@@ -11,6 +11,7 @@ from feasibility import (
     drone_sortie_energy,
 )
 from state import TVDState
+from alns_profile import get_cache, increment, set_cache
 
 
 def _route_distance(route: list[int], matrix) -> float:
@@ -20,8 +21,32 @@ def _route_distance(route: list[int], matrix) -> float:
     )
 
 
+def _tractor_route_distance(state: TVDState, data: InstanceData) -> float:
+    tractor_routes = getattr(state, "tractor_routes", {})
+    if not tractor_routes:
+        return _route_distance(state.truck_route, data.ground_distance_matrix)
+    distance = 0.0
+    for route in tractor_routes.values():
+        nodes = [int(item["node"]) for item in route if isinstance(item, dict) and "node" in item]
+        distance += _route_distance(nodes, data.ground_distance_matrix)
+    return float(distance)
+
+
 def _vehicle_usage_counts(state: TVDState) -> Dict[str, int]:
-    used_trucks = 1 if len(state.truck_route) > 1 else 0
+    tractor_routes = getattr(state, "tractor_routes", {})
+    used_trucks = (
+        sum(1 for route in tractor_routes.values() if route)
+        if tractor_routes
+        else 1 if len(state.truck_route) > 1 else 0
+    )
+    used_trailers = len(
+        {
+            str(item.get("trailer_id"))
+            for route in tractor_routes.values()
+            for item in route
+            if isinstance(item, dict) and item.get("trailer_id")
+        }
+    )
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
     used_vans = sum(
         1
@@ -49,6 +74,8 @@ def _vehicle_usage_counts(state: TVDState) -> Dict[str, int]:
     )
     return {
         "used_trucks": used_trucks,
+        "used_tractors": used_trucks,
+        "used_trailers": used_trailers,
         "used_vans": used_vans,
         "used_drones": used_drones,
         "used_drone_sorties": len(state.drone_sorties),
@@ -60,13 +87,26 @@ def objective(
 ) -> Tuple[float, Dict[str, object]]:
     """Objective with vehicle transport/fixed costs, reported waiting, and penalties."""
 
+    increment("objective_calls")
+    signature = state.cache_signature()
+    cached = get_cache("objective", state, signature)
+    if cached is not None:
+        increment("objective_cache_hits")
+        total, breakdown = cached
+        state.metadata["total_cost"] = float(total)
+        state.metadata["cost_breakdown"] = breakdown
+        state.metadata["feasibility_violations"] = breakdown.get("violations", [])
+        state.metadata["feasible"] = bool(breakdown.get("feasible", False))
+        return float(total), dict(breakdown)
+
     waiting_minutes = compute_waiting_minutes(state, data, config)
     usage = _vehicle_usage_counts(state)
 
-    truck_distance = _route_distance(state.truck_route, data.ground_distance_matrix)
+    truck_distance = _tractor_route_distance(state, data)
     truck_transport_cost = truck_distance * config.cost.tractor_cost_per_km
     truck_fixed_cost = usage["used_trucks"] * config.cost.tractor_fixed_cost
-    truck_cost = truck_transport_cost + truck_fixed_cost
+    trailer_fixed_cost = usage["used_trailers"] * getattr(config.cost, "trailer_fixed_cost", 0.0)
+    truck_cost = truck_transport_cost + truck_fixed_cost + trailer_fixed_cost
 
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
     van_distance = sum(
@@ -109,6 +149,8 @@ def objective(
         "truck_cost": float(truck_cost),
         "truck_transport_cost": float(truck_transport_cost),
         "truck_fixed_cost": float(truck_fixed_cost),
+        "tractor_distance_cost": float(truck_transport_cost),
+        "trailer_fixed_cost": float(trailer_fixed_cost),
         "van_cost": float(van_cost),
         "van_transport_cost": float(van_transport_cost),
         "van_fixed_cost": float(van_fixed_cost),
@@ -132,9 +174,11 @@ def objective(
         ),
         "waiting_cost_reported_not_optimized": True,
         "feasible": feasible,
+        "violations": list(violations),
     }
     state.metadata["total_cost"] = float(total)
     state.metadata["cost_breakdown"] = breakdown
     state.metadata["feasibility_violations"] = violations
     state.metadata["feasible"] = feasible
+    set_cache("objective", state, signature, (float(total), dict(breakdown)))
     return float(total), breakdown

@@ -1,0 +1,10 @@
+{
+  "method": "Gurobi/MILP",
+  "time_limit": 300,
+  "runtime_seconds": 0.0,
+  "incumbent_cost": null,
+  "lower_bound": null,
+  "gap": null,
+  "status": "unavailable: No module named 'gurobipy'",
+  "feasible": null
+}

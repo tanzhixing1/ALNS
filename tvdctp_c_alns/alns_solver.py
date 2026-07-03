@@ -9,7 +9,15 @@ import numpy as np
 
 from config import TVDConfig
 from dataset_loader import InstanceData
+from feasibility import check_solution_feasible
 from initial_solution import initial_solution
+from alns_profile import (
+    enter_operator_pair,
+    exit_operator_pair,
+    record_repair_rejection,
+    reset_profile,
+    snapshot_profile,
+)
 from objective import objective
 from operators import DESTROY_OPERATORS, REPAIR_OPERATORS, consolidate_drone_sorties
 from state import TVDState
@@ -22,8 +30,13 @@ class ALNSResult:
     current_state: TVDState
     history: List[Dict[str, object]]
     runtime_seconds: float
+    actual_iterations: int
+    no_improve_counter: int
+    early_stop_triggered: bool
+    phase_timings: Dict[str, float]
     destroy_weights: Dict[str, float]
     repair_weights: Dict[str, float]
+    profile: Dict[str, object]
 
 
 def _roulette_choice(
@@ -64,14 +77,28 @@ def _update_weights(
 def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
     """不含 PPO 的 C-ALNS 主循环，贴合论文第 5.1.4 节的 SA + adaptive weights。"""
 
+    reset_profile()
     rng = np.random.default_rng(config.alns.random_seed)
     start = time.perf_counter()
 
+    phase_timings: Dict[str, float] = {}
+    phase_start = time.perf_counter()
     initial = consolidate_drone_sorties(initial_solution(data, config), data, config)
+    phase_timings["t_initial_solution_total"] = time.perf_counter() - phase_start
     current = initial.copy()
     best = initial.copy()
+    phase_start = time.perf_counter()
     current_cost, _ = objective(current, data, config)
     best_cost, _ = objective(best, data, config)
+    phase_timings["t_initial_objective"] = time.perf_counter() - phase_start
+    phase_start = time.perf_counter()
+    initial_feasible, initial_violations = check_solution_feasible(initial, data, config)
+    phase_timings["t_initial_feasibility_check"] = time.perf_counter() - phase_start
+    if not initial_feasible:
+        raise RuntimeError(
+            "C-ALNS initial solution is infeasible after final feasibility check: "
+            f"{initial_violations}"
+        )
 
     destroy_names = list(DESTROY_OPERATORS.keys())
     repair_names = list(REPAIR_OPERATORS.keys())
@@ -84,16 +111,40 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
 
     history: List[Dict[str, object]] = []
     temperature = config.alns.initial_temperature
-    no_improvement = 0
+    no_improve_counter = 0
+    actual_iterations = 0
+    early_stop_triggered = False
+    max_no_improve = getattr(
+        config.alns,
+        "max_no_improve",
+        getattr(config.alns, "max_no_improvement", None),
+    )
+    early_stop_enabled = bool(
+        getattr(config.alns, "early_stop_enabled", True)
+        and max_no_improve is not None
+        and int(max_no_improve) > 0
+    )
 
+    loop_start = time.perf_counter()
     for iteration in range(1, config.alns.max_iterations + 1):
+        actual_iterations = iteration
         destroy_name = _roulette_choice(rng, destroy_names, destroy_weights)
         repair_name = _roulette_choice(rng, repair_names, repair_weights)
+        destroy_weight_start = float(destroy_weights[destroy_name])
+        repair_weight_start = float(repair_weights[repair_name])
+        previous_best_cost = float(best_cost)
+        previous_current_cost = float(current_cost)
 
+        enter_operator_pair(destroy_name, repair_name)
         destroyed = DESTROY_OPERATORS[destroy_name](current.copy(), rng, data, config)
         candidate = REPAIR_OPERATORS[repair_name](destroyed, rng, data, config)
         candidate_cost, candidate_breakdown = objective(candidate, data, config)
         candidate_feasible = bool(candidate_breakdown.get("feasible", False))
+        if not candidate_feasible:
+            record_repair_rejection("rejected_by_full_feasibility")
+            for violation in candidate_breakdown.get("violations", [])[:20]:
+                violation_type = str(violation).split(":", 1)[0].split(".")[0]
+                record_repair_rejection(f"full_violation:{violation_type}")
 
         accepted = (
             _accept(rng, current_cost, candidate_cost, temperature)
@@ -106,15 +157,15 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
             best = candidate.copy()
             best_cost = candidate_cost
             outcome_score = config.alns.scores[0]
-            no_improvement = 0
+            no_improve_counter = 0
         elif candidate_feasible and candidate_cost < current_cost:
             outcome_score = config.alns.scores[1]
-            no_improvement += 1
+            no_improve_counter += 1
         elif candidate_feasible and accepted:
             outcome_score = config.alns.scores[2]
-            no_improvement += 1
+            no_improve_counter += 1
         else:
-            no_improvement += 1
+            no_improve_counter += 1
 
         if accepted:
             current = candidate
@@ -136,6 +187,11 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
                 "destroy": destroy_name,
                 "repair": repair_name,
                 "temperature": temperature,
+                "no_improve_counter": no_improve_counter,
+                "is_global_best_improvement": (
+                    candidate_feasible and candidate_cost < previous_best_cost
+                ),
+                "delta_cost_from_current": candidate_cost - previous_current_cost,
                 **candidate_breakdown,
             }
         )
@@ -154,18 +210,53 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
                 config.alns.reaction_coefficient,
             )
 
-        temperature *= config.alns.cooling_rate
-        if no_improvement >= config.alns.max_no_improvement:
-            no_improvement = 0
+        exit_operator_pair(
+            destroy_name,
+            repair_name,
+            candidate_feasible=candidate_feasible,
+            accepted=accepted,
+            improved=candidate_feasible and candidate_cost < previous_best_cost,
+            delta_cost=candidate_cost - previous_current_cost,
+            best_improvement=max(0.0, previous_best_cost - candidate_cost),
+            selected_weight_start=destroy_weight_start * repair_weight_start,
+            selected_weight_end=float(destroy_weights[destroy_name])
+            * float(repair_weights[repair_name]),
+        )
 
+        temperature *= config.alns.cooling_rate
+        if early_stop_enabled and no_improve_counter >= int(max_no_improve):
+            early_stop_triggered = True
+            break
+
+    phase_timings["t_alns_loop"] = time.perf_counter() - loop_start
     runtime = time.perf_counter() - start
+    phase_start = time.perf_counter()
     objective(best, data, config)
+    phase_timings["t_final_objective"] = time.perf_counter() - phase_start
+    phase_start = time.perf_counter()
+    best_feasible, best_violations = check_solution_feasible(best, data, config)
+    phase_timings["t_final_feasibility_check"] = time.perf_counter() - phase_start
+    best.metadata["feasible"] = best_feasible
+    best.metadata["feasibility_violations"] = best_violations
+    if not best_feasible:
+        raise RuntimeError(
+            "C-ALNS best solution is infeasible after final feasibility check: "
+            f"{best_violations}"
+        )
+    phase_start = time.perf_counter()
+    profile = snapshot_profile()
+    phase_timings["t_profile_output"] = time.perf_counter() - phase_start
     return ALNSResult(
         initial_state=initial,
         best_state=best,
         current_state=current,
         history=history,
         runtime_seconds=runtime,
+        actual_iterations=actual_iterations,
+        no_improve_counter=no_improve_counter,
+        early_stop_triggered=early_stop_triggered,
+        phase_timings=phase_timings,
         destroy_weights=destroy_weights,
         repair_weights=repair_weights,
+        profile=profile,
     )

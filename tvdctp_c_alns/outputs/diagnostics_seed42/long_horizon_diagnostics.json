@@ -1,0 +1,213 @@
+{
+  "rows": [
+    {
+      "operator_set_name": "current",
+      "seed": 42,
+      "max_iterations": 2000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 244.7158,
+      "actual_iterations": 2000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 661.9101760030044,
+      "improvement_abs": 167.29255440514794,
+      "improvement_pct": 20.17510896554848,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 1258,
+      "improved_candidates": 5,
+      "last_improvement_iteration": 1925,
+      "full_candidate_feasible_ratio": 0.63,
+      "local_repair_feasible_ratio": 0.9970784351369654,
+      "best_van_routes": {
+        "van_0": [
+          3,
+          9,
+          7,
+          6,
+          5,
+          13,
+          12,
+          3
+        ]
+      },
+      "best_drone_sorties_count": 2,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 75,
+      "early_stop_triggered": false
+    },
+    {
+      "operator_set_name": "current",
+      "seed": 42,
+      "max_iterations": 5000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 622.276122,
+      "actual_iterations": 5000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 653.0717602889428,
+      "improvement_abs": 176.13097011920956,
+      "improvement_pct": 21.241002189237115,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 3368,
+      "improved_candidates": 6,
+      "last_improvement_iteration": 4356,
+      "full_candidate_feasible_ratio": 0.6798,
+      "local_repair_feasible_ratio": 0.9864004400918591,
+      "best_van_routes": {
+        "van_0": [
+          3,
+          12,
+          5,
+          6,
+          7,
+          9,
+          3
+        ]
+      },
+      "best_drone_sorties_count": 4,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 644,
+      "early_stop_triggered": false
+    },
+    {
+      "operator_set_name": "current",
+      "seed": 4,
+      "max_iterations": 2000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 256.724196,
+      "actual_iterations": 2000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 651.7504747215589,
+      "improvement_abs": 177.4522556865934,
+      "improvement_pct": 21.400346281933658,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 1193,
+      "improved_candidates": 6,
+      "last_improvement_iteration": 452,
+      "full_candidate_feasible_ratio": 0.6,
+      "local_repair_feasible_ratio": 0.9747350102349209,
+      "best_van_routes": {
+        "van_0": [
+          3,
+          9,
+          7,
+          6,
+          5,
+          12,
+          3
+        ]
+      },
+      "best_drone_sorties_count": 3,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 1548,
+      "early_stop_triggered": false
+    },
+    {
+      "operator_set_name": "current",
+      "seed": 4,
+      "max_iterations": 5000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 601.768624,
+      "actual_iterations": 5000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 651.7504747215589,
+      "improvement_abs": 177.4522556865934,
+      "improvement_pct": 21.400346281933658,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 3071,
+      "improved_candidates": 6,
+      "last_improvement_iteration": 452,
+      "full_candidate_feasible_ratio": 0.6252,
+      "local_repair_feasible_ratio": 0.9593890779181223,
+      "best_van_routes": {
+        "van_0": [
+          3,
+          9,
+          7,
+          6,
+          5,
+          12,
+          3
+        ]
+      },
+      "best_drone_sorties_count": 3,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 4548,
+      "early_stop_triggered": false
+    },
+    {
+      "operator_set_name": "current",
+      "seed": 7,
+      "max_iterations": 2000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 215.719172,
+      "actual_iterations": 2000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 723.6710964866438,
+      "improvement_abs": 105.5316339215085,
+      "improvement_pct": 12.72687969437383,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 1240,
+      "improved_candidates": 7,
+      "last_improvement_iteration": 1068,
+      "full_candidate_feasible_ratio": 0.6235,
+      "local_repair_feasible_ratio": 0.9645346280285542,
+      "best_van_routes": {
+        "van_2": [
+          4,
+          12,
+          7,
+          6,
+          5,
+          4
+        ]
+      },
+      "best_drone_sorties_count": 3,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 932,
+      "early_stop_triggered": false
+    },
+    {
+      "operator_set_name": "current",
+      "seed": 7,
+      "max_iterations": 5000,
+      "early_stop_enabled": false,
+      "runtime_seconds": 443.030595,
+      "actual_iterations": 5000,
+      "initial_cost": 829.2027304081523,
+      "best_cost": 723.6710964866438,
+      "improvement_abs": 105.5316339215085,
+      "improvement_pct": 12.72687969437383,
+      "best_feasible": true,
+      "violations_count": 0,
+      "accepted_candidates": 3291,
+      "improved_candidates": 7,
+      "last_improvement_iteration": 1068,
+      "full_candidate_feasible_ratio": 0.6628,
+      "local_repair_feasible_ratio": 0.9484007345166191,
+      "best_van_routes": {
+        "van_2": [
+          4,
+          12,
+          7,
+          6,
+          5,
+          4
+        ]
+      },
+      "best_drone_sorties_count": 3,
+      "unassigned_customers": [],
+      "time_window_violations": 0,
+      "no_improve_counter_at_end": 3932,
+      "early_stop_triggered": false
+    }
+  ]
+}

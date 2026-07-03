@@ -33,13 +33,34 @@ def _fmt(value: object, digits: int = 3) -> str:
 def _node_type(node: int, data: InstanceData) -> str:
     if node == data.port_node:
         return "port"
-    if node == data.truck_depot_node:
-        return "truck_depot"
+    if node == getattr(data, "tractor_depot_node", data.truck_depot_node):
+        return "tractor_depot"
+    if node == getattr(data, "trailer_depot_node", None):
+        return "trailer_depot"
     if node in data.transshipment_nodes:
-        return "transshipment"
+        return "warehouse"
     if node in data.customers:
         return "customer"
     return "unknown"
+
+
+def _ordered_nodes(data: InstanceData) -> List[int]:
+    ordered = (
+        [data.port_node, getattr(data, "tractor_depot_node", data.truck_depot_node)]
+        + [getattr(data, "trailer_depot_node", None)]
+        + list(data.transshipment_nodes)
+        + list(data.customers)
+    )
+    seen = set()
+    result = []
+    for node in ordered + list(data.nodes):
+        if node is None:
+            continue
+        node = int(node)
+        if node not in seen:
+            seen.add(node)
+            result.append(node)
+    return result
 
 
 def _travel_minutes(distance: float, speed_kmph: float) -> float:
@@ -185,6 +206,83 @@ def _truck_load_updates(state: TVDState, data: InstanceData) -> List[Dict[str, f
     return updates
 
 
+def _tractor_route_nodes(state: TVDState) -> Dict[str, List[int]]:
+    tractor_routes = getattr(state, "tractor_routes", {})
+    if tractor_routes:
+        return {
+            str(tractor_id): [
+                int(item["node"])
+                for item in route
+                if isinstance(item, dict) and "node" in item
+            ]
+            for tractor_id, route in tractor_routes.items()
+            if route
+        }
+    return {"tractor_legacy": [int(node) for node in state.truck_route]}
+
+
+def _tractor_route_segment_rows(
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for tractor_id, route in sorted(getattr(state, "tractor_routes", {}).items()):
+        for idx in range(len(route) - 1):
+            start_event = route[idx]
+            end_event = route[idx + 1]
+            start = int(start_event["node"])
+            end = int(end_event["node"])
+            distance = float(data.ground_distance_matrix[start, end])
+            rows.append(
+                {
+                    "tractor_id": str(tractor_id),
+                    "segment_index": idx + 1,
+                    "from": start,
+                    "to": end,
+                    "from_event": start_event.get("event", ""),
+                    "to_event": end_event.get("event", ""),
+                    "trailer_id": end_event.get("trailer_id", start_event.get("trailer_id", "")),
+                    "container_id": end_event.get("container_id", start_event.get("container_id", "")),
+                    "haul_status_from": start_event.get("haul_status", ""),
+                    "haul_status_to": end_event.get("haul_status", ""),
+                    "distance": distance,
+                    "travel_time": _travel_minutes(distance, config.fleet.tractor_speed_kmph),
+                    "departure_time_from": float(start_event.get("departure_time", 0.0)),
+                    "arrival_time_at_to": float(end_event.get("arrival_time", 0.0)),
+                    "departure_time_at_to": float(end_event.get("departure_time", 0.0)),
+                }
+            )
+    if not rows:
+        truck_arrival = state.timing.get("truck_arrival", {})
+        updates = _truck_load_updates(state, data)
+        for idx in range(len(state.truck_route) - 1):
+            start = int(state.truck_route[idx])
+            end = int(state.truck_route[idx + 1])
+            distance = float(data.ground_distance_matrix[start, end])
+            end_load = updates[idx + 1] if idx + 1 < len(updates) else {}
+            rows.append(
+                {
+                    "tractor_id": "tractor_legacy",
+                    "segment_index": idx + 1,
+                    "from": start,
+                    "to": end,
+                    "from_event": "",
+                    "to_event": end_load.get("operation", ""),
+                    "trailer_id": "",
+                    "container_id": "",
+                    "haul_status_from": "",
+                    "haul_status_to": "",
+                    "distance": distance,
+                    "travel_time": _travel_minutes(distance, config.fleet.tractor_speed_kmph),
+                    "departure_time_from": 0.0,
+                    "arrival_time_at_to": float(truck_arrival.get(end, 0.0)),
+                    "departure_time_at_to": float(truck_arrival.get(end, 0.0)),
+                }
+            )
+    return rows
+
+
 def _scale_points(data: InstanceData, width: int, height: int, pad: int) -> Dict[int, Tuple[int, int]]:
     xs = [coord[0] for coord in data.coordinates.values()]
     ys = [coord[1] for coord in data.coordinates.values()]
@@ -270,9 +368,9 @@ def save_routes_plot(state: TVDState, data: InstanceData, output_path: Path) -> 
     draw = ImageDraw.Draw(img)
     points = _scale_points(data, width, height, pad)
 
-    truck_route = state.truck_route
-    for idx in range(len(truck_route) - 1):
-        draw.line((points[truck_route[idx]], points[truck_route[idx + 1]]), fill=(214, 39, 40), width=3)
+    for tractor_route in _tractor_route_nodes(state).values():
+        for idx in range(len(tractor_route) - 1):
+            draw.line((points[tractor_route[idx]], points[tractor_route[idx + 1]]), fill=(214, 39, 40), width=3)
 
     van_colors = [
         (31, 119, 180),
@@ -300,10 +398,14 @@ def save_routes_plot(state: TVDState, data: InstanceData, output_path: Path) -> 
             color = (214, 39, 40)
             radius = 9
             label = "Port 0"
-        elif node == data.truck_depot_node:
+        elif node == getattr(data, "tractor_depot_node", data.truck_depot_node):
             color = (121, 85, 72)
             radius = 9
-            label = f"Truck depot {node}"
+            label = f"Tractor depot {node}"
+        elif node == getattr(data, "trailer_depot_node", None):
+            color = (96, 125, 139)
+            radius = 9
+            label = f"Trailer depot {node}"
         elif node == state.selected_transshipment:
             color = (255, 127, 14)
             radius = 9
@@ -328,7 +430,7 @@ def save_routes_plot(state: TVDState, data: InstanceData, output_path: Path) -> 
         draw.ellipse((x - radius, y - radius, x + radius, y + radius), fill=color, outline=(30, 30, 30))
         draw.text((x + 10, y - 8), label, fill=(30, 30, 30))
 
-    draw.text((pad, 20), "TVDCTP-T route: red=truck, blue/cyan=active van routes, green=drone", fill=(30, 30, 30))
+    draw.text((pad, 20), "TVDCTP-T route: red=tractor/trailer drayage, blue/cyan=active van routes, green=drone", fill=(30, 30, 30))
     img.save(output_path)
 
 
@@ -872,8 +974,7 @@ def save_route_plan_detail(
     service_start = timing.get("service_start", {})
     service_finish = timing.get("service_finish", {})
     drone_arrival = timing.get("drone_arrival", {})
-    truck_arrival = timing.get("truck_arrival", {})
-    truck_load_updates = _truck_load_updates(state, data)
+    tractor_segment_rows = _tractor_route_segment_rows(state, data, config)
     van_load_rows = _van_load_timeline_rows(state, data, config)
 
     lines: List[str] = []
@@ -892,7 +993,8 @@ def save_route_plan_detail(
         "num_containers": config.data.num_containers,
         "num_transshipments": config.data.num_transshipments,
         "candidate_transshipment_nodes": data.transshipment_nodes,
-        "owned_num_trucks": config.fleet.num_trucks,
+        "owned_num_tractors": config.fleet.num_tractors,
+        "owned_num_trailers": config.fleet.num_trailers,
         "warehouse_num_vans": config.warehouse_num_vans(data.transshipment_nodes),
         "drones_per_van": config.fleet.drones_per_van,
         "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
@@ -901,7 +1003,8 @@ def save_route_plan_detail(
         "van_home": state.van_home,
         "drone_initial_carrier": state.drone_initial_carrier,
         "drone_home_warehouse": state.drone_home_warehouse,
-        "used_trucks": metrics.get("used_trucks", 0),
+        "used_tractors": metrics.get("used_tractors", metrics.get("used_trucks", 0)),
+        "used_trailers": metrics.get("used_trailers", 0),
         "used_vans": metrics.get("used_vans", 0),
         "used_drones": metrics.get("used_drones", 0),
         "used_drone_sorties": metrics.get("used_drone_sorties", 0),
@@ -933,8 +1036,7 @@ def save_route_plan_detail(
             config.data.time_window_end_min,
         ),
         "customer_service_time_min": config.data.service_time_min,
-        "low_floor_service_rule": "low-floor customers can be served by van or drone; optimizer decides service_mode",
-        "high_floor_service_rule": "high-floor customers must be served by drone",
+
         "drone_energy_formula": "energy += [rou * (pickup_load + delivery_load + drone_self_weight) + rou1] * flight_hours",
         "waiting_cost_in_objective": False,
         "used_drones_note": "physical drone count after assigning drone_id to sorties",
@@ -951,7 +1053,7 @@ def save_route_plan_detail(
     )
     lines.append(header)
     lines.append("-" * len(header))
-    for node in data.nodes:
+    for node in _ordered_nodes(data):
         coord = data.coordinates[node]
         assignment = state.order_assignment.get(node, {})
         row = {
@@ -979,7 +1081,7 @@ def save_route_plan_detail(
             _append_csv_row(csv_rows, "nodes_orders", "node", node, field, value)
     lines.append("")
 
-    lines.append("二、集装箱与一阶段 truck 运输")
+    lines.append("2. Containers and Stage-1 Tractor/Trailer Drayage")
     for container_id, assignment in state.container_assignment.items():
         lines.append(f"container_id: {container_id}")
         lines.append(f"container_origin: {assignment.get('origin_node')}")
@@ -987,53 +1089,107 @@ def save_route_plan_detail(
         for field in ("origin_node", "selected_transshipment", "orders", "customers"):
             _append_csv_row(
                 csv_rows,
-                "container_truck",
+                "container_tractor_trailer",
                 "container",
                 container_id,
                 field,
                 assignment.get(field),
             )
-    lines.append(f"truck_depot_node: {state.truck_depot_node}")
-    lines.append(f"truck_route: {' -> '.join(str(node) for node in state.truck_route)}")
-    lines.append("truck segments:")
-    lines.append(
-        "from | to | distance | travel_time | arrival_time | "
-        "container_load_departure_from | payload_kg_departure_from | "
-        "container_load_arrival_at_to | payload_kg_arrival_at_to | "
-        "operation_at_to | container_load_departure_at_to | payload_kg_departure_at_to"
-    )
-    for idx in range(len(state.truck_route) - 1):
-        start = state.truck_route[idx]
-        end = state.truck_route[idx + 1]
-        distance = float(data.ground_distance_matrix[start, end])
-        travel_time = _travel_minutes(distance, config.fleet.tractor_speed_kmph)
-        arrival_time = float(truck_arrival.get(end, 0.0))
-        start_load = truck_load_updates[idx]
-        end_load = truck_load_updates[idx + 1]
+    lines.append("")
+    lines.append("tractor-trailer-container drayage skeleton:")
+    lines.append(f"tractor_depot_node: {getattr(data, 'tractor_depot_node', state.truck_depot_node)}")
+    lines.append(f"trailer_depot_node: {getattr(data, 'trailer_depot_node', '')}")
+    lines.append(f"tractor_home: {state.tractor_home}")
+    lines.append(f"trailer_home: {state.trailer_home}")
+    for field, value in {
+        "tractor_depot_node": getattr(data, "tractor_depot_node", state.truck_depot_node),
+        "trailer_depot_node": getattr(data, "trailer_depot_node", ""),
+        "tractor_home": state.tractor_home,
+        "trailer_home": state.trailer_home,
+    }.items():
+        _append_csv_row(csv_rows, "stage1_drayage", "depot", "stage1", field, value)
+    lines.append("tractor_routes:")
+    for tractor_id, tractor_route in sorted(state.tractor_routes.items()):
+        lines.append(f"{tractor_id}:")
         lines.append(
-            f"{start} | {end} | {_fmt(distance)} | {_fmt(travel_time)} | {_fmt(arrival_time)} | "
-            f"{_fmt(start_load['containers_departure'])} | {_fmt(start_load['payload_departure'])} | "
-            f"{_fmt(end_load['containers_arrival'])} | {_fmt(end_load['payload_arrival'])} | "
-            f"{end_load['operation']} | {_fmt(end_load['containers_departure'])} | "
-            f"{_fmt(end_load['payload_departure'])}"
+            "node | event | trailer_id | container_id | arrival_time | departure_time | haul_status"
         )
-        for field, value in {
-            "from": start,
-            "to": end,
-            "distance": distance,
-            "travel_time": travel_time,
-            "arrival_time": arrival_time,
-            "container_load_departure_from": start_load["containers_departure"],
-            "payload_kg_departure_from": start_load["payload_departure"],
-            "container_load_arrival_at_to": end_load["containers_arrival"],
-            "payload_kg_arrival_at_to": end_load["payload_arrival"],
-            "operation_at_to": end_load["operation"],
-            "container_load_departure_at_to": end_load["containers_departure"],
-            "payload_kg_departure_at_to": end_load["payload_departure"],
-        }.items():
-            _append_csv_row(csv_rows, "container_truck", "truck_segment", idx + 1, field, value)
+        for idx, item in enumerate(tractor_route):
+            lines.append(
+                f"{item.get('node')} | {item.get('event')} | {item.get('trailer_id', '')} | "
+                f"{item.get('container_id', '')} | {_fmt(float(item.get('arrival_time', 0.0)))} | "
+                f"{_fmt(float(item.get('departure_time', 0.0)))} | {item.get('haul_status', '')}"
+            )
+            for field, value in {"tractor_id": tractor_id, "sequence": idx, **item}.items():
+                _append_csv_row(
+                    csv_rows,
+                    "stage1_drayage",
+                    "tractor_route_event",
+                    f"{tractor_id}:{idx}",
+                    field,
+                    value,
+                )
+    lines.append("container_routes:")
+    for container_id, route in sorted(state.container_routes.items()):
+        lines.append(
+            f"container {container_id}: origin={route.get('origin')}, "
+            f"assigned_orders={route.get('assigned_orders')}, "
+            f"destination_warehouse={route.get('destination_warehouse')}, "
+            f"tractor_id={route.get('tractor_id')}, trailer_id={route.get('trailer_id')}, "
+            f"service_sequence_index={route.get('service_sequence_index')}, "
+            f"load_complete={_fmt(float(route.get('load_complete', 0.0)))}, "
+            f"unload_complete={_fmt(float(route.get('unload_complete', 0.0)))}"
+        )
+        for field, value in route.items():
+            _append_csv_row(
+                csv_rows,
+                "stage1_drayage",
+                "container_route",
+                container_id,
+                field,
+                value,
+            )
+    warehouse_ready_time = timing.get("warehouse_ready_time", state.metadata.get("warehouse_ready_time", {}))
+    lines.append(f"warehouse_ready_time: {warehouse_ready_time}")
+    if isinstance(warehouse_ready_time, dict):
+        for warehouse, ready_time in warehouse_ready_time.items():
+            _append_csv_row(
+                csv_rows,
+                "stage1_drayage",
+                "warehouse_ready_time",
+                warehouse,
+                "ready_time",
+                ready_time,
+            )
+    lines.append("tractor route paths:")
+    for tractor_id, route_nodes in sorted(_tractor_route_nodes(state).items()):
+        lines.append(f"{tractor_id}: {' -> '.join(str(node) for node in route_nodes)}")
+        _append_csv_row(csv_rows, "stage1_drayage", "tractor_path", tractor_id, "route", route_nodes)
+    lines.append("tractor/trailer segments:")
     lines.append(
-        "truck_arrival_time at selected_transshipment: "
+        "tractor_id | segment | from | to | from_event | to_event | trailer_id | container_id | "
+        "haul_status_from | haul_status_to | distance | travel_time | departure_time_from | "
+        "arrival_time_at_to | departure_time_at_to"
+    )
+    for row in tractor_segment_rows:
+        lines.append(
+            f"{row['tractor_id']} | {row['segment_index']} | {row['from']} | {row['to']} | "
+            f"{row['from_event']} | {row['to_event']} | {row['trailer_id']} | {row['container_id']} | "
+            f"{row['haul_status_from']} | {row['haul_status_to']} | {_fmt(row['distance'])} | "
+            f"{_fmt(row['travel_time'])} | {_fmt(row['departure_time_from'])} | "
+            f"{_fmt(row['arrival_time_at_to'])} | {_fmt(row['departure_time_at_to'])}"
+        )
+        for field, value in row.items():
+            _append_csv_row(
+                csv_rows,
+                "stage1_drayage",
+                "tractor_trailer_segment",
+                f"{row['tractor_id']}:{row['segment_index']}",
+                field,
+                value,
+            )
+    lines.append(
+        "container ready time at selected_transshipment: "
         f"{_fmt(timing.get('truck_arrival_time', 0.0))}"
     )
     lines.append("")
@@ -1072,6 +1228,32 @@ def save_route_plan_detail(
         for row in van_load_rows
         if isinstance(row, dict)
     }
+    lines.append("warehouse ready / van departure checks:")
+    lines.append("van_id | warehouse | warehouse_ready_time | van_departure_time | ok")
+    for van_id, route in sorted(active_routes_for_detail.items()):
+        sequence = sequences_by_van.get(van_id, []) if isinstance(sequences_by_van, dict) else []
+        first = sequence[0] if sequence else {}
+        warehouse = int(route[0])
+        ready_time = float(warehouse_ready_time.get(warehouse, 0.0)) if isinstance(warehouse_ready_time, dict) else 0.0
+        departure_time = float(first.get("departure_time", first.get("arrival_time", 0.0))) if isinstance(first, dict) else 0.0
+        ok = departure_time + 1e-9 >= ready_time
+        lines.append(f"{van_id} | {warehouse} | {_fmt(ready_time)} | {_fmt(departure_time)} | {ok}")
+        for field, value in {
+            "van_id": van_id,
+            "warehouse": warehouse,
+            "warehouse_ready_time": ready_time,
+            "van_departure_time": departure_time,
+            "ok": ok,
+        }.items():
+            _append_csv_row(
+                csv_rows,
+                "van_route",
+                "warehouse_ready_check",
+                van_id,
+                field,
+                value,
+            )
+    lines.append("")
 
     for van_id, route in sorted(active_routes_for_detail.items()):
         sequence_by_pos = (
@@ -1560,23 +1742,25 @@ def save_route_plan_detail(
         },
     )
     cost_fields = [
-        "truck_cost",
-        "truck_transport_cost",
-        "truck_fixed_cost",
-        "van_cost",
-        "van_transport_cost",
-        "van_fixed_cost",
-        "drone_cost",
-        "drone_transport_cost",
-        "drone_fixed_cost",
-        "drone_energy",
-        "penalty_cost",
-        "total_cost",
-        "waiting_cost_reported",
+        ("tractor_trailer_cost", "truck_cost"),
+        ("tractor_transport_cost", "truck_transport_cost"),
+        ("tractor_fixed_cost", "truck_fixed_cost"),
+        ("trailer_fixed_cost", "trailer_fixed_cost"),
+        ("van_cost", "van_cost"),
+        ("van_transport_cost", "van_transport_cost"),
+        ("van_fixed_cost", "van_fixed_cost"),
+        ("drone_cost", "drone_cost"),
+        ("drone_transport_cost", "drone_transport_cost"),
+        ("drone_fixed_cost", "drone_fixed_cost"),
+        ("drone_energy", "drone_energy"),
+        ("penalty_cost", "penalty_cost"),
+        ("total_cost", "total_cost"),
+        ("waiting_cost_reported", "waiting_cost_reported"),
     ]
-    for field in cost_fields:
-        lines.append(f"{field}: {_fmt(metrics.get(field, 0.0))}")
-        _append_csv_row(csv_rows, "costs", "cost", field, field, metrics.get(field, 0.0))
+    for label, metric_field in cost_fields:
+        value = metrics.get(metric_field, 0.0)
+        lines.append(f"{label}: {_fmt(value)}")
+        _append_csv_row(csv_rows, "costs", "cost", label, label, value)
     lines.append("waiting_cost_reported 不进入 total_cost.")
     _append_csv_row(
         csv_rows,
@@ -1696,6 +1880,8 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         **breakdown,
         "runtime_seconds": result.runtime_seconds,
         "port_node": result.best_state.port_node,
+        "tractor_depot_node": getattr(data, "tractor_depot_node", result.best_state.truck_depot_node),
+        "trailer_depot_node": getattr(data, "trailer_depot_node", None),
         "truck_depot_node": result.best_state.truck_depot_node,
         "container_origin": result.best_state.container_origin,
         "transshipment_nodes": result.best_state.transshipment_nodes,
@@ -1705,8 +1891,12 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         "drones_per_van": config.fleet.drones_per_van,
         "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
         "van_home": result.best_state.van_home,
+        "tractor_home": result.best_state.tractor_home,
+        "trailer_home": result.best_state.trailer_home,
         "drone_initial_carrier": result.best_state.drone_initial_carrier,
         "drone_home_warehouse": result.best_state.drone_home_warehouse,
+        "tractor_arrival_time": timing.get("truck_arrival_time", 0.0),
+        "tractor_arrival": timing.get("truck_arrival", {}),
         "truck_arrival_time": timing.get("truck_arrival_time", 0.0),
         "van_start_time": timing.get("van_start_time", 0.0),
         "truck_arrival": timing.get("truck_arrival", {}),
@@ -1739,6 +1929,8 @@ def evaluate_and_save(result: ALNSResult, data: InstanceData, config: TVDConfig)
         "drone_warehouse_return_count": timing.get("drone_warehouse_return_count", {}),
         "feasible": feasible,
         "violations": "; ".join(violations),
+        "tractor_routes": result.best_state.tractor_routes,
+        "container_routes": result.best_state.container_routes,
         "truck_route": result.best_state.truck_route,
         "van_route": result.best_state.van_route,
         "van_routes": result.best_state.van_routes,
