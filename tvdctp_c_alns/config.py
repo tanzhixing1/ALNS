@@ -57,6 +57,9 @@ class ALNSConfig:
     max_no_improve: Optional[int] = 100
     max_no_improvement: Optional[int] = 100
     early_stop_enabled: bool = True
+    enable_local_feasibility_cache: bool = False
+    collect_local_feasibility_cache_stats: bool = False
+    enable_shadow_prefilter: bool = False
 
 
 @dataclass
@@ -204,6 +207,7 @@ def build_config(
     warehouse_num_vans: Optional[Dict[int, int]] = None,
     max_no_improve: Optional[int] = 100,
     early_stop_enabled: bool = True,
+    enable_local_feasibility_cache: bool = False,
 ) -> TVDConfig:
     config = TVDConfig()
     config.data.num_customers = num_customers
@@ -216,6 +220,7 @@ def build_config(
     config.alns.max_no_improve = max_no_improve
     config.alns.max_no_improvement = max_no_improve
     config.alns.early_stop_enabled = bool(early_stop_enabled)
+    config.alns.enable_local_feasibility_cache = bool(enable_local_feasibility_cache)
     config.fleet.drone_enabled = drone_enabled
     config.fleet.drones_per_van = int(drones_per_van)
     config.fleet.num_tractors = int(num_tractors)

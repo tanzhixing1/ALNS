@@ -885,7 +885,15 @@ def compute_timing(
                 for drone_id in same_van_drones
                 if drone_available_time.get(drone_id, 0.0) <= node_ready_time + 1e-9
             ]
-            if requested_drone_id in ready_drones:
+            if requested_drone_id and drone_location.get(requested_drone_id) != launch_van:
+                drone_id = requested_drone_id
+                if record_results and target_timing is not None:
+                    target_timing["time_window_violations"].append(
+                        f"drone_id {requested_drone_id} is carried by "
+                        f"{drone_location.get(requested_drone_id, 'unknown')} before sortie "
+                        f"but launches from {launch_van}."
+                    )
+            elif requested_drone_id in ready_drones:
                 drone_id = requested_drone_id
             elif ready_drones:
                 drone_id = ready_drones[0]
@@ -1281,6 +1289,13 @@ def check_solution_feasible(
         if container_id not in getattr(state, "container_routes", {}):
             violations.append(f"order for customer {customer} references missing container {container_id}.")
 
+    customer_container_destination: Dict[int, int] = {}
+    for customer, assignment in state.order_assignment.items():
+        container_id = int(assignment.get("container_id", -1))
+        container_route = getattr(state, "container_routes", {}).get(container_id)
+        if isinstance(container_route, dict) and "destination_warehouse" in container_route:
+            customer_container_destination[int(customer)] = int(container_route["destination_warehouse"])
+
     for container_id, assignment in state.container_assignment.items():
         container_route = getattr(state, "container_routes", {}).get(int(container_id), {})
         expected_destination = container_route.get("destination_warehouse")
@@ -1305,6 +1320,21 @@ def check_solution_feasible(
             continue
         if customer not in container.get("customers", []):
             violations.append(f"customer {customer} is not listed in container {container_id}.")
+
+    for van_id, van_route in routes.items():
+        if not van_route:
+            continue
+        route_origin = int(van_route[0])
+        for node in van_route:
+            customer = int(node)
+            if customer not in customers:
+                continue
+            expected_destination = customer_container_destination.get(customer)
+            if expected_destination is not None and route_origin != expected_destination:
+                violations.append(
+                    f"customer {customer} from container warehouse {expected_destination} "
+                    f"is served by {van_id} from warehouse {route_origin}."
+                )
 
     duplicates = sorted({customer for customer in all_served if all_served.count(customer) > 1})
     if duplicates:
@@ -1404,14 +1434,36 @@ def check_solution_feasible(
         if launch not in launch_route or recovery not in recovery_route:
             violations.append(f"drone launch/recovery not on van_route: {sortie}")
         else:
-            launch_pos = _route_position(launch_route, launch)
-            recovery_pos = _route_position(recovery_route, recovery)
+            launch_hint = _sortie_position_hint(sortie, "launch_position")
+            recovery_hint = _sortie_position_hint(sortie, "recovery_position")
+            launch_pos = (
+                int(launch_hint)
+                if launch_hint is not None
+                and 0 <= launch_hint < len(launch_route)
+                and int(launch_route[launch_hint]) == int(launch)
+                else _route_position(launch_route, launch)
+            )
+            recovery_pos = (
+                int(recovery_hint)
+                if recovery_hint is not None
+                and 0 <= recovery_hint < len(recovery_route)
+                and int(recovery_route[recovery_hint]) == int(recovery)
+                else _route_position(recovery_route, recovery)
+            )
             if launch_pos < 0 or recovery_pos < 0:
                 violations.append(f"drone launch/recovery position not found on van_route: {sortie}")
             elif launch_van == recovery_van and recovery_pos < launch_pos:
                 violations.append(f"drone recovery occurs before launch on van_route: {sortie}")
             elif launch_pos == len(launch_route) - 1:
                 violations.append(f"drone launches after van has returned to terminal warehouse: {sortie}")
+            for customer in sortie_customers:
+                expected_destination = customer_container_destination.get(int(customer))
+                launch_origin = int(launch_route[0]) if launch_route else None
+                if expected_destination is not None and launch_origin != expected_destination:
+                    violations.append(
+                        f"drone customer {customer} from container warehouse {expected_destination} "
+                        f"is launched by {launch_van} from warehouse {launch_origin}."
+                    )
         drone_id = _sortie_drone_id(sortie)
         if drone_id not in state.drone_initial_carrier:
             violations.append(f"drone sortie uses unknown physical drone_id {drone_id}: {sortie}")
@@ -1450,11 +1502,17 @@ def check_solution_feasible(
     physical_sorties = timing.get("drone_physical_sorties", {})
     warehouse_launch_counts = timing.get("drone_warehouse_launch_count", {})
     warehouse_return_counts = timing.get("drone_warehouse_return_count", {})
+    dynamic_counts = {}
+    for carrier in state.drone_initial_carrier.values():
+        carrier = str(carrier)
+        dynamic_counts[carrier] = dynamic_counts.get(carrier, 0) + 1
+    capacity_events: List[Tuple[float, int, str, int, int]] = []
     if isinstance(physical_sorties, dict):
         for drone_id, records in physical_sorties.items():
             if not isinstance(records, list):
                 continue
             previous = None
+            current_carrier = str(state.drone_initial_carrier.get(str(drone_id), "unknown"))
             for record_idx, record in enumerate(records):
                 if not isinstance(record, dict):
                     continue
@@ -1462,6 +1520,27 @@ def check_solution_feasible(
                 recovery_pos = int(record.get("recovery_position", -1))
                 launch_node = int(record.get("launch_node", -1))
                 recovery_node = int(record.get("recovery_node", -1))
+                launch_van_for_record = str(record.get("launch_van_id", ""))
+                recovery_van_for_record = str(record.get("recovery_van_id", ""))
+                if current_carrier != launch_van_for_record:
+                    violations.append(
+                        f"drone_id {drone_id} is carried by {current_carrier} before sortie "
+                        f"but launches from {launch_van_for_record}."
+                    )
+                capacity_events.append(
+                    (
+                        float(record.get("launch_time", 0.0)),
+                        0,
+                        launch_van_for_record,
+                        -1,
+                        launch_node,
+                    )
+                )
+                current_carrier = (
+                    "__warehouse__"
+                    if _is_warehouse_node(state, recovery_node)
+                    else recovery_van_for_record
+                )
                 if launch_pos < 0 or recovery_pos < 0:
                     violations.append(
                         f"drone_id {drone_id} has unresolved launch/recovery position."
@@ -1510,6 +1589,27 @@ def check_solution_feasible(
                 violations.append(
                     f"drone_id {drone_id} returns to warehouse {return_count} times."
                 )
+            for record in records:
+                if isinstance(record, dict):
+                    recovery_node = int(record.get("recovery_node", -1))
+                    if _is_warehouse_node(state, recovery_node):
+                        continue
+                    capacity_events.append(
+                        (
+                            float(record.get("recovery_time", 0.0)),
+                            1,
+                            str(record.get("recovery_van_id", "")),
+                            1,
+                            recovery_node,
+                        )
+                    )
+    for _, _, van_id, delta, _ in sorted(capacity_events, key=lambda item: (item[0], item[1], item[2])):
+        dynamic_counts[van_id] = dynamic_counts.get(van_id, 0) + int(delta)
+        if dynamic_counts[van_id] > config.fleet.drones_per_van:
+            violations.append(
+                f"{van_id} carries {dynamic_counts[van_id]} drones after recovery, "
+                f"exceeding drones_per_van={config.fleet.drones_per_van}."
+            )
 
     if float(timing.get("van_waiting_time", 0.0)) < -1e-9:
         violations.append("total van waiting time is negative.")

@@ -976,6 +976,218 @@ def cache_ab_row(label: str, row: Optional[Dict[str, object]]) -> Dict[str, obje
     }
 
 
+def formal_cache_ab_row(seed: int, cache_enabled: bool, row: Dict[str, object]) -> Dict[str, object]:
+    stats = row.get("profile", {}).get("local_feasibility_cache", {})
+    return {
+        "seed": int(seed),
+        "cache_enabled": bool(cache_enabled),
+        "runtime_seconds": row.get("runtime_seconds"),
+        "best_cost": row.get("best_cost"),
+        "initial_cost": row.get("initial_cost"),
+        "improvement_abs": row.get("improvement_abs"),
+        "improvement_pct": row.get("improvement_pct"),
+        "accepted_candidates": row.get("accepted_candidates"),
+        "improved_candidates": row.get("improved_candidates"),
+        "last_improvement_iteration": row.get("last_improvement_iteration"),
+        "raw_drone_candidate_count": stats.get("raw_drone_candidate_count"),
+        "unique_drone_candidate_count": stats.get("unique_drone_candidate_count"),
+        "duplicate_ratio": stats.get("duplicate_ratio"),
+        "cache_hit_count": stats.get("cache_hit_count"),
+        "cache_miss_count": stats.get("cache_miss_count"),
+        "cache_hit_ratio": stats.get("cache_hit_ratio"),
+        "drone_candidate_eval_time": stats.get("drone_candidate_eval_time"),
+        "full_candidate_feasible_ratio": row.get("full_candidate_feasible_ratio"),
+        "local_repair_feasible_ratio": row.get("local_repair_feasible_ratio"),
+        "final_best_feasible": row.get("best_feasible"),
+        "violations_count": row.get("violations_count"),
+        "best_van_routes": row.get("best_van_routes"),
+        "best_drone_sorties_count": row.get("best_drone_sorties_count"),
+    }
+
+
+def _configure_cache(cache_enabled: bool):
+    def configure(config: TVDConfig) -> None:
+        config.alns.enable_local_feasibility_cache = bool(cache_enabled)
+        config.alns.collect_local_feasibility_cache_stats = True
+        config.alns.enable_shadow_prefilter = False
+
+    return configure
+
+
+def aggregate_operator_pairs(rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
+    grouped: Dict[Tuple[str, str], Dict[str, object]] = {}
+    for row in rows:
+        pairs = row.get("profile", {}).get("operator_pairs", {})
+        for stats in pairs.values():
+            key = (str(stats.get("destroy_operator")), str(stats.get("repair_operator")))
+            item = grouped.setdefault(
+                key,
+                {
+                    "destroy_operator": key[0],
+                    "repair_operator": key[1],
+                    "calls": 0,
+                    "generated_candidates": 0,
+                    "local_feasible_candidates": 0,
+                    "full_feasible_candidates": 0,
+                    "accepted_candidates": 0,
+                    "improved_candidates": 0,
+                    "total_runtime": 0.0,
+                    "best_improvement_contributed": 0.0,
+                    "delta_cost_sum": 0.0,
+                },
+            )
+            for field in [
+                "calls",
+                "generated_candidates",
+                "local_feasible_candidates",
+                "full_feasible_candidates",
+                "accepted_candidates",
+                "improved_candidates",
+            ]:
+                item[field] = int(item[field]) + int(stats.get(field, 0))
+            item["total_runtime"] = float(item["total_runtime"]) + float(
+                stats.get("total_runtime", 0.0)
+            )
+            item["best_improvement_contributed"] = max(
+                float(item["best_improvement_contributed"]),
+                float(stats.get("best_improvement_contributed", 0.0)),
+            )
+            item["delta_cost_sum"] = float(item["delta_cost_sum"]) + float(
+                stats.get("delta_cost_sum", 0.0)
+            )
+
+    result = []
+    for item in grouped.values():
+        calls = int(item["calls"])
+        item["avg_runtime_per_call"] = float(item["total_runtime"]) / calls if calls else None
+        item["average_delta_cost"] = float(item["delta_cost_sum"]) / calls if calls else None
+        del item["delta_cost_sum"]
+        result.append(item)
+    return sorted(
+        result,
+        key=lambda item: (-float(item["total_runtime"]), str(item["repair_operator"])),
+    )
+
+
+def _history_prefix(row: Dict[str, object], limit: int = 50) -> List[Dict[str, object]]:
+    return [
+        {
+            "iteration": item.get("iteration"),
+            "destroy": item.get("destroy"),
+            "repair": item.get("repair"),
+            "candidate_feasible": item.get("candidate_feasible"),
+            "accepted": item.get("accepted"),
+            "candidate_cost": item.get("candidate_cost"),
+            "current_cost": item.get("current_cost"),
+            "best_cost": item.get("best_cost"),
+            "delta_cost_from_current": item.get("delta_cost_from_current"),
+        }
+        for item in row.get("history", [])[:limit]
+    ]
+
+
+def run_local_cache_regression(outdir: Path) -> Dict[str, object]:
+    outdir.mkdir(parents=True, exist_ok=True)
+    seeds = [42, 4, 7]
+    raw_rows: Dict[Tuple[int, bool], Dict[str, object]] = {}
+    ab_rows: List[Dict[str, object]] = []
+    for cache_enabled in [False, True]:
+        for seed in seeds:
+            row = run_diagnostic_case(
+                "current",
+                seed,
+                300,
+                False,
+                configure=_configure_cache(cache_enabled),
+            )
+            raw_rows[(seed, cache_enabled)] = row
+            ab_rows.append(formal_cache_ab_row(seed, cache_enabled, row))
+            print(
+                json.dumps(
+                    {
+                        "seed": seed,
+                        "cache_enabled": cache_enabled,
+                        "runtime_seconds": row["runtime_seconds"],
+                        "best_cost": row["best_cost"],
+                    },
+                    ensure_ascii=False,
+                ),
+                flush=True,
+            )
+
+    regressions = []
+    for seed in seeds:
+        off = raw_rows[(seed, False)]
+        on = raw_rows[(seed, True)]
+        off_cost = float(off["best_cost"])
+        on_cost = float(on["best_cost"])
+        if on_cost > off_cost * 1.05:
+            regressions.append(
+                {
+                    "seed": seed,
+                    "cache_off_best_cost": off_cost,
+                    "cache_on_best_cost": on_cost,
+                    "relative_worse": on_cost / off_cost - 1.0,
+                    "cache_off_first_50_history": _history_prefix(off),
+                    "cache_on_first_50_history": _history_prefix(on),
+                }
+            )
+
+    cache_on_rows = [raw_rows[(seed, True)] for seed in seeds]
+    operator_pairs = aggregate_operator_pairs(cache_on_rows)
+    result = {
+        "cache_key_safety": [
+            {
+                "field": "drone_id",
+                "why_in_key": "separates candidates tied to different physical drone identities.",
+            },
+            {
+                "field": "launch_van / launch_node / launch_pos",
+                "why_in_key": "local timing and route-order feasibility depend on the launch carrier and exact route position.",
+            },
+            {
+                "field": "recovery_van / recovery_node / recovery_pos",
+                "why_in_key": "sync feasibility and same-van ordering depend on the recovery carrier and exact position.",
+            },
+            {
+                "field": "customer_tuple",
+                "why_in_key": "payload, endurance, energy, and customer time windows depend on the ordered sortie customers.",
+            },
+            {
+                "field": "relevant_van_route_signature",
+                "why_in_key": "any van route edit changes node order and route timing, causing a cache miss.",
+            },
+            {
+                "field": "existing_drone_sortie_signature",
+                "why_in_key": "conservatively separates states with different existing drone work, even though full physical reuse remains checked later.",
+            },
+            {
+                "field": "service_mode / unassigned signature",
+                "why_in_key": "separates candidate states with different customer assignment context.",
+            },
+            {
+                "field": "warehouse_ready_signature",
+                "why_in_key": "launch/recovery route timing starts from warehouse ready times, so changed drayage timing misses cache.",
+            },
+        ],
+        "cache_lifecycle": {
+            "default_enabled": False,
+            "cleared_at": "reset_profile() at the start of every run_c_alns call",
+            "cached_scope": "local drone insertion feasibility only",
+            "not_cached": "objective, compute_timing, check_solution_feasible full result, final feasibility",
+            "cross_route_state_mis_hit_risk": "low: route, sortie, service_mode, unassigned, and warehouse-ready signatures are part of the key; changed state produces a miss.",
+            "prefilter_enabled": False,
+        },
+        "cache_ab_rows": ab_rows,
+        "significant_regressions": regressions,
+        "operator_pair_contribution_cache_on": operator_pairs,
+    }
+    (outdir / "local_cache_regression.json").write_text(
+        json.dumps(result, ensure_ascii=False, indent=2), encoding="utf-8"
+    )
+    return result
+
+
 def sa_row(setting_name: str, row: Dict[str, object]) -> Dict[str, object]:
     sa = sa_diagnostics(row)
     cooling_rate = float(row.get("cooling_rate") or 0.9995)
@@ -1216,7 +1428,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--mode",
-        choices=["core", "multiseed", "long", "gurobi", "drone_repair"],
+        choices=["core", "multiseed", "long", "gurobi", "drone_repair", "local_cache"],
         required=True,
     )
     parser.add_argument("--outdir", default="tvdctp_c_alns/outputs/diagnostics_seed42")
@@ -1232,6 +1444,8 @@ def main() -> None:
         result = run_long(outdir, seeds)
     elif args.mode == "drone_repair":
         result = run_drone_repair_diagnostics(outdir)
+    elif args.mode == "local_cache":
+        result = run_local_cache_regression(outdir)
     else:
         result = check_gurobi()
         outdir.mkdir(parents=True, exist_ok=True)

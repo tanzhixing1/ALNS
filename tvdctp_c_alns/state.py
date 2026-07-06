@@ -129,6 +129,23 @@ class TVDState:
             )
         else:
             warehouse_ready_signature = ()
+        order_assignment_signature = tuple(
+            (
+                int(customer),
+                int(assignment.get("container_id", -1)),
+                int(assignment.get("assigned_transshipment", -1)),
+            )
+            for customer, assignment in sorted(self.order_assignment.items())
+        )
+        container_assignment_signature = tuple(
+            (
+                int(container_id),
+                int(assignment.get("destination_warehouse", -1)),
+                int(assignment.get("selected_transshipment", -1)),
+                tuple(int(customer) for customer in assignment.get("customers", [])),
+            )
+            for container_id, assignment in sorted(self.container_assignment.items())
+        )
         signature = (
             int(self.selected_transshipment),
             int(self.container_origin),
@@ -140,6 +157,8 @@ class TVDState:
             tuple((str(van_id), int(home)) for van_id, home in sorted(self.van_home.items())),
             tuple((str(drone_id), str(van_id)) for drone_id, van_id in sorted(self.drone_initial_carrier.items())),
             container_signature,
+            order_assignment_signature,
+            container_assignment_signature,
             tractor_signature,
             warehouse_ready_signature,
         )

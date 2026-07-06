@@ -1,12 +1,15 @@
 from __future__ import annotations
 
 import time
+from collections import Counter
 from copy import deepcopy
 from typing import Any, Dict, Optional
 
 
 _PROFILE: Dict[str, Any] = {}
 _CACHE: Dict[str, Dict[tuple[int, object], Any]] = {}
+_LOCAL_FEASIBILITY_CACHE: Dict[tuple[object, ...], Any] = {}
+_LOCAL_FEASIBILITY_KEY_COUNTS: Counter[tuple[object, ...]] = Counter()
 _REPAIR_STACK: list[tuple[str, float]] = []
 _PAIR_STACK: list[tuple[str, str, float]] = []
 
@@ -26,6 +29,35 @@ def reset_profile() -> None:
             "state_deepcopy_calls": 0,
             "state_signature_calls": 0,
             "state_signature_time_total": 0.0,
+            "local_feasibility_cache": {
+                "enabled": False,
+                "raw_drone_candidate_count": 0,
+                "unique_drone_candidate_count": 0,
+                "duplicate_drone_candidate_count": 0,
+                "duplicate_ratio": None,
+                "cache_hit_count": 0,
+                "cache_miss_count": 0,
+                "cache_hit_ratio": None,
+                "drone_candidate_eval_time": 0.0,
+                "top_duplicated_keys": [],
+                "cache_key_fields": [
+                    "drone_id",
+                    "launch_van",
+                    "launch_node",
+                    "launch_pos",
+                    "recovery_van",
+                    "recovery_node",
+                    "recovery_pos",
+                    "customer_tuple",
+                    "relevant_van_route_signature",
+                    "existing_drone_sortie_signature",
+                    "service_mode_signature",
+                    "unassigned_signature",
+                    "warehouse_ready_signature",
+                    "container_assignment_signature",
+                    "container_destination_signature",
+                ],
+            },
             "repair": {},
             "operator_pairs": {},
             "repair_rejections": {},
@@ -40,11 +72,14 @@ def reset_profile() -> None:
         }
     )
     _CACHE.clear()
+    _LOCAL_FEASIBILITY_CACHE.clear()
+    _LOCAL_FEASIBILITY_KEY_COUNTS.clear()
     _REPAIR_STACK.clear()
     _PAIR_STACK.clear()
 
 
 def snapshot_profile() -> Dict[str, Any]:
+    _sync_local_feasibility_cache_profile()
     return deepcopy(_PROFILE)
 
 
@@ -71,6 +106,66 @@ def get_cache(namespace: str, state: Any, signature: object) -> Optional[Any]:
 def set_cache(namespace: str, state: Any, signature: object, value: Any) -> None:
     cache = _CACHE.setdefault(namespace, {})
     cache[(id(state), signature)] = value
+
+
+def _local_cache_stats() -> Dict[str, Any]:
+    if not _PROFILE:
+        reset_profile()
+    return _PROFILE.setdefault("local_feasibility_cache", {})
+
+
+def set_local_feasibility_cache_enabled(enabled: bool) -> None:
+    stats = _local_cache_stats()
+    stats["enabled"] = bool(enabled)
+
+
+def get_local_feasibility_cache(
+    key: tuple[object, ...], *, enabled: bool
+) -> Optional[Any]:
+    stats = _local_cache_stats()
+    stats["enabled"] = bool(enabled)
+    stats["raw_drone_candidate_count"] = int(
+        stats.get("raw_drone_candidate_count", 0)
+    ) + 1
+    _LOCAL_FEASIBILITY_KEY_COUNTS[key] += 1
+    if enabled and key in _LOCAL_FEASIBILITY_CACHE:
+        stats["cache_hit_count"] = int(stats.get("cache_hit_count", 0)) + 1
+        return _LOCAL_FEASIBILITY_CACHE[key]
+    stats["cache_miss_count"] = int(stats.get("cache_miss_count", 0)) + 1
+    return None
+
+
+def set_local_feasibility_cache(
+    key: tuple[object, ...], value: Any, *, enabled: bool
+) -> None:
+    if enabled:
+        _LOCAL_FEASIBILITY_CACHE[key] = value
+
+
+def add_local_feasibility_eval_time(amount: float) -> None:
+    stats = _local_cache_stats()
+    stats["drone_candidate_eval_time"] = float(
+        stats.get("drone_candidate_eval_time", 0.0)
+    ) + float(amount)
+
+
+def _sync_local_feasibility_cache_profile() -> None:
+    if not _PROFILE:
+        reset_profile()
+    stats = _local_cache_stats()
+    raw = int(stats.get("raw_drone_candidate_count", 0))
+    unique = len(_LOCAL_FEASIBILITY_KEY_COUNTS)
+    duplicate = max(0, raw - unique)
+    hits = int(stats.get("cache_hit_count", 0))
+    misses = int(stats.get("cache_miss_count", 0))
+    stats["unique_drone_candidate_count"] = unique
+    stats["duplicate_drone_candidate_count"] = duplicate
+    stats["duplicate_ratio"] = duplicate / raw if raw else None
+    stats["cache_hit_ratio"] = hits / (hits + misses) if hits + misses else None
+    stats["top_duplicated_keys"] = [
+        {"candidate_key": repr(key), "count": int(count)}
+        for key, count in _LOCAL_FEASIBILITY_KEY_COUNTS.most_common(10)
+    ]
 
 
 def _repair_stats(name: str) -> Dict[str, Any]:

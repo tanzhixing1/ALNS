@@ -16,6 +16,7 @@ from alns_profile import (
     exit_operator_pair,
     record_repair_rejection,
     reset_profile,
+    set_local_feasibility_cache_enabled,
     snapshot_profile,
 )
 from objective import objective
@@ -78,6 +79,9 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
     """不含 PPO 的 C-ALNS 主循环，贴合论文第 5.1.4 节的 SA + adaptive weights。"""
 
     reset_profile()
+    set_local_feasibility_cache_enabled(
+        bool(getattr(config.alns, "enable_local_feasibility_cache", False))
+    )
     rng = np.random.default_rng(config.alns.random_seed)
     start = time.perf_counter()
 

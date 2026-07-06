@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import time
 from dataclasses import dataclass
 from itertools import combinations
 from typing import Callable, Dict, Iterable, List, Optional, Tuple
@@ -9,10 +10,13 @@ import numpy as np
 from alns_profile import (
     enter_repair,
     exit_repair,
+    add_local_feasibility_eval_time,
+    get_local_feasibility_cache,
     increment,
     record_destroy_result,
     record_repair_candidate,
     record_repair_rejection,
+    set_local_feasibility_cache,
 )
 from config import TVDConfig
 from dataset_loader import InstanceData
@@ -504,59 +508,133 @@ def _van_insert_hard_feasible(
     return feasible
 
 
-def _drone_insert_hard_feasible(
+def _drone_route_signature(state: TVDState) -> Tuple[Tuple[str, Tuple[int, ...]], ...]:
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    return tuple(
+        (str(van_id), tuple(int(node) for node in route))
+        for van_id, route in sorted(routes.items())
+    )
+
+
+def _existing_drone_sortie_signature(state: TVDState) -> Tuple[Tuple[object, ...], ...]:
+    result = []
+    for sortie in state.drone_sorties:
+        if not isinstance(sortie, dict):
+            result.append(tuple(sortie))  # type: ignore[arg-type]
+            continue
+        launch, customers, recovery = sortie_nodes(sortie)
+        result.append(
+            (
+                str(sortie.get("drone_id", "")),
+                str(sortie.get("launch_van_id", "")),
+                int(launch),
+                int(sortie.get("launch_position", -1)),
+                str(sortie.get("recovery_van_id", sortie.get("launch_van_id", ""))),
+                int(recovery),
+                int(sortie.get("recovery_position", -1)),
+                tuple(int(customer) for customer in customers),
+            )
+        )
+    return tuple(result)
+
+
+def _warehouse_ready_signature(state: TVDState) -> Tuple[Tuple[int, float], ...]:
+    ready = _warehouse_ready_times(state)
+    return tuple(
+        (int(warehouse), round(float(ready_time), 9))
+        for warehouse, ready_time in sorted(ready.items())
+    )
+
+
+def _container_assignment_signature(state: TVDState) -> Tuple[Tuple[object, ...], ...]:
+    return tuple(
+        (
+            int(customer),
+            int(assignment.get("container_id", -1)),
+            int(assignment.get("assigned_transshipment", -1)),
+        )
+        for customer, assignment in sorted(state.order_assignment.items())
+    )
+
+
+def _container_destination_signature(state: TVDState) -> Tuple[Tuple[object, ...], ...]:
+    return tuple(
+        (
+            int(container_id),
+            int(route.get("destination_warehouse", -1)),
+            round(float(route.get("unload_complete", 0.0)), 9),
+            tuple(int(customer) for customer in route.get("customers", [])),
+        )
+        for container_id, route in sorted(state.container_routes.items())
+    )
+
+
+def _drone_local_feasibility_cache_key(
+    customers: List[int],
+    sortie: dict,
+    state: TVDState,
+) -> Tuple[object, ...]:
+    launch, sortie_customers, recovery = sortie_nodes(sortie)
+    return (
+        str(sortie.get("drone_id", "")),
+        str(sortie.get("launch_van_id", "")),
+        int(launch),
+        int(sortie.get("launch_position", -1)),
+        str(sortie.get("recovery_van_id", sortie.get("launch_van_id", ""))),
+        int(recovery),
+        int(sortie.get("recovery_position", -1)),
+        tuple(int(customer) for customer in sortie_customers or customers),
+        _drone_route_signature(state),
+        _existing_drone_sortie_signature(state),
+        tuple((int(customer), str(mode)) for customer, mode in sorted(state.service_mode.items())),
+        tuple(int(customer) for customer in state.unassigned),
+        _warehouse_ready_signature(state),
+        _container_assignment_signature(state),
+        _container_destination_signature(state),
+    )
+
+
+def _drone_insert_hard_feasible_uncached(
     customers: List[int],
     sortie: dict,
     state: TVDState,
     data: InstanceData,
     config: TVDConfig,
-) -> bool:
+) -> Tuple[bool, Optional[str]]:
     if not customers:
-        record_repair_rejection("drone_empty_sortie")
-        return False
+        return False, "drone_empty_sortie"
     if any(not data.drone_eligible.get(int(customer), False) for customer in customers):
-        record_repair_rejection("drone_ineligible")
-        return False
+        return False, "drone_ineligible"
     if drone_sortie_peak_payload(sortie, data, config) > config.fleet.drone_capacity_kg:
-        record_repair_rejection("rejected_by_drone_payload")
-        return False
+        return False, "rejected_by_drone_payload"
     if drone_sortie_distance(sortie, data) > config.fleet.drone_endurance_km:
-        record_repair_rejection("rejected_by_drone_endurance")
-        return False
+        return False, "rejected_by_drone_endurance"
     if drone_sortie_energy(sortie, data, config) > config.fleet.drone_battery_capacity_kwh:
-        record_repair_rejection("rejected_by_drone_energy")
-        return False
+        return False, "rejected_by_drone_energy"
     if not _can_make_drone_sortie(sortie, data, config):
-        record_repair_rejection("drone_basic_feasibility")
-        return False
+        return False, "drone_basic_feasibility"
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
     launch_van_id = str(sortie.get("launch_van_id", ""))
     recovery_van_id = str(sortie.get("recovery_van_id", launch_van_id))
     launch_route = routes.get(launch_van_id)
     recovery_route = routes.get(recovery_van_id)
     if launch_route is None or recovery_route is None:
-        record_repair_rejection("rejected_by_sync")
-        return False
+        return False, "rejected_by_sync"
     launch = int(sortie.get("launch", -1))
     recovery = int(sortie.get("recovery", -1))
     launch_pos = int(sortie.get("launch_position", -1))
     recovery_pos = int(sortie.get("recovery_position", -1))
     if not (0 <= launch_pos < len(launch_route) and int(launch_route[launch_pos]) == launch):
-        record_repair_rejection("rejected_by_sync")
-        return False
+        return False, "rejected_by_sync"
     if not (0 <= recovery_pos < len(recovery_route) and int(recovery_route[recovery_pos]) == recovery):
-        record_repair_rejection("rejected_by_sync")
-        return False
+        return False, "rejected_by_sync"
     if launch_pos == len(launch_route) - 1:
-        record_repair_rejection("rejected_by_sync")
-        return False
+        return False, "rejected_by_sync"
     if launch_van_id == recovery_van_id:
         if recovery_pos < launch_pos:
-            record_repair_rejection("rejected_by_sync")
-            return False
+            return False, "rejected_by_sync"
         if launch == recovery and recovery_pos != launch_pos:
-            record_repair_rejection("rejected_by_sync")
-            return False
+            return False, "rejected_by_sync"
 
     ready = _warehouse_ready_times(state)
     launch_time = _route_service_time_at_position(
@@ -574,8 +652,7 @@ def _drone_insert_hard_feasible(
         config,
     )
     if launch_time is None or recovery_arrival is None:
-        record_repair_rejection("rejected_by_sync")
-        return False
+        return False, "rejected_by_sync"
 
     drone_time = float(launch_time)
     previous = launch
@@ -588,15 +665,53 @@ def _drone_insert_hard_feasible(
         earliest, latest = data.time_windows.get(sortie_customer, (0.0, float("inf")))
         service_start = max(drone_time, float(earliest))
         if service_start > float(latest) + 1e-9:
-            record_repair_rejection("rejected_by_time_window")
-            return False
+            return False, "rejected_by_time_window"
         drone_time = service_start + float(data.service_times.get(sortie_customer, 0.0))
         previous = sortie_customer
     drone_time += _travel_minutes(
         data.drone_distance_matrix[previous, recovery],
         config.fleet.drone_speed_kmph,
     )
-    return drone_time >= 0.0 and float(recovery_arrival) >= 0.0
+    return bool(drone_time >= 0.0 and float(recovery_arrival) >= 0.0), None
+
+
+def _drone_insert_hard_feasible(
+    customers: List[int],
+    sortie: dict,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    enabled = bool(getattr(config.alns, "enable_local_feasibility_cache", False))
+    collect_stats = bool(
+        getattr(config.alns, "collect_local_feasibility_cache_stats", False)
+    )
+    in_alns_loop = bool(getattr(config.alns, "_inside_alns_loop", False))
+    if not in_alns_loop or not (enabled or collect_stats):
+        feasible, reason = _drone_insert_hard_feasible_uncached(
+            customers, sortie, state, data, config
+        )
+        if reason is not None:
+            record_repair_rejection(reason)
+        return feasible
+
+    key = _drone_local_feasibility_cache_key(customers, sortie, state)
+    cached = get_local_feasibility_cache(key, enabled=enabled)
+    if cached is not None:
+        feasible, reason = cached
+        if reason is not None:
+            record_repair_rejection(reason)
+        return bool(feasible)
+
+    start = time.perf_counter()
+    feasible, reason = _drone_insert_hard_feasible_uncached(
+        customers, sortie, state, data, config
+    )
+    add_local_feasibility_eval_time(time.perf_counter() - start)
+    set_local_feasibility_cache(key, (feasible, reason), enabled=enabled)
+    if reason is not None:
+        record_repair_rejection(reason)
+    return feasible
 
 
 def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
