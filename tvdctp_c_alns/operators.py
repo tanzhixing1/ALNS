@@ -596,6 +596,330 @@ def _drone_local_feasibility_cache_key(
     )
 
 
+def _route_position_time_from_state(
+    state: TVDState,
+    van_id: str,
+    route: List[int],
+    position: int,
+    field: str,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Optional[float]:
+    sequences_by_van = state.timing.get("van_arrival_sequence_by_van", {})
+    if isinstance(sequences_by_van, dict):
+        sequence = sequences_by_van.get(str(van_id), [])
+        if isinstance(sequence, list) and len(sequence) == len(route):
+            if all(
+                isinstance(entry, dict) and int(entry.get("node", -1)) == int(node)
+                for entry, node in zip(sequence, route)
+            ):
+                entry = sequence[position]
+                if isinstance(entry, dict) and field in entry:
+                    return float(entry[field])
+
+    return _route_service_time_at_position(
+        route,
+        position,
+        _warehouse_ready_times(state).get(int(route[0]), 0.0),
+        data,
+        config,
+    )
+
+
+def _drone_customer_container_ready_time(
+    customer: int,
+    state: TVDState,
+) -> Optional[float]:
+    assignment = state.order_assignment.get(int(customer))
+    if not isinstance(assignment, dict):
+        return None
+    container_id = int(assignment.get("container_id", -1))
+    container_route = state.container_routes.get(container_id)
+    if not isinstance(container_route, dict):
+        return None
+    return float(container_route.get("unload_complete", 0.0))
+
+
+def _drone_flight_end_time(
+    launch_time: float,
+    launch: int,
+    customers: List[int],
+    recovery: int,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Tuple[float, List[Tuple[int, float]]]:
+    drone_time = float(launch_time)
+    service_starts: List[Tuple[int, float]] = []
+    previous = int(launch)
+    for customer in customers:
+        customer = int(customer)
+        drone_time += _travel_minutes(
+            data.drone_distance_matrix[previous, customer],
+            config.fleet.drone_speed_kmph,
+        )
+        earliest, _ = data.time_windows.get(customer, (0.0, float("inf")))
+        service_start = max(drone_time, float(earliest))
+        service_starts.append((customer, float(service_start)))
+        drone_time = service_start + float(data.service_times.get(customer, 0.0))
+        previous = customer
+    drone_time += _travel_minutes(
+        data.drone_distance_matrix[previous, int(recovery)],
+        config.fleet.drone_speed_kmph,
+    )
+    return float(drone_time), service_starts
+
+
+def _drone_local_sortie_record(
+    sortie: dict,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+    *,
+    candidate: bool,
+    index: int,
+) -> Optional[Dict[str, object]]:
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    launch, customers, recovery = sortie_nodes(sortie)
+    launch_van = str(sortie.get("launch_van_id", ""))
+    recovery_van = str(sortie.get("recovery_van_id", launch_van))
+    launch_route = routes.get(launch_van)
+    recovery_route = routes.get(recovery_van)
+    if launch_route is None or recovery_route is None:
+        return None
+
+    launch_pos = int(sortie.get("launch_position", -1))
+    recovery_pos = int(sortie.get("recovery_position", -1))
+    launch_matches = 0 <= launch_pos < len(launch_route) and int(launch_route[launch_pos]) == launch
+    recovery_matches = 0 <= recovery_pos < len(recovery_route) and int(recovery_route[recovery_pos]) == recovery
+    if candidate and (not launch_matches or not recovery_matches):
+        return None
+    if not launch_matches:
+        launch_pos = next((idx for idx, node in enumerate(launch_route) if int(node) == launch), -1)
+    if not recovery_matches:
+        recovery_pos = next((idx for idx, node in enumerate(recovery_route) if int(node) == recovery), -1)
+    if launch_pos < 0 or recovery_pos < 0 or launch_pos == len(launch_route) - 1:
+        return None
+
+    launch_time = _route_position_time_from_state(
+        state, launch_van, launch_route, launch_pos, "departure_time", data, config
+    )
+    recovery_arrival = _route_position_time_from_state(
+        state, recovery_van, recovery_route, recovery_pos, "arrival_time", data, config
+    )
+    if launch_time is None or recovery_arrival is None:
+        return None
+    flight_end, _ = _drone_flight_end_time(
+        float(launch_time), launch, customers, recovery, data, config
+    )
+    if not candidate:
+        launch_time = max(float(launch_time), float(sortie.get("launch_time", 0.0)))
+        flight_end, _ = _drone_flight_end_time(
+            float(launch_time), launch, customers, recovery, data, config
+        )
+    recovery_time = max(
+        float(recovery_arrival),
+        float(flight_end),
+        float(sortie.get("recovery_time", 0.0)) if not candidate else 0.0,
+    )
+    return {
+        "candidate": candidate,
+        "index": int(index),
+        "sortie": sortie,
+        "drone_id": str(sortie.get("drone_id", "")),
+        "launch_van": launch_van,
+        "recovery_van": recovery_van,
+        "launch": int(launch),
+        "recovery": int(recovery),
+        "launch_pos": int(launch_pos),
+        "recovery_pos": int(recovery_pos),
+        "base_launch_time": float(launch_time),
+        "recovery_arrival": float(recovery_arrival),
+        "flight_end": float(flight_end),
+        "recovery_time": float(recovery_time),
+    }
+
+
+def _drone_physical_local_check(
+    customers: List[int],
+    sortie: dict,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Tuple[bool, Optional[str], Optional[Dict[str, object]]]:
+    drone_id = str(sortie.get("drone_id", ""))
+    if drone_id not in state.drone_initial_carrier:
+        return False, "rejected_by_drone_carrier", None
+
+    records: List[Dict[str, object]] = []
+    for index, existing in enumerate(state.drone_sorties):
+        if not isinstance(existing, dict):
+            continue
+        record = _drone_local_sortie_record(
+            existing, state, data, config, candidate=False, index=index
+        )
+        if record is not None:
+            records.append(record)
+    candidate_record = _drone_local_sortie_record(
+        sortie,
+        state,
+        data,
+        config,
+        candidate=True,
+        index=len(state.drone_sorties),
+    )
+    if candidate_record is None:
+        return False, "rejected_by_sync", None
+    records.append(candidate_record)
+
+    by_drone: Dict[str, List[Dict[str, object]]] = {}
+    for record in records:
+        by_drone.setdefault(str(record["drone_id"]), []).append(record)
+
+    candidate_launch_time = float(candidate_record["base_launch_time"])
+    candidate_recovery_time = float(candidate_record["recovery_time"])
+    for current_drone_id, drone_records in by_drone.items():
+        drone_records.sort(
+            key=lambda record: (
+                float(record["base_launch_time"]),
+                int(record["launch_pos"]),
+                int(record["index"]),
+            )
+        )
+        current_carrier = str(state.drone_initial_carrier.get(current_drone_id, "unknown"))
+        available_time = _warehouse_ready_times(state).get(
+            int(state.van_home.get(current_carrier, state.selected_transshipment)),
+            0.0,
+        )
+        previous_record: Optional[Dict[str, object]] = None
+        candidate_seen = False
+        for record in drone_records:
+            is_candidate = bool(record["candidate"])
+            launch_van = str(record["launch_van"])
+            if (is_candidate or candidate_seen) and current_carrier != launch_van:
+                return False, "rejected_by_drone_carrier", None
+            if is_candidate and previous_record is not None:
+                if (
+                    str(previous_record["recovery_van"])
+                    == str(record["launch_van"])
+                    and int(record["launch_pos"]) < int(previous_record["recovery_pos"])
+                ):
+                    return False, "rejected_by_sortie_order", None
+                if int(previous_record["recovery"]) in state.transshipment_nodes:
+                    return False, "rejected_by_sortie_order", None
+
+            effective_launch = max(float(record["base_launch_time"]), float(available_time))
+            flight_end, _ = _drone_flight_end_time(
+                effective_launch,
+                int(record["launch"]),
+                sortie_nodes(record["sortie"])[1],
+                int(record["recovery"]),
+                data,
+                config,
+            )
+            recovery_time = max(float(record["recovery_arrival"]), float(flight_end))
+            if not is_candidate:
+                recovery_time = max(
+                    recovery_time,
+                    float(record["sortie"].get("recovery_time", 0.0)),
+                )
+            if is_candidate:
+                candidate_seen = True
+                candidate_launch_time = float(effective_launch)
+                candidate_recovery_time = float(recovery_time)
+                record["launch_time"] = candidate_launch_time
+                record["recovery_time"] = candidate_recovery_time
+
+            current_carrier = (
+                "__warehouse__"
+                if int(record["recovery"]) in state.transshipment_nodes
+                else str(record["recovery_van"])
+            )
+            available_time = float(recovery_time)
+            previous_record = record
+
+    def capacity_peak(include_candidate: bool) -> int:
+        counts: Dict[str, int] = {}
+        for carrier in state.drone_initial_carrier.values():
+            carrier = str(carrier)
+            counts[carrier] = counts.get(carrier, 0) + 1
+        events = []
+        for record in records:
+            if bool(record["candidate"]) and not include_candidate:
+                continue
+            events.append(
+                (
+                    float(record.get("launch_time", record["base_launch_time"])),
+                    0,
+                    str(record["launch_van"]),
+                    -1,
+                )
+            )
+            if int(record["recovery"]) not in state.transshipment_nodes:
+                events.append(
+                    (
+                        float(record.get("recovery_time", record["recovery_time"])),
+                        1,
+                        str(record["recovery_van"]),
+                        1,
+                    )
+                )
+        peak = max(counts.values(), default=0)
+        for event_time, event_kind, van_id, delta in sorted(events):
+            del event_time, event_kind
+            counts[van_id] = counts.get(van_id, 0) + delta
+            peak = max(peak, counts[van_id])
+        return peak
+
+    max_carried = int(getattr(config.fleet, "max_drones_carried_per_van", 3))
+    if capacity_peak(include_candidate=True) > max_carried and capacity_peak(include_candidate=False) <= max_carried:
+        return False, "rejected_by_dynamic_drone_capacity", None
+
+    candidate_record["launch_time"] = candidate_launch_time
+    candidate_record["recovery_time"] = candidate_recovery_time
+    return True, None, candidate_record
+
+
+def _drone_downstream_route_feasible(
+    recovery_van: str,
+    recovery_pos: int,
+    recovery_time: float,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> bool:
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    route = routes.get(str(recovery_van))
+    if route is None or recovery_pos < 0 or recovery_pos >= len(route):
+        return False
+    position_time = _route_position_time_from_state(
+        state,
+        str(recovery_van),
+        route,
+        recovery_pos,
+        "departure_time",
+        data,
+        config,
+    )
+    if position_time is None:
+        return False
+    current_time = max(float(position_time), float(recovery_time))
+    previous = int(route[recovery_pos])
+    for node in route[recovery_pos + 1 :]:
+        node = int(node)
+        current_time += _travel_minutes(
+            data.ground_distance_matrix[previous, node],
+            config.fleet.van_speed_kmph,
+        )
+        if node in data.customers and state.service_mode.get(node) == "van":
+            earliest, latest = data.time_windows.get(node, (0.0, float("inf")))
+            service_start = max(current_time, float(earliest))
+            if service_start > float(latest) + 1e-9:
+                return False
+            current_time = service_start + float(data.service_times.get(node, 0.0))
+        previous = node
+    return True
+
+
 def _drone_insert_hard_feasible_uncached(
     customers: List[int],
     sortie: dict,
@@ -605,8 +929,19 @@ def _drone_insert_hard_feasible_uncached(
 ) -> Tuple[bool, Optional[str]]:
     if not customers:
         return False, "drone_empty_sortie"
+    if len(set(int(customer) for customer in customers)) != len(customers):
+        return False, "drone_duplicate_customer"
     if any(not data.drone_eligible.get(int(customer), False) for customer in customers):
         return False, "drone_ineligible"
+    served_by_van = set(state.get_van_customers())
+    served_by_drone = set(state.get_drone_customers())
+    if any(
+        int(customer) not in state.unassigned
+        or int(customer) in served_by_van
+        or int(customer) in served_by_drone
+        for customer in customers
+    ):
+        return False, "drone_customer_already_served"
     if drone_sortie_peak_payload(sortie, data, config) > config.fleet.drone_capacity_kg:
         return False, "rejected_by_drone_payload"
     if drone_sortie_distance(sortie, data) > config.fleet.drone_endurance_km:
@@ -656,24 +991,49 @@ def _drone_insert_hard_feasible_uncached(
     if launch_time is None or recovery_arrival is None:
         return False, "rejected_by_sync"
 
-    drone_time = float(launch_time)
-    previous = launch
-    for sortie_customer in customers:
-        sortie_customer = int(sortie_customer)
-        drone_time += _travel_minutes(
-            data.drone_distance_matrix[previous, sortie_customer],
-            config.fleet.drone_speed_kmph,
+    for customer in customers:
+        assignment = state.order_assignment.get(int(customer))
+        container_route = (
+            state.container_routes.get(int(assignment.get("container_id", -1)))
+            if isinstance(assignment, dict)
+            else None
         )
-        earliest, latest = data.time_windows.get(sortie_customer, (0.0, float("inf")))
-        service_start = max(drone_time, float(earliest))
+        if not isinstance(container_route, dict):
+            return False, "rejected_by_container_assignment"
+        expected_warehouse = int(
+            container_route.get("destination_warehouse", state.selected_transshipment)
+        )
+        if int(launch_route[0]) != expected_warehouse:
+            return False, "rejected_by_container_warehouse"
+
+    physical_ok, physical_reason, candidate_record = _drone_physical_local_check(
+        customers, sortie, state, data, config
+    )
+    if not physical_ok or candidate_record is None:
+        return False, physical_reason or "rejected_by_drone_carrier"
+
+    effective_launch_time = float(candidate_record["launch_time"])
+    drone_time, service_starts = _drone_flight_end_time(
+        effective_launch_time, launch, [int(customer) for customer in customers], recovery, data, config
+    )
+    for customer, service_start in service_starts:
+        _, latest = data.time_windows.get(int(customer), (0.0, float("inf")))
         if service_start > float(latest) + 1e-9:
             return False, "rejected_by_time_window"
-        drone_time = service_start + float(data.service_times.get(sortie_customer, 0.0))
-        previous = sortie_customer
-    drone_time += _travel_minutes(
-        data.drone_distance_matrix[previous, recovery],
-        config.fleet.drone_speed_kmph,
-    )
+        ready_time = _drone_customer_container_ready_time(int(customer), state)
+        if ready_time is None or service_start + 1e-9 < ready_time:
+            return False, "rejected_by_container_ready"
+
+    if not _drone_downstream_route_feasible(
+        str(sortie.get("recovery_van_id", sortie.get("launch_van_id", ""))),
+        int(sortie.get("recovery_position", -1)),
+        float(candidate_record["recovery_time"]),
+        state,
+        data,
+        config,
+    ):
+        return False, "rejected_by_downstream_time_window"
+
     return bool(drone_time >= 0.0 and float(recovery_arrival) >= 0.0), None
 
 
