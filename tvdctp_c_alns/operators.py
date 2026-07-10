@@ -1134,10 +1134,21 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
     if data.demands[customer] + getattr(data, "pickup_demands", {}).get(customer, 0.0) > config.fleet.drone_capacity_kg:
         return None
 
+    # The outer anchor loops can produce the same sortie customer sequence
+    # more than once.  Memoize only within this call: state is not mutated by
+    # the generator, and a later repair/state revision gets a fresh memo.
+    move_by_customer_tuple: Dict[Tuple[int, ...], Optional[InsertionMove]] = {}
+
+    def best_move_for_customer_tuple(sortie_customers: List[int]) -> Optional[InsertionMove]:
+        customer_tuple = tuple(int(item) for item in sortie_customers)
+        if customer_tuple not in move_by_customer_tuple:
+            move_by_customer_tuple[customer_tuple] = _best_drone_move_for_customers(
+                list(customer_tuple), state, data, config
+            )
+        return move_by_customer_tuple[customer_tuple]
+
     best: Optional[InsertionMove] = None
-    single_customer_move = _best_drone_move_for_customers(
-        [int(customer)], state, data, config
-    )
+    single_customer_move = best_move_for_customer_tuple([int(customer)])
     if single_customer_move is not None:
         best = single_customer_move
 
@@ -1151,9 +1162,7 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
                     sortie_customers = _extend_drone_customers(
                         customer, launch, recovery, state, data, config
                     )
-                    move = _best_drone_move_for_customers(
-                        sortie_customers, state, data, config
-                    )
+                    move = best_move_for_customer_tuple(sortie_customers)
                     if move is not None and (best is None or move.cost < best.cost):
                         best = move
     return best
