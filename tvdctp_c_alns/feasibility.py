@@ -1253,6 +1253,14 @@ def check_solution_feasible(
         if drone_count != warehouse_num_vans.get(warehouse, 0) * config.fleet.drones_per_van:
             violations.append(f"warehouse {warehouse} drone count is not derived from vans_per_transshipment * drones_per_van.")
 
+    max_drones_carried_per_van = int(
+        getattr(config.fleet, "max_drones_carried_per_van", 3)
+    )
+    if int(config.fleet.drones_per_van) > max_drones_carried_per_van:
+        violations.append(
+            "drones_per_van exceeds max_drones_carried_per_van, so the initial carrier state is physically infeasible."
+        )
+
     carrier_counts: Dict[str, int] = {}
     for drone_id, carrier in state.drone_initial_carrier.items():
         if carrier not in state.van_home:
@@ -1605,10 +1613,10 @@ def check_solution_feasible(
                     )
     for _, _, van_id, delta, _ in sorted(capacity_events, key=lambda item: (item[0], item[1], item[2])):
         dynamic_counts[van_id] = dynamic_counts.get(van_id, 0) + int(delta)
-        if dynamic_counts[van_id] > config.fleet.drones_per_van:
+        if dynamic_counts[van_id] > max_drones_carried_per_van:
             violations.append(
                 f"{van_id} carries {dynamic_counts[van_id]} drones after recovery, "
-                f"exceeding drones_per_van={config.fleet.drones_per_van}."
+                f"exceeding max_drones_carried_per_van={max_drones_carried_per_van}."
             )
 
     if float(timing.get("van_waiting_time", 0.0)) < -1e-9:

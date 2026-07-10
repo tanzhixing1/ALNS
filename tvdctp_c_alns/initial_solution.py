@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import time
+import warnings
 from typing import Dict, List, Tuple
 
 from alns_profile import snapshot_profile
@@ -135,8 +136,16 @@ def _build_initial_van_routes(
     van_home: Dict[str, int],
     customers: List[int] | None = None,
     start_time: float = 0.0,
-) -> Dict[str, List[int]]:
-    route_customers = [int(customer) for customer in (customers if customers is not None else data.customers)]
+) -> Tuple[Dict[str, List[int]], List[int], Dict[int, str]]:
+    route_customers = sorted(
+        [int(customer) for customer in (customers if customers is not None else data.customers)],
+        key=lambda customer: (
+            float(data.time_windows.get(customer, (0.0, float("inf")))[1]) - float(start_time),
+            float(data.time_windows.get(customer, (0.0, float("inf")))[1]),
+            float(data.time_windows.get(customer, (0.0, float("inf")))[0]),
+            int(customer),
+        ),
+    )
     selected_vans = [
         van_id
         for van_id, home in sorted(van_home.items(), key=lambda item: int(item[0].split("_")[1]))
@@ -151,6 +160,8 @@ def _build_initial_van_routes(
         6,
         (len(route_customers) + max(len(selected_vans), 1) - 1) // max(len(selected_vans), 1),
     )
+    deferred_customers: List[int] = []
+    failure_reasons: Dict[int, str] = {}
 
     for customer in route_customers:
         best_van = None
@@ -194,10 +205,14 @@ def _build_initial_van_routes(
                 van_routes[best_van] = candidate_route
                 best_idx = 1
         if best_van is None:
-            raise ValueError(
-                "initial_solution cannot insert customer "
-                f"{int(customer)} without violating van capacity/time window."
+            deferred_customers.append(int(customer))
+            unused_vans = selected_vans[len(active_vans) :]
+            failure_reasons[int(customer)] = (
+                f"customer {int(customer)} cannot be inserted without violating "
+                f"van capacity/time window; tried active vans {list(active_vans)}; "
+                f"tried unused vans {list(unused_vans)}."
             )
+            continue
         van_routes[best_van].insert(best_idx, int(customer))
 
     for van_id, route in van_routes.items():
@@ -209,7 +224,7 @@ def _build_initial_van_routes(
                     key=lambda node: data.ground_distance_matrix[last_customer, node],
                 )
             )
-    return van_routes
+    return van_routes, deferred_customers, failure_reasons
 
 
 def _container_unload_duration(config: TVDConfig) -> float:
@@ -225,13 +240,14 @@ def _choose_container_destination(
     data: InstanceData,
     config: TVDConfig,
     container_id: int,
+    selected_counts: Dict[int, int] | None = None,
 ) -> int:
     assignment = data.container_assignment[int(container_id)]
     origin = int(assignment["origin_node"])
     customers = _container_customer_ids(data, int(container_id))
     warehouse_vans = config.warehouse_num_vans(data.transshipment_nodes)
-    best_warehouse = int(data.transshipment_nodes[0])
-    best_score = None
+    selected_counts = selected_counts or {}
+    scored_candidates: List[Tuple[float, Tuple[int, int], int]] = []
     for warehouse in data.transshipment_nodes:
         average_customer_distance = (
             sum(float(data.ground_distance_matrix[int(warehouse), customer]) for customer in customers)
@@ -242,14 +258,28 @@ def _choose_container_destination(
             drone_penalty += 1_000_000.0
         if warehouse_vans.get(int(warehouse), 0) <= 0:
             drone_penalty += 1_000_000.0
-        score = (
+        base_score = (
             float(data.ground_distance_matrix[origin, int(warehouse)])
             + average_customer_distance
             + drone_penalty
         )
-        if best_score is None or score < best_score:
-            best_score = score
-            best_warehouse = int(warehouse)
+        tie_breaker = (
+            int(selected_counts.get(int(warehouse), 0)),
+            int(warehouse),
+        )
+        scored_candidates.append((float(base_score), tie_breaker, int(warehouse)))
+
+    best_base_score = min(score for score, _, _ in scored_candidates)
+    near_tie_epsilon = max(1e-6, 0.01 * max(abs(best_base_score), 1.0))
+    near_tie_candidates = [
+        item
+        for item in scored_candidates
+        if item[0] <= best_base_score + near_tie_epsilon
+    ]
+    _, _, best_warehouse = min(
+        near_tie_candidates,
+        key=lambda item: (item[1], item[0], item[2]),
+    )
     return int(best_warehouse)
 
 
@@ -257,10 +287,43 @@ def _decide_container_destinations(
     data: InstanceData,
     config: TVDConfig,
 ) -> Dict[int, int]:
-    return {
-        int(container_id): _choose_container_destination(data, config, int(container_id))
-        for container_id in sorted(data.container_assignment)
-    }
+    destinations: Dict[int, int] = {}
+    selected_counts: Dict[int, int] = {}
+
+    def assignment_priority(container_id: int) -> Tuple[float, float, int]:
+        customers = _container_customer_ids(data, int(container_id))
+        earliest_due = min(
+            (
+                float(data.time_windows.get(customer, (0.0, float("inf")))[1])
+                for customer in customers
+            ),
+            default=float("inf"),
+        )
+        raw_scores: List[float] = []
+        assignment = data.container_assignment[int(container_id)]
+        origin = int(assignment["origin_node"])
+        for warehouse in data.transshipment_nodes:
+            average_customer_distance = (
+                sum(float(data.ground_distance_matrix[int(warehouse), customer]) for customer in customers)
+                / max(len(customers), 1)
+            )
+            raw_scores.append(
+                float(data.ground_distance_matrix[origin, int(warehouse)])
+                + average_customer_distance
+            )
+        best_raw_score = min(raw_scores) if raw_scores else 0.0
+        return (earliest_due, -best_raw_score, int(container_id))
+
+    for container_id in sorted(data.container_assignment, key=assignment_priority):
+        destination = _choose_container_destination(
+            data,
+            config,
+            int(container_id),
+            selected_counts=selected_counts,
+        )
+        destinations[int(container_id)] = int(destination)
+        selected_counts[int(destination)] = selected_counts.get(int(destination), 0) + 1
+    return destinations
 
 
 def _container_service_priority(
@@ -535,6 +598,134 @@ def _build_stage1_drayage(
     )
 
 
+def _build_initial_vans_for_container_routes(
+    data: InstanceData,
+    config: TVDConfig,
+    container_routes: Dict[int, Dict[str, object]],
+    warehouse_ready_time: Dict[int, float],
+    van_home: Dict[str, int],
+) -> Tuple[Dict[str, List[int]], List[int], Dict[int, str]]:
+    customers_by_warehouse: Dict[int, List[int]] = {}
+    for route in container_routes.values():
+        warehouse = int(route["destination_warehouse"])
+        for customer in route.get("customers", []):
+            customers_by_warehouse.setdefault(warehouse, []).append(int(customer))
+
+    van_routes: Dict[str, List[int]] = {}
+    deferred_customers: List[int] = []
+    failure_reasons: Dict[int, str] = {}
+    for warehouse, customers in sorted(customers_by_warehouse.items()):
+        warehouse_routes, deferred, reasons = _build_initial_van_routes(
+            data,
+            config,
+            int(warehouse),
+            van_home,
+            customers=customers,
+            start_time=float(warehouse_ready_time.get(int(warehouse), 0.0)),
+        )
+        van_routes.update(warehouse_routes)
+        deferred_customers.extend(deferred)
+        failure_reasons.update(reasons)
+    return van_routes, deferred_customers, failure_reasons
+
+
+def _container_for_customer(data: InstanceData, customer: int) -> int | None:
+    customer = int(customer)
+    for container_id, assignment in data.container_assignment.items():
+        if customer in [int(item) for item in assignment.get("customers", [])]:
+            return int(container_id)
+    return None
+
+
+def _retry_destinations_after_van_failure(
+    data: InstanceData,
+    config: TVDConfig,
+    destinations: Dict[int, int],
+    deferred_customers: List[int],
+    van_home: Dict[str, int],
+) -> Tuple[
+    Dict[int, int],
+    Dict[str, List[Dict[str, object]]],
+    Dict[int, Dict[str, object]],
+    Dict[str, int],
+    Dict[str, int],
+    List[int],
+    Dict[int, float],
+    Dict[str, List[int]],
+    List[int],
+    Dict[int, str],
+] | None:
+    if not deferred_customers or len(destinations) <= 1 or len(data.transshipment_nodes) <= 1:
+        return None
+
+    deferred_containers = {
+        container_id
+        for customer in deferred_customers
+        for container_id in [_container_for_customer(data, int(customer))]
+        if container_id is not None and container_id in destinations
+    }
+    problem_warehouses = {int(destinations[container_id]) for container_id in deferred_containers}
+    candidate_containers = [
+        int(container_id)
+        for container_id, warehouse in sorted(destinations.items())
+        if int(warehouse) in problem_warehouses
+    ]
+
+    best_result = None
+    best_score = None
+    for container_id in candidate_containers:
+        current_warehouse = int(destinations[container_id])
+        for warehouse in sorted(int(node) for node in data.transshipment_nodes):
+            if warehouse == current_warehouse:
+                continue
+            candidate_destinations = dict(destinations)
+            candidate_destinations[int(container_id)] = int(warehouse)
+            try:
+                (
+                    tractor_routes,
+                    container_routes,
+                    tractor_home,
+                    trailer_home,
+                    truck_route,
+                    warehouse_ready_time,
+                ) = _build_stage1_drayage(data, config, candidate_destinations)
+                van_routes, deferred, failure_reasons = _build_initial_vans_for_container_routes(
+                    data,
+                    config,
+                    container_routes,
+                    warehouse_ready_time,
+                    van_home,
+                )
+            except ValueError:
+                continue
+            score = (
+                len(deferred),
+                max(warehouse_ready_time.values(), default=0.0),
+                int(container_id),
+                int(warehouse),
+            )
+            if best_score is None or score < best_score:
+                best_score = score
+                best_result = (
+                    candidate_destinations,
+                    tractor_routes,
+                    container_routes,
+                    tractor_home,
+                    trailer_home,
+                    truck_route,
+                    warehouse_ready_time,
+                    van_routes,
+                    deferred,
+                    failure_reasons,
+                )
+            if not deferred:
+                return best_result
+
+    if best_result is not None and best_score is not None and best_score[0] < len(deferred_customers):
+        return best_result
+    return None
+
+
 def _truck_route(data: InstanceData, selected_transshipment: int) -> List[int]:
     if data.container_origin == selected_transshipment:
         return [data.truck_depot_node, selected_transshipment]
@@ -637,6 +828,7 @@ def _candidate_sortie_is_feasible(
     sortie_customers: List[int],
     data: InstanceData,
     config: TVDConfig,
+    construction_unassigned: List[int] | None = None,
 ) -> bool:
     trial = state.copy()
     trial.van_routes = _remove_customers_from_van_routes(
@@ -644,11 +836,24 @@ def _candidate_sortie_is_feasible(
     )
     trial.sync_primary_van_route()
     trial.drone_sorties.append(sortie)
+    if construction_unassigned is not None:
+        trial.unassigned = [
+            int(customer)
+            for customer in construction_unassigned
+            if int(customer) not in {int(item) for item in sortie_customers}
+        ]
+        for customer in trial.unassigned:
+            trial.service_mode[int(customer)] = "drone"
     for customer in sortie_customers:
         trial.service_mode[int(customer)] = "drone"
     feasible, violations = check_solution_feasible(trial, data, config)
     if feasible:
         return True
+    if construction_unassigned is not None:
+        return bool(violations) and all(
+            str(violation).startswith("unassigned customers remain:")
+            for violation in violations
+        )
     return False
 
 
@@ -657,6 +862,7 @@ def _best_drone_sortie_for_customers(
     sortie_customers: List[int],
     data: InstanceData,
     config: TVDConfig,
+    construction_unassigned: List[int] | None = None,
 ) -> dict | None:
     if not config.fleet.drone_enabled:
         return None
@@ -704,7 +910,12 @@ def _best_drone_sortie_for_customers(
                     ):
                         continue
                     if not _candidate_sortie_is_feasible(
-                        state, sortie, sortie_customers, data, config
+                        state,
+                        sortie,
+                        sortie_customers,
+                        data,
+                        config,
+                        construction_unassigned=construction_unassigned,
                     ):
                         continue
                     cost = (
@@ -716,6 +927,34 @@ def _best_drone_sortie_for_customers(
                         best_cost = cost
                         best_sortie = sortie
     return best_sortie
+
+
+def _apply_drone_sortie_for_customers(
+    state: TVDState,
+    sortie_customers: List[int],
+    data: InstanceData,
+    config: TVDConfig,
+    construction_unassigned: List[int] | None = None,
+) -> bool:
+    sortie = _best_drone_sortie_for_customers(
+        state,
+        sortie_customers,
+        data,
+        config,
+        construction_unassigned=construction_unassigned,
+    )
+    if sortie is None:
+        return False
+    for customer in sortie_customers:
+        state.service_mode[int(customer)] = "drone"
+        if int(customer) in state.unassigned:
+            state.unassigned.remove(int(customer))
+    state.van_routes = _remove_customers_from_van_routes(
+        state.van_routes, sortie_customers
+    )
+    state.sync_primary_van_route()
+    state.drone_sorties.append(sortie)
+    return True
 
 
 def _van_saving_for_customers(
@@ -799,6 +1038,7 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
     initial_timing["t_decide_container_destinations"] = (
         time.perf_counter() - stage_start
     )
+    van_home = config.build_van_home(data.transshipment_nodes)
 
     stage_start = time.perf_counter()
     (
@@ -810,33 +1050,45 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         warehouse_ready_time,
     ) = _build_stage1_drayage(data, config, destinations)
     initial_timing["t_build_stage1_drayage"] = time.perf_counter() - stage_start
+
+    stage_start = time.perf_counter()
+    van_routes, deferred_initial_customers, insertion_failure_reasons = (
+        _build_initial_vans_for_container_routes(
+            data,
+            config,
+            container_routes,
+            warehouse_ready_time,
+            van_home,
+        )
+    )
+    retry_result = _retry_destinations_after_van_failure(
+        data,
+        config,
+        destinations,
+        deferred_initial_customers,
+        van_home,
+    )
+    if retry_result is not None:
+        (
+            destinations,
+            tractor_routes,
+            container_routes,
+            tractor_home,
+            trailer_home,
+            truck_route,
+            warehouse_ready_time,
+            van_routes,
+            deferred_initial_customers,
+            insertion_failure_reasons,
+        ) = retry_result
+    initial_timing["t_build_initial_van_routes"] = time.perf_counter() - stage_start
     selected_transshipment = int(
         next(iter(container_routes.values()))["destination_warehouse"]
         if container_routes
         else _select_transshipment(data, config)
     )
-    van_home = config.build_van_home(data.transshipment_nodes)
     drone_initial_carrier = config.build_drone_initial_carrier(data.transshipment_nodes)
     drone_home_warehouse = config.build_drone_home_warehouse(data.transshipment_nodes)
-    customers_by_warehouse: Dict[int, List[int]] = {}
-    for container_id, route in container_routes.items():
-        warehouse = int(route["destination_warehouse"])
-        for customer in route.get("customers", []):
-            customers_by_warehouse.setdefault(warehouse, []).append(int(customer))
-    van_routes: Dict[str, List[int]] = {}
-    stage_start = time.perf_counter()
-    for warehouse, customers in sorted(customers_by_warehouse.items()):
-        van_routes.update(
-            _build_initial_van_routes(
-                data,
-                config,
-                int(warehouse),
-                van_home,
-                customers=customers,
-                start_time=float(warehouse_ready_time.get(int(warehouse), 0.0)),
-            )
-        )
-    initial_timing["t_build_initial_van_routes"] = time.perf_counter() - stage_start
     primary_van = sorted(van_routes, key=lambda item: int(item.split("_")[1]))[0]
     van_route = van_routes[primary_van].copy()
     service_mode = {customer: "van" for customer in data.customers}
@@ -866,9 +1118,53 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
             "warehouse_num_drones": config.warehouse_num_drones(data.transshipment_nodes),
             "drones_per_van": config.fleet.drones_per_van,
             "warehouse_ready_time": warehouse_ready_time,
+            "initial_solution_destinations": dict(destinations),
+            "initial_solution_destination_retry": retry_result is not None,
+            "initial_solution_insertion_failures": dict(insertion_failure_reasons),
             "selected_transshipment_legacy_alias": True,
         },
     )
+
+    if deferred_initial_customers:
+        state.unassigned = sorted(set(int(customer) for customer in deferred_initial_customers))
+        fallback_failures: List[int] = []
+        stage_start = time.perf_counter()
+        for customer in list(state.unassigned):
+            if (
+                config.fleet.drone_enabled
+                and data.drone_eligible.get(int(customer), False)
+                and _apply_drone_sortie_for_customers(
+                    state,
+                    [int(customer)],
+                    data,
+                    config,
+                    construction_unassigned=state.unassigned,
+                )
+            ):
+                continue
+            fallback_failures.append(int(customer))
+            reason = insertion_failure_reasons.get(
+                int(customer),
+                f"customer {int(customer)} cannot be inserted without violating van capacity/time window.",
+            )
+            warnings.warn(
+                "initial_solution could not assign customer "
+                f"{int(customer)} after van insertion and drone fallback. {reason}",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        state.unassigned = sorted(set(fallback_failures))
+        state.metadata["initial_solution_deferred_customers"] = sorted(
+            set(deferred_initial_customers)
+        )
+        state.metadata["initial_solution_fallback_failures"] = state.unassigned.copy()
+        initial_timing["t_initial_drone_fallback"] = (
+            time.perf_counter() - stage_start
+        )
+    else:
+        state.metadata["initial_solution_deferred_customers"] = []
+        state.metadata["initial_solution_fallback_failures"] = []
+        initial_timing["t_initial_drone_fallback"] = 0.0
 
     mandatory_drone_customers = [
         int(customer)
@@ -879,18 +1175,36 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
     ]
     if mandatory_drone_customers:
         stage_start = time.perf_counter()
+        fallback_failures: List[int] = []
         state.van_routes = _remove_customers_from_van_routes(
             state.van_routes, mandatory_drone_customers
         )
         state.sync_primary_van_route()
         for customer in mandatory_drone_customers:
             state.mark_unassigned(customer)
-        import numpy as np
-        from operators import greedy_drone_repair
-
-        state = greedy_drone_repair(
-            state, np.random.default_rng(config.alns.random_seed), data, config
-        )
+        for customer in mandatory_drone_customers:
+            if _apply_drone_sortie_for_customers(
+                state,
+                [int(customer)],
+                data,
+                config,
+                construction_unassigned=state.unassigned,
+            ):
+                continue
+            fallback_failures.append(int(customer))
+            warnings.warn(
+                "initial_solution could not assign customer "
+                f"{int(customer)} after van insertion and drone fallback.",
+                RuntimeWarning,
+                stacklevel=2,
+            )
+        if fallback_failures:
+            state.metadata["initial_solution_fallback_failures"] = sorted(
+                set(
+                    state.metadata.get("initial_solution_fallback_failures", [])
+                    + fallback_failures
+                )
+            )
         initial_timing["t_mandatory_high_floor_drone_repair"] = (
             time.perf_counter() - stage_start
         )
@@ -923,6 +1237,12 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         if route_owner is None:
             continue
         sortie_customers = [seed]
+        if (
+            not data.is_high_floor.get(seed, False)
+            and _van_saving_for_customers(state, sortie_customers, data, config)
+            <= config.cost.drone_fixed_cost
+        ):
+            continue
 
         if not data.is_high_floor.get(seed, False):
             changed = True
@@ -934,6 +1254,11 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
                     if data.is_high_floor.get(candidate, False):
                         continue
                     trial_customers = sortie_customers + [candidate]
+                    if (
+                        _van_saving_for_customers(state, trial_customers, data, config)
+                        <= config.cost.drone_fixed_cost
+                    ):
+                        continue
                     trial_sortie = _best_drone_sortie_for_customers(
                         state, trial_customers, data, config
                     )
@@ -1002,8 +1327,16 @@ def initial_solution(data: InstanceData, config: TVDConfig) -> TVDState:
         initial_profile_end.get("state_deepcopy_calls", 0)
     ) - int(initial_profile_start.get("state_deepcopy_calls", 0))
     if not feasible:
+        insertion_failures = state.metadata.get("initial_solution_insertion_failures", {})
+        root_causes: List[str] = []
+        if isinstance(insertion_failures, dict):
+            for customer in sorted(set(state.unassigned)):
+                reason = insertion_failures.get(customer) or insertion_failures.get(str(customer))
+                if reason:
+                    root_causes.append(str(reason))
+        message_parts = root_causes + list(violations)
         raise ValueError(
             "initial_solution could not construct a feasible solution: "
-            + "; ".join(violations)
+            + "; ".join(message_parts)
         )
     return state

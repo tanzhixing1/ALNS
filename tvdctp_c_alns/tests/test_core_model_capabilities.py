@@ -250,9 +250,10 @@ def test_infeasible_exceed_van_drone_capacity() -> None:
     )
     state.drone_initial_carrier[removed_drone] = recovery_van
     state.drone_home_warehouse[removed_drone] = int(state.van_home[recovery_van])
+    config.fleet.max_drones_carried_per_van = 2
 
     violations = _check_case(state, data, config, False)
-    assert any("exceeding drones_per_van" in item for item in violations)
+    assert any("exceeding max_drones_carried_per_van" in item for item in violations)
 
 
 def _two_container_state(*, different_destinations: bool = False, high_floor: bool = False):

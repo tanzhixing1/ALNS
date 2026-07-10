@@ -37,6 +37,7 @@ class FleetConfig:
     num_tractors: int = 1
     num_trailers: int = 1
     drones_per_van: int = 2
+    max_drones_carried_per_van: int = 3
     drone_enabled: bool = True
     trailer_attach_time: float = 0.0
     trailer_detach_time: float = 0.0
@@ -202,6 +203,7 @@ def build_config(
     drone_enabled: bool = True,
     output_dir: str = "outputs",
     drones_per_van: int = 2,
+    max_drones_carried_per_van: int = 3,
     num_tractors: int = 1,
     num_trailers: int = 1,
     warehouse_num_vans: Optional[Dict[int, int]] = None,
@@ -223,6 +225,12 @@ def build_config(
     config.alns.enable_local_feasibility_cache = bool(enable_local_feasibility_cache)
     config.fleet.drone_enabled = drone_enabled
     config.fleet.drones_per_van = int(drones_per_van)
+    config.fleet.max_drones_carried_per_van = int(max_drones_carried_per_van)
+    if config.fleet.drones_per_van > config.fleet.max_drones_carried_per_van:
+        raise ValueError(
+            "drones_per_van must be <= max_drones_carried_per_van; "
+            "otherwise the initial physical carrier state is infeasible."
+        )
     config.fleet.num_tractors = int(num_tractors)
     config.fleet.num_trailers = int(num_trailers)
     config.fleet.num_trucks = int(num_tractors)
