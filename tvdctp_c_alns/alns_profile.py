@@ -9,6 +9,8 @@ from typing import Any, Dict, Optional
 _PROFILE: Dict[str, Any] = {}
 _CACHE: Dict[str, Dict[tuple[int, object], Any]] = {}
 _LOCAL_FEASIBILITY_CACHE: Dict[tuple[object, ...], Any] = {}
+_LOCAL_FEASIBILITY_SCOPE_STACK: list[Dict[tuple[object, ...], Any]] = []
+_LOCAL_CANDIDATE_DEDUP_SCOPE_STACK: list[set[tuple[object, ...]]] = []
 _LOCAL_FEASIBILITY_KEY_COUNTS: Counter[tuple[object, ...]] = Counter()
 _REPAIR_STACK: list[tuple[str, float]] = []
 _PAIR_STACK: list[tuple[str, str, float]] = []
@@ -31,6 +33,12 @@ def reset_profile() -> None:
             "state_signature_time_total": 0.0,
             "local_feasibility_cache": {
                 "enabled": False,
+                "dedup_enabled": True,
+                "generated_candidates": 0,
+                "unique_candidates": 0,
+                "duplicate_candidates_skipped": 0,
+                "feasibility_cache_hits": 0,
+                "feasibility_cache_misses": 0,
                 "raw_drone_candidate_count": 0,
                 "unique_drone_candidate_count": 0,
                 "duplicate_drone_candidate_count": 0,
@@ -41,6 +49,7 @@ def reset_profile() -> None:
                 "drone_candidate_eval_time": 0.0,
                 "top_duplicated_keys": [],
                 "cache_key_fields": [
+                    "state_identity",
                     "drone_id",
                     "launch_van",
                     "launch_node",
@@ -73,6 +82,8 @@ def reset_profile() -> None:
     )
     _CACHE.clear()
     _LOCAL_FEASIBILITY_CACHE.clear()
+    _LOCAL_FEASIBILITY_SCOPE_STACK.clear()
+    _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK.clear()
     _LOCAL_FEASIBILITY_KEY_COUNTS.clear()
     _REPAIR_STACK.clear()
     _PAIR_STACK.clear()
@@ -119,19 +130,72 @@ def set_local_feasibility_cache_enabled(enabled: bool) -> None:
     stats["enabled"] = bool(enabled)
 
 
+def begin_local_feasibility_scope() -> None:
+    _LOCAL_FEASIBILITY_SCOPE_STACK.append({})
+    _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK.append(set())
+
+
+def end_local_feasibility_scope() -> None:
+    if _LOCAL_FEASIBILITY_SCOPE_STACK:
+        _LOCAL_FEASIBILITY_SCOPE_STACK.pop()
+    if _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK:
+        _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK.pop()
+
+
+def _active_local_feasibility_cache() -> Dict[tuple[object, ...], Any]:
+    if _LOCAL_FEASIBILITY_SCOPE_STACK:
+        return _LOCAL_FEASIBILITY_SCOPE_STACK[-1]
+    return _LOCAL_FEASIBILITY_CACHE
+
+
+def record_local_drone_candidate(key: tuple[object, ...]) -> bool:
+    stats = _local_cache_stats()
+    stats["dedup_enabled"] = True
+    stats["generated_candidates"] = int(stats.get("generated_candidates", 0)) + 1
+    stats["raw_drone_candidate_count"] = int(
+        stats.get("raw_drone_candidate_count", 0)
+    ) + 1
+    _LOCAL_FEASIBILITY_KEY_COUNTS[key] += 1
+
+    seen = (
+        _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK[-1]
+        if _LOCAL_CANDIDATE_DEDUP_SCOPE_STACK
+        else None
+    )
+    if seen is not None:
+        if key in seen:
+            stats["duplicate_candidates_skipped"] = int(
+                stats.get("duplicate_candidates_skipped", 0)
+            ) + 1
+            stats["duplicate_drone_candidate_count"] = int(
+                stats.get("duplicate_drone_candidate_count", 0)
+            ) + 1
+            return False
+        seen.add(key)
+
+    stats["unique_candidates"] = int(stats.get("unique_candidates", 0)) + 1
+    stats["unique_drone_candidate_count"] = int(
+        stats.get("unique_drone_candidate_count", 0)
+    ) + 1
+    return True
+
+
 def get_local_feasibility_cache(
     key: tuple[object, ...], *, enabled: bool
 ) -> Optional[Any]:
     stats = _local_cache_stats()
     stats["enabled"] = bool(enabled)
-    stats["raw_drone_candidate_count"] = int(
-        stats.get("raw_drone_candidate_count", 0)
-    ) + 1
-    _LOCAL_FEASIBILITY_KEY_COUNTS[key] += 1
-    if enabled and key in _LOCAL_FEASIBILITY_CACHE:
+    cache = _active_local_feasibility_cache()
+    if enabled and key in cache:
         stats["cache_hit_count"] = int(stats.get("cache_hit_count", 0)) + 1
-        return _LOCAL_FEASIBILITY_CACHE[key]
+        stats["feasibility_cache_hits"] = int(
+            stats.get("feasibility_cache_hits", 0)
+        ) + 1
+        return cache[key]
     stats["cache_miss_count"] = int(stats.get("cache_miss_count", 0)) + 1
+    stats["feasibility_cache_misses"] = int(
+        stats.get("feasibility_cache_misses", 0)
+    ) + 1
     return None
 
 
@@ -139,7 +203,7 @@ def set_local_feasibility_cache(
     key: tuple[object, ...], value: Any, *, enabled: bool
 ) -> None:
     if enabled:
-        _LOCAL_FEASIBILITY_CACHE[key] = value
+        _active_local_feasibility_cache()[key] = value
 
 
 def add_local_feasibility_eval_time(amount: float) -> None:
@@ -154,12 +218,22 @@ def _sync_local_feasibility_cache_profile() -> None:
         reset_profile()
     stats = _local_cache_stats()
     raw = int(stats.get("raw_drone_candidate_count", 0))
-    unique = len(_LOCAL_FEASIBILITY_KEY_COUNTS)
-    duplicate = max(0, raw - unique)
+    duplicate = int(
+        stats.get(
+            "duplicate_candidates_skipped",
+            stats.get("duplicate_drone_candidate_count", 0),
+        )
+    )
+    unique = int(stats.get("unique_candidates", max(0, raw - duplicate)))
     hits = int(stats.get("cache_hit_count", 0))
     misses = int(stats.get("cache_miss_count", 0))
     stats["unique_drone_candidate_count"] = unique
     stats["duplicate_drone_candidate_count"] = duplicate
+    stats["generated_candidates"] = raw
+    stats["unique_candidates"] = unique
+    stats["duplicate_candidates_skipped"] = duplicate
+    stats["feasibility_cache_hits"] = hits
+    stats["feasibility_cache_misses"] = misses
     stats["duplicate_ratio"] = duplicate / raw if raw else None
     stats["cache_hit_ratio"] = hits / (hits + misses) if hits + misses else None
     stats["top_duplicated_keys"] = [
@@ -190,6 +264,7 @@ def _repair_stats(name: str) -> Dict[str, Any]:
 def enter_repair(name: str) -> None:
     stats = _repair_stats(name)
     stats["calls"] = int(stats["calls"]) + 1
+    begin_local_feasibility_scope()
     _REPAIR_STACK.append((name, time.perf_counter()))
 
 
@@ -201,6 +276,7 @@ def exit_repair(name: str) -> None:
     stats["time_seconds"] = float(stats["time_seconds"]) + (
         time.perf_counter() - start
     )
+    end_local_feasibility_scope()
 
 
 def active_repair_name() -> str:

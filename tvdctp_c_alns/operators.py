@@ -13,6 +13,7 @@ from alns_profile import (
     add_local_feasibility_eval_time,
     get_local_feasibility_cache,
     increment,
+    record_local_drone_candidate,
     record_destroy_result,
     record_repair_candidate,
     record_repair_rejection,
@@ -576,6 +577,7 @@ def _drone_local_feasibility_cache_key(
 ) -> Tuple[object, ...]:
     launch, sortie_customers, recovery = sortie_nodes(sortie)
     return (
+        id(state),
         str(sortie.get("drone_id", "")),
         str(sortie.get("launch_van_id", "")),
         int(launch),
@@ -681,6 +683,7 @@ def _drone_insert_hard_feasible(
     state: TVDState,
     data: InstanceData,
     config: TVDConfig,
+    cache_key: Optional[Tuple[object, ...]] = None,
 ) -> bool:
     enabled = bool(getattr(config.alns, "enable_local_feasibility_cache", False))
     collect_stats = bool(
@@ -695,7 +698,11 @@ def _drone_insert_hard_feasible(
             record_repair_rejection(reason)
         return feasible
 
-    key = _drone_local_feasibility_cache_key(customers, sortie, state)
+    key = (
+        cache_key
+        if cache_key is not None
+        else _drone_local_feasibility_cache_key(customers, sortie, state)
+    )
     cached = get_local_feasibility_cache(key, enabled=enabled)
     if cached is not None:
         feasible, reason = cached
@@ -876,6 +883,11 @@ def _best_drone_move_for_customers(
                     )
                     sortie["launch_position"] = int(launch_pos)
                     sortie["recovery_position"] = int(recovery_pos)
+                    candidate_key = _drone_local_feasibility_cache_key(
+                        customers,
+                        sortie,
+                        state,
+                    )
                     increment("drone_insert_candidates")
                     increment("service_mode_switch_candidates")
                     if launch_van_id != recovery_van_id:
@@ -883,12 +895,15 @@ def _best_drone_move_for_customers(
                     for van_id in {launch_van_id, recovery_van_id}:
                         if van_id not in existing_van_ids:
                             increment("new_van_activation_candidates")
+                    if not record_local_drone_candidate(candidate_key):
+                        continue
                     feasible = _drone_insert_hard_feasible(
                         customers,
                         sortie,
                         state,
                         data,
                         config,
+                        cache_key=candidate_key,
                     )
                     record_repair_candidate("drone", feasible)
                     if not feasible:
