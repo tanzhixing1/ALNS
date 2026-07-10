@@ -1,0 +1,30 @@
+Stage 2B focused validation
+Date: 2026-07-10
+
+Command 1:
+python -m pytest tests/test_stage2b_local_greedy.py -q
+
+Result:
+10 passed in 2.32s
+
+Command 2 covered:
+- tests/test_stage2b_local_greedy.py
+- tests/test_stage2a_drone_feasibility.py
+- tests/test_stage1_drone_generator.py
+- tests/test_core_model_capabilities.py
+- focused existing van, cross-van, timing, drone-generator, and consolidation tests from test_regression_rules.py
+
+Result:
+64 passed in 15.61s
+
+Semantic coverage:
+1. Local visits exactly one target route: PASS
+2. Global visits every legal route: PASS
+3. Local/Global sets differ and Global can choose cheaper route B: PASS
+4. Local has no Global route fallback: PASS
+5. Local drone launch is target-scoped: PASS
+6. Cross-van recovery remains legal and full-feasible: PASS
+7. Three fixed-seed Local runs are identical: PASS
+8. Successful Local result passes full checker and service uniqueness: PASS
+9. Local candidate count is strictly lower on a multi-route fixture: PASS
+10. Global default drone scope matches explicit all-route scope: PASS

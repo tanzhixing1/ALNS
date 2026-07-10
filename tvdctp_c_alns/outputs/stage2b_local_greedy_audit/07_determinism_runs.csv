@@ -1,0 +1,4 @@
+run,seed,iterations,actual_iterations,initial_objective,best_objective,final_objective,local_customer_events,local_van_candidates,local_drone_candidates,target_sequence,selected_sequence,best_fingerprint,full_feasible,violations
+1,42,30,30,637.594910064123,606.209878266956,608.382089466581,22,64,368,"van_0 x22","drone:van_0 x7; van:van_0 x7; drone:van_0 x2; van:van_0 x1; drone:van_0 x2; van:van_0 x3",dd3b2361c3c17afdbdc2,true,[]
+2,42,30,30,637.594910064123,606.209878266956,608.382089466581,22,64,368,"van_0 x22","drone:van_0 x7; van:van_0 x7; drone:van_0 x2; van:van_0 x1; drone:van_0 x2; van:van_0 x3",dd3b2361c3c17afdbdc2,true,[]
+3,42,30,30,637.594910064123,606.209878266956,608.382089466581,22,64,368,"van_0 x22","drone:van_0 x7; van:van_0 x7; drone:van_0 x2; van:van_0 x1; drone:van_0 x2; van:van_0 x3",dd3b2361c3c17afdbdc2,true,[]

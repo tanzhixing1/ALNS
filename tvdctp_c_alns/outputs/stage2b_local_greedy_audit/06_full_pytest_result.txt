@@ -1,0 +1,16 @@
+Full pytest validation
+Date: 2026-07-10
+
+Command:
+python -m pytest -q
+
+Result:
+82 passed, 5 warnings in 256.99s (0:04:16)
+
+Stage 2A baseline:
+72 passed, 5 warnings
+
+Delta:
++10 passed tests; no existing tests removed or skipped; warning count unchanged.
+
+The five warnings are the pre-existing expected RuntimeWarning cases in test_regression_rules.py for intentionally infeasible initial-solution fixtures (three high-floor/no-drone customers, one capacity fixture, and one time-window fixture).

@@ -8,6 +8,7 @@ from typing import Callable, Dict, Iterable, List, Optional, Tuple
 import numpy as np
 
 from alns_profile import (
+    active_repair_name,
     enter_repair,
     exit_repair,
     add_local_feasibility_eval_time,
@@ -1114,6 +1115,155 @@ def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: T
     return best
 
 
+def _stable_van_id_key(van_id: str) -> Tuple[int, object]:
+    """Return the existing numeric van order, with a stable string fallback."""
+    text = str(van_id)
+    try:
+        return (0, int(text.rsplit("_", 1)[1]))
+    except (IndexError, ValueError):
+        return (1, text)
+
+
+def _local_target_van(
+    customer: int,
+    state: TVDState,
+) -> Tuple[Optional[str], str]:
+    """Choose one Local target route without evaluating insertion costs.
+
+    The paper semantics require one preselected route but do not specify how
+    this toy state should recover it when destroy metadata is absent.  Use
+    existing route ownership first, then the order/container warehouse, and
+    finally the first existing route in stable van order.
+    """
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    if not routes:
+        return None, "no_existing_route"
+
+    ordered_van_ids = sorted((str(van_id) for van_id in routes), key=_stable_van_id_key)
+
+    def existing_van_id(value: object) -> Optional[str]:
+        if isinstance(value, dict):
+            for field in (
+                "previous_van_id",
+                "originating_van_id",
+                "van_id",
+                "route_id",
+            ):
+                if field in value:
+                    candidate = existing_van_id(value[field])
+                    if candidate is not None:
+                        return candidate
+            return None
+        candidate = str(value)
+        if candidate in routes:
+            return candidate
+        if candidate.isdigit() and f"van_{candidate}" in routes:
+            return f"van_{candidate}"
+        return None
+
+    # Priority 1: route ownership retained by an upstream destroy/operator.
+    for metadata_key in (
+        "previous_van_assignment",
+        "previous_route_ownership",
+        "previous_service_route",
+        "bundle_anchor_route",
+        "originating_route",
+    ):
+        mapping = state.metadata.get(metadata_key)
+        if not isinstance(mapping, dict):
+            continue
+        value = mapping.get(int(customer), mapping.get(str(int(customer))))
+        target = existing_van_id(value) if value is not None else None
+        if target is not None:
+            return target, f"metadata:{metadata_key}"
+
+    assignment = state.order_assignment.get(int(customer), {})
+    if isinstance(assignment, dict):
+        target = existing_van_id(assignment)
+        if target is not None:
+            return target, "order_assignment:route"
+
+    # Priority 2: explicit order -> container -> destination warehouse mapping.
+    warehouse: Optional[int] = None
+    if isinstance(assignment, dict):
+        container_id = assignment.get("container_id")
+        if container_id is not None:
+            container_route = state.container_routes.get(int(container_id), {})
+            if isinstance(container_route, dict):
+                destination = container_route.get("destination_warehouse")
+                if destination is not None:
+                    warehouse = int(destination)
+        if warehouse is None and assignment.get("assigned_transshipment") is not None:
+            warehouse = int(assignment["assigned_transshipment"])
+
+    if warehouse is not None:
+        warehouse_routes = [
+            van_id
+            for van_id in ordered_van_ids
+            if int(state.van_home.get(van_id, routes[van_id][0] if routes[van_id] else -1))
+            == warehouse
+        ]
+        if warehouse_routes:
+            return warehouse_routes[0], "container_destination_warehouse"
+
+    # Priority 3: minimal engineering fallback. This is deliberately not a
+    # route-quality ranking and performs no candidate/cost evaluation.
+    return ordered_van_ids[0], "stable_first_existing_route"
+
+
+def _best_van_move_on_route(
+    customer: int,
+    target_van_id: str,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+    trace: Optional[Dict[str, object]] = None,
+) -> Optional[InsertionMove]:
+    """Enumerate van insertion positions on exactly one existing route."""
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    route = routes.get(str(target_van_id))
+    if route is None or data.is_high_floor.get(int(customer), False):
+        return None
+    if trace is not None:
+        cast_ids = trace.setdefault("visited_van_ids", set())
+        assert isinstance(cast_ids, set)
+        cast_ids.add(str(target_van_id))
+    if not _can_van_insert(customer, route, data, config):
+        return None
+
+    best: Optional[InsertionMove] = None
+    fixed_delta = 0.0 if len(route) > 2 else config.cost.van_fixed_cost
+    for idx in range(1, len(route)):
+        increment("van_insert_candidates")
+        increment("service_mode_switch_candidates")
+        if len(route) <= 2:
+            increment("new_van_activation_candidates")
+        if trace is not None:
+            trace["van_candidate_count"] = int(trace.get("van_candidate_count", 0)) + 1
+        candidate_route = route[:idx] + [int(customer)] + route[idx:]
+        feasible = _van_insert_hard_feasible(
+            customer,
+            str(target_van_id),
+            candidate_route,
+            state,
+            data,
+            config,
+        )
+        record_repair_candidate("van", feasible)
+        if not feasible:
+            continue
+        delta = _van_insert_cost(customer, route, idx, data)
+        cost = delta * config.cost.van_cost_per_km + fixed_delta
+        if best is None or cost < best.cost:
+            best = InsertionMove(
+                mode="van",
+                cost=cost,
+                index=idx,
+                van_id=str(target_van_id),
+            )
+    return best
+
+
 def _drone_payload(customers: List[int], data: InstanceData) -> float:
     delivery = sum(data.demands[customer] for customer in customers)
     pickup = sum(getattr(data, "pickup_demands", {}).get(customer, 0.0) for customer in customers)
@@ -1186,6 +1336,8 @@ def _best_drone_move_for_customers(
     state: TVDState,
     data: InstanceData,
     config: TVDConfig,
+    allowed_launch_van_ids: Optional[Iterable[str]] = None,
+    candidate_trace: Optional[Dict[str, object]] = None,
 ) -> Optional[InsertionMove]:
     if not config.fleet.drone_enabled or not customers:
         return None
@@ -1215,7 +1367,14 @@ def _best_drone_move_for_customers(
         )
     }
 
+    launch_scope = (
+        None
+        if allowed_launch_van_ids is None
+        else {str(van_id) for van_id in allowed_launch_van_ids}
+    )
     for launch_van_id, launch_route in routes.items():
+        if launch_scope is not None and str(launch_van_id) not in launch_scope:
+            continue
         drone_id = _first_drone_for_van(state, launch_van_id)
         if not drone_id:
             continue
@@ -1250,6 +1409,16 @@ def _best_drone_move_for_customers(
                     )
                     increment("drone_insert_candidates")
                     increment("service_mode_switch_candidates")
+                    if candidate_trace is not None:
+                        candidate_trace["drone_candidate_count"] = int(
+                            candidate_trace.get("drone_candidate_count", 0)
+                        ) + 1
+                        launch_ids = candidate_trace.setdefault("launch_van_ids", set())
+                        recovery_ids = candidate_trace.setdefault("recovery_van_ids", set())
+                        assert isinstance(launch_ids, set)
+                        assert isinstance(recovery_ids, set)
+                        launch_ids.add(str(launch_van_id))
+                        recovery_ids.add(str(recovery_van_id))
                     if launch_van_id != recovery_van_id:
                         increment("cross_van_docking_candidates")
                     for van_id in {launch_van_id, recovery_van_id}:
@@ -1488,7 +1657,14 @@ def consolidate_drone_sorties(
     return consolidated
 
 
-def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config: TVDConfig) -> Optional[InsertionMove]:
+def _best_drone_move(
+    customer: int,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+    allowed_launch_van_ids: Optional[Iterable[str]] = None,
+    candidate_trace: Optional[Dict[str, object]] = None,
+) -> Optional[InsertionMove]:
     if not config.fleet.drone_enabled or not data.drone_eligible.get(customer, False):
         return None
     if data.demands[customer] + getattr(data, "pickup_demands", {}).get(customer, 0.0) > config.fleet.drone_capacity_kg:
@@ -1503,7 +1679,12 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
         customer_tuple = tuple(int(item) for item in sortie_customers)
         if customer_tuple not in move_by_customer_tuple:
             move_by_customer_tuple[customer_tuple] = _best_drone_move_for_customers(
-                list(customer_tuple), state, data, config
+                list(customer_tuple),
+                state,
+                data,
+                config,
+                allowed_launch_van_ids=allowed_launch_van_ids,
+                candidate_trace=candidate_trace,
             )
         return move_by_customer_tuple[customer_tuple]
 
@@ -1513,7 +1694,14 @@ def _best_drone_move(customer: int, state: TVDState, data: InstanceData, config:
         best = single_customer_move
 
     routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
-    for launch_route in routes.values():
+    launch_scope = (
+        None
+        if allowed_launch_van_ids is None
+        else {str(van_id) for van_id in allowed_launch_van_ids}
+    )
+    for launch_van_id, launch_route in routes.items():
+        if launch_scope is not None and str(launch_van_id) not in launch_scope:
+            continue
         for launch_pos, launch in enumerate(launch_route):
             if launch_pos == len(launch_route) - 1:
                 continue
@@ -1592,20 +1780,99 @@ def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
 
 
 def greedy_van_repair(
-    state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+    state: TVDState,
+    rng: np.random.Generator,
+    data: InstanceData,
+    config: TVDConfig,
+    trace_collector: Optional[Callable[[Dict[str, object]], None]] = None,
 ) -> TVDState:
+    caller = active_repair_name()
     enter_repair("greedy_van_repair")
     try:
         repaired = state.copy()
         rng.shuffle(repaired.unassigned)
+
+        # Preserve the pre-Stage-2B greedy-drone fallback semantics. The
+        # registered Local operator takes the route-scoped path below.
+        if caller == "greedy_drone_repair":
+            for customer in repaired.unassigned.copy():
+                if customer not in repaired.unassigned:
+                    continue
+                if data.is_high_floor.get(customer, False):
+                    continue
+                move = _best_van_move(customer, repaired, data, config)
+                if move is not None:
+                    _apply_move(repaired, customer, move)
+            return _finalize_repair(repaired, data, config)
+
         for customer in repaired.unassigned.copy():
             if customer not in repaired.unassigned:
                 continue
-            if data.is_high_floor.get(customer, False):
+            target_van_id, target_source = _local_target_van(customer, repaired)
+            trace: Dict[str, object] = {
+                "operator": "local_greedy",
+                "customer_id": int(customer),
+                "target_van_id": target_van_id,
+                "target_route_source": target_source,
+                "visited_van_ids": set(),
+                "van_candidate_count": 0,
+                "drone_candidate_count": 0,
+                "launch_van_ids": set(),
+                "recovery_van_ids": set(),
+                "selected_mode": None,
+                "selected_van_id": None,
+                "selected_launch_van_id": None,
+                "selected_recovery_van_id": None,
+                "selected_cost": None,
+            }
+            if target_van_id is None:
+                if trace_collector is not None:
+                    trace_collector(trace)
                 continue
-            move = _best_van_move(customer, repaired, data, config)
-            if move is not None:
-                _apply_move(repaired, customer, move)
+
+            van_move = _best_van_move_on_route(
+                customer,
+                target_van_id,
+                repaired,
+                data,
+                config,
+                trace,
+            )
+            drone_move = _best_drone_move(
+                customer,
+                repaired,
+                data,
+                config,
+                allowed_launch_van_ids={target_van_id},
+                candidate_trace=trace,
+            )
+            moves = [move for move in (van_move, drone_move) if move is not None]
+            moves.sort(key=lambda move: move.cost)
+            if moves:
+                selected = moves[0]
+                trace["selected_mode"] = selected.mode
+                trace["selected_cost"] = float(selected.cost)
+                if selected.mode == "van":
+                    trace["selected_van_id"] = selected.van_id
+                elif selected.sortie is not None:
+                    trace["selected_launch_van_id"] = selected.sortie.get(
+                        "launch_van_id"
+                    )
+                    trace["selected_recovery_van_id"] = selected.sortie.get(
+                        "recovery_van_id"
+                    )
+                _apply_move(repaired, customer, selected)
+
+            if trace_collector is not None:
+                for key in (
+                    "visited_van_ids",
+                    "launch_van_ids",
+                    "recovery_van_ids",
+                ):
+                    value = trace.get(key)
+                    if isinstance(value, set):
+                        trace[key] = sorted(value, key=_stable_van_id_key)
+                trace_collector(trace)
         return _finalize_repair(repaired, data, config)
     finally:
         exit_repair("greedy_van_repair")
