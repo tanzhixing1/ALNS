@@ -99,6 +99,7 @@ def make_config(seed: int, iterations: int, early_stop: bool) -> TVDConfig:
     config.alns.cooling_rate = 0.9995
     config.alns.weight_update_interval = 50
     config.alns.reaction_coefficient = 0.2
+    config.alns.collect_full_candidate_diagnostics = True
     return config
 
 
@@ -598,6 +599,34 @@ def repair_failure(row: Dict[str, object]) -> Dict[str, object]:
         if str(key).startswith("full_violation:")
     }
     top_violations = sorted(full_viols.items(), key=lambda item: item[1], reverse=True)[:10]
+    candidate_diagnostics = profile.get("full_candidate_diagnostics", [])
+    operator_summary: Dict[str, Dict[str, object]] = {}
+    category_counts: Counter[str] = Counter()
+    for history_item in row.get("history", []):
+        operator = str(history_item.get("repair", "unknown"))
+        summary = operator_summary.setdefault(
+            operator,
+            {"final_candidates": 0, "full_feasible": 0, "infeasible": 0, "violation_categories": Counter()},
+        )
+        summary["final_candidates"] = int(summary["final_candidates"]) + 1
+        if bool(history_item.get("candidate_feasible", False)):
+            summary["full_feasible"] = int(summary["full_feasible"]) + 1
+        else:
+            summary["infeasible"] = int(summary["infeasible"]) + 1
+    for record in candidate_diagnostics:
+        if not isinstance(record, dict):
+            continue
+        operator = str(record.get("repair_operator", "unknown"))
+        summary = operator_summary.setdefault(
+            operator,
+            {"final_candidates": 0, "full_feasible": 0, "infeasible": 0, "violation_categories": Counter()},
+        )
+        categories = summary["violation_categories"]
+        for category in record.get("violation_categories", []):
+            category_counts[str(category)] += 1
+            categories[str(category)] += 1
+    for item in operator_summary.values():
+        item["violation_categories"] = dict(item["violation_categories"])
     return {
         "avg_removed_customer_count": statistics.mean(counts) if counts else 0.0,
         "min_removed_customer_count": min(counts) if counts else 0,
@@ -619,6 +648,9 @@ def repair_failure(row: Dict[str, object]) -> Dict[str, object]:
         "rejected_by_sync": rejections.get("rejected_by_sync", 0),
         "rejected_by_full_feasibility": rejections.get("rejected_by_full_feasibility", 0),
         "full_feasibility_failed_top_10_violation_types": top_violations,
+        "full_candidate_diagnostics_count": len(candidate_diagnostics),
+        "full_candidate_diagnostics_by_repair_operator": operator_summary,
+        "full_candidate_violation_categories": dict(category_counts),
     }
 
 

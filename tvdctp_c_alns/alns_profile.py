@@ -70,6 +70,7 @@ def reset_profile() -> None:
             "repair": {},
             "operator_pairs": {},
             "repair_rejections": {},
+            "full_candidate_diagnostics": [],
             "destroy": {
                 "calls": 0,
                 "removed_customer_counts": [],
@@ -376,6 +377,14 @@ def record_repair_rejection(reason: str) -> None:
         reset_profile()
     rejections = _PROFILE.setdefault("repair_rejections", {})
     rejections[reason] = int(rejections.get(reason, 0)) + 1
+
+
+def record_full_candidate_diagnostic(record: Dict[str, Any]) -> None:
+    """Store one rejected final candidate when diagnostic collection is enabled."""
+
+    if not _PROFILE:
+        reset_profile()
+    _PROFILE.setdefault("full_candidate_diagnostics", []).append(deepcopy(record))
 
 
 def record_destroy_result(

@@ -1113,6 +1113,7 @@ def check_solution_feasible(
         return bool(feasible), list(violations)
 
     violations: List[str] = []
+    position_hint_fallbacks: List[Dict[str, object]] = []
     customers = set(data.customers)
     routes = _active_van_routes(state)
     route = state.van_route
@@ -1368,6 +1369,41 @@ def check_solution_feasible(
                 f"van delivery load becomes negative at route position {int(item['route_index'])}."
             )
 
+    # compute_timing normalizes valid node references in-place. Capture an
+    # invalid supplied hint before that normalization so the compatibility
+    # fallback remains visible to diagnostics without becoming a violation.
+    for sortie in state.drone_sorties:
+        if not isinstance(sortie, dict):
+            continue
+        launch, _, recovery = sortie_nodes(sortie)
+        launch_van = _sortie_van_id(sortie, "launch_van_id", "van_0")
+        recovery_van = _sortie_van_id(sortie, "recovery_van_id", launch_van)
+        launch_route = routes.get(launch_van, [])
+        recovery_route = routes.get(recovery_van, [])
+        for field, node, van_id, route_for_hint in (
+            ("launch_position", launch, launch_van, launch_route),
+            ("recovery_position", recovery, recovery_van, recovery_route),
+        ):
+            hint = _sortie_position_hint(sortie, field)
+            if (
+                hint is not None
+                and not (
+                    0 <= hint < len(route_for_hint)
+                    and int(route_for_hint[hint]) == int(node)
+                )
+            ):
+                resolved = _route_position(route_for_hint, node)
+                if resolved >= 0:
+                    position_hint_fallbacks.append(
+                        {
+                            "field": field,
+                            "hint": int(hint),
+                            "resolved_position": int(resolved),
+                            "node": int(node),
+                            "van_id": van_id,
+                        }
+                    )
+
     timing = compute_timing(state, data, config)
     for customer in data.customers:
         if customer not in data.time_windows:
@@ -1444,18 +1480,24 @@ def check_solution_feasible(
         else:
             launch_hint = _sortie_position_hint(sortie, "launch_position")
             recovery_hint = _sortie_position_hint(sortie, "recovery_position")
-            launch_pos = (
-                int(launch_hint)
-                if launch_hint is not None
+            launch_hint_matches = (
+                launch_hint is not None
                 and 0 <= launch_hint < len(launch_route)
                 and int(launch_route[launch_hint]) == int(launch)
+            )
+            recovery_hint_matches = (
+                recovery_hint is not None
+                and 0 <= recovery_hint < len(recovery_route)
+                and int(recovery_route[recovery_hint]) == int(recovery)
+            )
+            launch_pos = (
+                int(launch_hint)
+                if launch_hint_matches
                 else _route_position(launch_route, launch)
             )
             recovery_pos = (
                 int(recovery_hint)
-                if recovery_hint is not None
-                and 0 <= recovery_hint < len(recovery_route)
-                and int(recovery_route[recovery_hint]) == int(recovery)
+                if recovery_hint_matches
                 else _route_position(recovery_route, recovery)
             )
             if launch_pos < 0 or recovery_pos < 0:
@@ -1553,9 +1595,22 @@ def check_solution_feasible(
                     violations.append(
                         f"drone_id {drone_id} has unresolved launch/recovery position."
                     )
-                if launch_pos > recovery_pos:
+                # Route positions are local coordinates.  They have an
+                # ordering meaning only when launch and recovery use the same
+                # van route; comparing positions from two different routes
+                # creates a false cross-van order violation.
+                if (
+                    launch_van_for_record == recovery_van_for_record
+                    and launch_pos > recovery_pos
+                ):
                     violations.append(
                         f"drone_id {drone_id} has launch_position {launch_pos} after recovery_position {recovery_pos}."
+                    )
+                launch_time = float(record.get("launch_time", 0.0))
+                recovery_time = float(record.get("recovery_time", 0.0))
+                if launch_time > recovery_time + 1e-9:
+                    violations.append(
+                        f"drone_id {drone_id} launch_time {launch_time:.3f} is after recovery_time {recovery_time:.3f}."
                     )
                 route_for_record = routes.get(str(record.get("launch_van_id", "")), route)
                 if launch_pos == len(route_for_record) - 1:
@@ -1566,8 +1621,11 @@ def check_solution_feasible(
                     prev_recovery_pos = int(previous.get("recovery_position", -1))
                     prev_recovery_node = int(previous.get("recovery_node", -1))
                     prev_recovery_time = float(previous.get("recovery_time", 0.0))
-                    launch_time = float(record.get("launch_time", 0.0))
-                    if launch_pos < prev_recovery_pos:
+                    if (
+                        str(record.get("launch_van_id", ""))
+                        == str(previous.get("recovery_van_id", ""))
+                        and launch_pos < prev_recovery_pos
+                    ):
                         violations.append(
                             f"drone_id {drone_id} launch_position {launch_pos} is before previous recovery_position {prev_recovery_pos}."
                         )
@@ -1633,6 +1691,8 @@ def check_solution_feasible(
         if high_floor and state.service_mode.get(customer) != "drone":
             violations.append(f"high-floor customer {customer} must be served by drone.")
 
+    state.metadata["position_hint_fallbacks"] = list(position_hint_fallbacks)
+    timing["position_hint_fallbacks"] = list(position_hint_fallbacks)
     feasible = len(violations) == 0
     set_cache("feasibility", state, signature, (feasible, list(violations)))
     return feasible, violations

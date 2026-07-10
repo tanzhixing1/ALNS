@@ -14,6 +14,7 @@ from initial_solution import initial_solution
 from alns_profile import (
     enter_operator_pair,
     exit_operator_pair,
+    record_full_candidate_diagnostic,
     record_repair_rejection,
     reset_profile,
     set_local_feasibility_cache_enabled,
@@ -22,6 +23,7 @@ from alns_profile import (
 from objective import objective
 from operators import DESTROY_OPERATORS, REPAIR_OPERATORS, consolidate_drone_sorties
 from state import TVDState
+from drone_repair_diagnostics import build_full_candidate_diagnostic
 
 
 @dataclass
@@ -157,6 +159,18 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
         else:
             shadow_summary = {}
         if not candidate_feasible:
+            if bool(getattr(config.alns, "collect_full_candidate_diagnostics", False)):
+                record_full_candidate_diagnostic(
+                    build_full_candidate_diagnostic(
+                        iteration=iteration,
+                        destroy_operator=destroy_name,
+                        repair_operator=repair_name,
+                        candidate=candidate,
+                        candidate_objective=candidate_cost,
+                        violations=candidate_breakdown.get("violations", []),
+                        data=data,
+                    )
+                )
             record_repair_rejection("rejected_by_full_feasibility")
             for violation in candidate_breakdown.get("violations", [])[:20]:
                 violation_type = str(violation).split(":", 1)[0].split(".")[0]

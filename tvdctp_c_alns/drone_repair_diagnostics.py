@@ -1,12 +1,121 @@
 from __future__ import annotations
 
 from collections import Counter
+import re
 from typing import Dict, Iterable, List, Tuple
 
 from config import TVDConfig
 from dataset_loader import InstanceData
 from feasibility import compute_timing, sortie_nodes
 from state import TVDState
+
+
+_VIOLATION_CATEGORY_RULES = (
+    ("A_position_node_reference", ("position", "node", "van_route")),
+    ("B_timing_synchronization", ("time", "timing", "synchron", "window", "ready", "arrival", "departure")),
+    ("C_physical_carrier_resource", ("physical drone", "carried", "carrier", "dynamic", "capacity")),
+    ("D_sortie_structure", ("sortie", "relaunch", "overlap", "ordering", "terminal warehouse")),
+    ("E_payload_energy", ("payload", "endurance", "battery", "energy")),
+    ("F_service_completeness", ("duplicate", "unassigned", "missing", "high-floor", "served more than once")),
+    ("G_van_container_structure", ("van", "container", "tractor", "trailer", "warehouse")),
+)
+
+
+def classify_violation(violation: str) -> str:
+    """Map a full-checker message to a stable diagnostic category."""
+
+    text = str(violation).lower()
+    for category, tokens in _VIOLATION_CATEGORY_RULES:
+        if any(token in text for token in tokens):
+            return category
+    return "H_unknown_uncategorized"
+
+
+def _int_values(text: str) -> List[int]:
+    return [int(value) for value in re.findall(r"(?<![A-Za-z_])-?\d+", text)]
+
+
+def _affected_customers(violations: Iterable[str], data: InstanceData) -> List[int]:
+    customer_ids = {int(customer) for customer in data.customers}
+    result = set()
+    for violation in violations:
+        result.update(value for value in _int_values(str(violation)) if value in customer_ids)
+    return sorted(result)
+
+
+def _affected_ids(violations: Iterable[str], prefix: str) -> List[str]:
+    result = set()
+    for violation in violations:
+        result.update(re.findall(rf"{re.escape(prefix)}[A-Za-z0-9_-]+", str(violation)))
+    return sorted(result)
+
+
+def _candidate_source(repair_operator: str) -> str:
+    source_by_operator = {
+        "greedy_van_repair": "van insertion",
+        "greedy_drone_repair": "drone insertion",
+        "best_mode_repair": "best-mode repair",
+        "regret_repair": "regret combination",
+        "cascade_repair": "cascade bundle",
+    }
+    return source_by_operator.get(str(repair_operator), "finish repair")
+
+
+def build_full_candidate_diagnostic(
+    *,
+    iteration: int,
+    destroy_operator: str,
+    repair_operator: str,
+    candidate: TVDState,
+    candidate_objective: float,
+    violations: Iterable[str],
+    data: InstanceData,
+) -> Dict[str, object]:
+    """Build a compact, structured record for one rejected final candidate."""
+
+    full_violations = [str(violation) for violation in violations]
+    routes = candidate.van_routes if candidate.van_routes else {"van_0": candidate.van_route}
+    sortie_modes = {
+        (str(sortie.get("launch_van_id", "")), str(sortie.get("recovery_van_id", "")))
+        for sortie in candidate.drone_sorties
+        if isinstance(sortie, dict)
+    }
+    route_modes = {"cross-van" if launch != recovery else "same-van" for launch, recovery in sortie_modes}
+    if not route_modes:
+        same_van_or_cross_van = "none"
+    elif len(route_modes) == 1:
+        same_van_or_cross_van = next(iter(route_modes))
+    else:
+        same_van_or_cross_van = "mixed"
+    categories = sorted({classify_violation(violation) for violation in full_violations})
+    affected_customers = set(_affected_customers(full_violations, data))
+    affected_vans = set(_affected_ids(full_violations, "van_"))
+    affected_drones = set(_affected_ids(full_violations, "drone_"))
+    for sortie in candidate.drone_sorties:
+        if not isinstance(sortie, dict):
+            continue
+        affected_customers.update(int(customer) for customer in sortie_nodes(sortie)[1])
+        for field in ("launch_van_id", "recovery_van_id"):
+            if sortie.get(field):
+                affected_vans.add(str(sortie[field]))
+        if sortie.get("drone_id"):
+            affected_drones.add(str(sortie["drone_id"]))
+    return {
+        "iteration": int(iteration),
+        "destroy_operator": str(destroy_operator),
+        "repair_operator": str(repair_operator),
+        "candidate_objective": float(candidate_objective),
+        "number_of_unassigned_customers": int(len(candidate.unassigned)),
+        "number_of_van_routes": int(len(routes)),
+        "number_of_drone_sorties": int(len(candidate.drone_sorties)),
+        "full_checker_violations": full_violations,
+        "violation_categories": categories,
+        "affected_customers": sorted(affected_customers),
+        "affected_vans": sorted(affected_vans),
+        "affected_drones": sorted(affected_drones),
+        "same_van_or_cross_van": same_van_or_cross_van,
+        "candidate_source": _candidate_source(repair_operator),
+    }
 
 
 def _route_signature(state: TVDState) -> Tuple[Tuple[str, Tuple[int, ...]], ...]:

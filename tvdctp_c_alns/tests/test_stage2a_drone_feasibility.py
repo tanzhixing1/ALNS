@@ -5,6 +5,7 @@ from typing import Callable, List, Tuple
 
 import pytest
 
+import feasibility
 import operators
 from config import build_config
 from dataset_loader import generate_toy_data
@@ -415,15 +416,50 @@ def test_stage2a_local_drone_checker_differential(name: str, builder: CaseBuilde
         candidate_state, data, config
     )
     if expected_local:
-        if name == "cross_van_position_numbers_are_independent":
-            assert not full_ok
-            assert full_violations == [
-                "drone_id drone_0 has launch_position 1 after recovery_position 0."
-            ], f"{name}: unexpected Category C violations: {full_violations}"
-        else:
-            assert full_ok, f"{name}: local true but full checker failed: {full_violations}"
+        assert full_ok, f"{name}: local true but full checker failed: {full_violations}"
     elif name != "bad_launch_position":
         assert not full_ok, f"{name}: local false but full checker accepted candidate"
     else:
         # The full checker intentionally resolves an invalid position hint by node.
         assert full_ok, f"{name}: representation fallback changed: {full_violations}"
+        assert candidate_state.metadata.get("position_hint_fallbacks")
+
+
+def test_stage2a_cross_van_position_numbers_do_not_replace_time_order(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config, data, state, vans, target, warehouse = _fixture()
+    sortie = _candidate(
+        state,
+        vans,
+        warehouse,
+        [target],
+        launch_van=vans[0],
+        recovery_van=vans[1],
+        launch_position=1,
+        recovery_position=0,
+    )
+    candidate_state = state.copy()
+    operators._apply_move(
+        candidate_state,
+        target,
+        InsertionMove(mode="drone", cost=0.0, sortie=copy.deepcopy(sortie)),
+    )
+
+    original_compute_timing = feasibility.compute_timing
+
+    def compute_invalid_time_order(state, data, config):
+        timing = original_compute_timing(state, data, config)
+        for records in timing.get("drone_physical_sorties", {}).values():
+            if records:
+                records[0]["launch_time"] = 100.0
+                records[0]["recovery_time"] = 10.0
+                return timing
+        raise AssertionError("test sortie did not produce a physical sortie record")
+
+    monkeypatch.setattr(feasibility, "compute_timing", compute_invalid_time_order)
+    feasible, violations = check_solution_feasible(candidate_state, data, config)
+
+    assert not feasible
+    assert any("launch_time" in violation and "recovery_time" in violation for violation in violations)
+    assert not any("launch_position" in violation and "after recovery_position" in violation for violation in violations)

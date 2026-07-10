@@ -61,6 +61,7 @@ class ALNSConfig:
     enable_local_feasibility_cache: bool = False
     collect_local_feasibility_cache_stats: bool = False
     enable_shadow_prefilter: bool = False
+    collect_full_candidate_diagnostics: bool = False
 
 
 @dataclass
@@ -210,6 +211,7 @@ def build_config(
     max_no_improve: Optional[int] = 100,
     early_stop_enabled: bool = True,
     enable_local_feasibility_cache: bool = False,
+    collect_full_candidate_diagnostics: bool = False,
 ) -> TVDConfig:
     config = TVDConfig()
     config.data.num_customers = num_customers
@@ -223,6 +225,9 @@ def build_config(
     config.alns.max_no_improvement = max_no_improve
     config.alns.early_stop_enabled = bool(early_stop_enabled)
     config.alns.enable_local_feasibility_cache = bool(enable_local_feasibility_cache)
+    config.alns.collect_full_candidate_diagnostics = bool(
+        collect_full_candidate_diagnostics
+    )
     config.fleet.drone_enabled = drone_enabled
     config.fleet.drones_per_van = int(drones_per_van)
     config.fleet.max_drones_carried_per_van = int(max_drones_carried_per_van)
