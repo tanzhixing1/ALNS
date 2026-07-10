@@ -1,0 +1,715 @@
+{
+  "commit": "854f557d097f8dfe3874af5b3871f449a7f5cec0",
+  "config_fingerprint": "0662448b0b1e0aaacaad17c43f095ee0dbeecc9e2a26bc2d6aa27d4ccfba1492",
+  "current_instance_fingerprint": "b76654c6fcdedd62f3c6c56a916035962b89908e49bc02320c782c0b59d55dfc",
+  "previous_instance_fingerprint_high_floor_ratio_0_35": "6cbc5686a43d752af34b24e7d74194a71704a721befc84607e09383ea58fb8ea",
+  "runs": [
+    {
+      "accepted_candidates": 4,
+      "best_full_feasible": true,
+      "best_infeasible_count": 0,
+      "best_objective": 860.3706454151579,
+      "best_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "best_violations": [],
+      "config_fingerprint": "0662448b0b1e0aaacaad17c43f095ee0dbeecc9e2a26bc2d6aa27d4ccfba1492",
+      "container_route_count": 2,
+      "current_infeasible_count": 0,
+      "drone_sortie_count": 4,
+      "final_current_full_feasible": true,
+      "final_current_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "final_current_violations": [],
+      "final_objective": 860.3706454151579,
+      "infeasible_candidates": 6,
+      "initial_objective": 1177.5906540861547,
+      "initial_state_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+      "instance_fingerprint": "b76654c6fcdedd62f3c6c56a916035962b89908e49bc02320c782c0b59d55dfc",
+      "local_stats": {
+        "1": {
+          "drone_calls": 2253,
+          "drone_pass": 587,
+          "van_calls": 70,
+          "van_pass": 15
+        },
+        "10": {
+          "drone_calls": 1839,
+          "drone_pass": 1105,
+          "van_calls": 144,
+          "van_pass": 72
+        },
+        "2": {
+          "drone_calls": 4107,
+          "drone_pass": 1974,
+          "van_calls": 164,
+          "van_pass": 62
+        },
+        "3": {
+          "drone_calls": 7895,
+          "drone_pass": 460,
+          "van_calls": 714,
+          "van_pass": 164
+        },
+        "4": {
+          "drone_calls": 1055,
+          "drone_pass": 650,
+          "van_calls": 31,
+          "van_pass": 16
+        },
+        "5": {
+          "drone_calls": 1804,
+          "drone_pass": 972,
+          "van_calls": 102,
+          "van_pass": 40
+        },
+        "6": {
+          "drone_calls": 360,
+          "drone_pass": 0,
+          "van_calls": 87,
+          "van_pass": 0
+        },
+        "7": {
+          "drone_calls": 1014,
+          "drone_pass": 538,
+          "van_calls": 65,
+          "van_pass": 15
+        },
+        "8": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 33,
+          "van_pass": 7
+        },
+        "9": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 62,
+          "van_pass": 21
+        }
+      },
+      "operator_sequence": [
+        [
+          "cascade_aware_removal",
+          "best_mode_repair"
+        ],
+        [
+          "cascade_aware_removal",
+          "regret_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "regret_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_drone_repair"
+        ],
+        [
+          "random_customer_removal",
+          "cascade_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "cascade_repair"
+        ],
+        [
+          "greedy_removal",
+          "best_mode_repair"
+        ],
+        [
+          "random_customer_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "greedy_removal",
+          "regret_repair"
+        ]
+      ],
+      "operator_sequence_fingerprint": "39aca0f283e31e693f53f4081caf291e9e51bc4a09c617bc486fe070bd191a5f",
+      "rollback_mismatch_count": 0,
+      "rollback_rows": [
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "before_current_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "iteration": 1,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 3,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 4,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "before_current_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "iteration": 6,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 8,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 9,
+          "match": true
+        }
+      ],
+      "run": 1,
+      "runtime_seconds": 10.98410480003804,
+      "van_route_count": 3,
+      "visual_fingerprints": {
+        "route_load_timeline.png": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+        "route_plan_detail.txt": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+        "routes.png": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4"
+      }
+    },
+    {
+      "accepted_candidates": 4,
+      "best_full_feasible": true,
+      "best_infeasible_count": 0,
+      "best_objective": 860.3706454151579,
+      "best_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "best_violations": [],
+      "config_fingerprint": "0662448b0b1e0aaacaad17c43f095ee0dbeecc9e2a26bc2d6aa27d4ccfba1492",
+      "container_route_count": 2,
+      "current_infeasible_count": 0,
+      "drone_sortie_count": 4,
+      "final_current_full_feasible": true,
+      "final_current_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "final_current_violations": [],
+      "final_objective": 860.3706454151579,
+      "infeasible_candidates": 6,
+      "initial_objective": 1177.5906540861547,
+      "initial_state_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+      "instance_fingerprint": "b76654c6fcdedd62f3c6c56a916035962b89908e49bc02320c782c0b59d55dfc",
+      "local_stats": {
+        "1": {
+          "drone_calls": 2253,
+          "drone_pass": 587,
+          "van_calls": 70,
+          "van_pass": 15
+        },
+        "10": {
+          "drone_calls": 1839,
+          "drone_pass": 1105,
+          "van_calls": 144,
+          "van_pass": 72
+        },
+        "2": {
+          "drone_calls": 4107,
+          "drone_pass": 1974,
+          "van_calls": 164,
+          "van_pass": 62
+        },
+        "3": {
+          "drone_calls": 7895,
+          "drone_pass": 460,
+          "van_calls": 714,
+          "van_pass": 164
+        },
+        "4": {
+          "drone_calls": 1055,
+          "drone_pass": 650,
+          "van_calls": 31,
+          "van_pass": 16
+        },
+        "5": {
+          "drone_calls": 1804,
+          "drone_pass": 972,
+          "van_calls": 102,
+          "van_pass": 40
+        },
+        "6": {
+          "drone_calls": 360,
+          "drone_pass": 0,
+          "van_calls": 87,
+          "van_pass": 0
+        },
+        "7": {
+          "drone_calls": 1014,
+          "drone_pass": 538,
+          "van_calls": 65,
+          "van_pass": 15
+        },
+        "8": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 33,
+          "van_pass": 7
+        },
+        "9": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 62,
+          "van_pass": 21
+        }
+      },
+      "operator_sequence": [
+        [
+          "cascade_aware_removal",
+          "best_mode_repair"
+        ],
+        [
+          "cascade_aware_removal",
+          "regret_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "regret_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_drone_repair"
+        ],
+        [
+          "random_customer_removal",
+          "cascade_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "cascade_repair"
+        ],
+        [
+          "greedy_removal",
+          "best_mode_repair"
+        ],
+        [
+          "random_customer_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "greedy_removal",
+          "regret_repair"
+        ]
+      ],
+      "operator_sequence_fingerprint": "39aca0f283e31e693f53f4081caf291e9e51bc4a09c617bc486fe070bd191a5f",
+      "rollback_mismatch_count": 0,
+      "rollback_rows": [
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "before_current_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "iteration": 1,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 3,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 4,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "before_current_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "iteration": 6,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 8,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 9,
+          "match": true
+        }
+      ],
+      "run": 2,
+      "runtime_seconds": 11.253631900064647,
+      "van_route_count": 3,
+      "visual_fingerprints": {}
+    },
+    {
+      "accepted_candidates": 4,
+      "best_full_feasible": true,
+      "best_infeasible_count": 0,
+      "best_objective": 860.3706454151579,
+      "best_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "best_violations": [],
+      "config_fingerprint": "0662448b0b1e0aaacaad17c43f095ee0dbeecc9e2a26bc2d6aa27d4ccfba1492",
+      "container_route_count": 2,
+      "current_infeasible_count": 0,
+      "drone_sortie_count": 4,
+      "final_current_full_feasible": true,
+      "final_current_state_fingerprint": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+      "final_current_violations": [],
+      "final_objective": 860.3706454151579,
+      "infeasible_candidates": 6,
+      "initial_objective": 1177.5906540861547,
+      "initial_state_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+      "instance_fingerprint": "b76654c6fcdedd62f3c6c56a916035962b89908e49bc02320c782c0b59d55dfc",
+      "local_stats": {
+        "1": {
+          "drone_calls": 2253,
+          "drone_pass": 587,
+          "van_calls": 70,
+          "van_pass": 15
+        },
+        "10": {
+          "drone_calls": 1839,
+          "drone_pass": 1105,
+          "van_calls": 144,
+          "van_pass": 72
+        },
+        "2": {
+          "drone_calls": 4107,
+          "drone_pass": 1974,
+          "van_calls": 164,
+          "van_pass": 62
+        },
+        "3": {
+          "drone_calls": 7895,
+          "drone_pass": 460,
+          "van_calls": 714,
+          "van_pass": 164
+        },
+        "4": {
+          "drone_calls": 1055,
+          "drone_pass": 650,
+          "van_calls": 31,
+          "van_pass": 16
+        },
+        "5": {
+          "drone_calls": 1804,
+          "drone_pass": 972,
+          "van_calls": 102,
+          "van_pass": 40
+        },
+        "6": {
+          "drone_calls": 360,
+          "drone_pass": 0,
+          "van_calls": 87,
+          "van_pass": 0
+        },
+        "7": {
+          "drone_calls": 1014,
+          "drone_pass": 538,
+          "van_calls": 65,
+          "van_pass": 15
+        },
+        "8": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 33,
+          "van_pass": 7
+        },
+        "9": {
+          "drone_calls": 0,
+          "drone_pass": 0,
+          "van_calls": 62,
+          "van_pass": 21
+        }
+      },
+      "operator_sequence": [
+        [
+          "cascade_aware_removal",
+          "best_mode_repair"
+        ],
+        [
+          "cascade_aware_removal",
+          "regret_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "regret_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_drone_repair"
+        ],
+        [
+          "random_customer_removal",
+          "cascade_repair"
+        ],
+        [
+          "switch_transshipment_operator",
+          "cascade_repair"
+        ],
+        [
+          "greedy_removal",
+          "best_mode_repair"
+        ],
+        [
+          "random_customer_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "route_segment_removal",
+          "greedy_van_repair"
+        ],
+        [
+          "greedy_removal",
+          "regret_repair"
+        ]
+      ],
+      "operator_sequence_fingerprint": "39aca0f283e31e693f53f4081caf291e9e51bc4a09c617bc486fe070bd191a5f",
+      "rollback_mismatch_count": 0,
+      "rollback_rows": [
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "before_current_fingerprint": "c85bfb5184289e2019df51205c4a7d42b61b89abfc9c22960079de195b9f65ac",
+          "iteration": 1,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 3,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "before_current_fingerprint": "38d222c3db263245a540c026382b949324871e5ec9d671868520efc35a8fe2d1",
+          "iteration": 4,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "before_current_fingerprint": "403560528ca8924114d8b842be41f749436800a92718a9f3a2e157aeab8c12db",
+          "iteration": 6,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 8,
+          "match": true
+        },
+        {
+          "accepted": false,
+          "after_rejection_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "before_current_fingerprint": "7f605bd0b839740984a52c0c28010679e00e5854e16b3805c4562ed9667a5476",
+          "iteration": 9,
+          "match": true
+        }
+      ],
+      "run": 3,
+      "runtime_seconds": 10.952485999907367,
+      "van_route_count": 3,
+      "visual_fingerprints": {}
+    }
+  ],
+  "unknown_records": [
+    {
+      "affected_customers": [
+        14,
+        23
+      ],
+      "affected_drones": [
+        "drone_0",
+        "drone_2",
+        "drone_4"
+      ],
+      "affected_vans": [
+        "van_0",
+        "van_1",
+        "van_2"
+      ],
+      "best_state_affected": false,
+      "candidate_accepted": false,
+      "candidate_committed": false,
+      "candidate_source": "best_mode_repair → _all_moves → _best_van_move/_best_drone_move → _apply_move → _finalize_repair",
+      "candidate_state_fingerprint": "465de7a6ec91c02a3ea61be7de9d6c1aeb4b4fb0ba2f825607185e519036b5f6",
+      "destroy_operator": "cascade_aware_removal",
+      "full_checker_result": "infeasible; _record_customer_service lines 167-170 records service_start > latest, propagated by check_solution_feasible lines 1439-1441",
+      "id": 1,
+      "iteration": 1,
+      "local_feasibility_result": {
+        "drone_calls": 2253,
+        "drone_pass": 587,
+        "interpretation": "selected insertions passed their applicable local checks; no final whole-state local checker is run after the repair combination/finalization",
+        "van_calls": 70,
+        "van_pass": 15
+      },
+      "raw_violations": [
+        "customer 14 service_start 381.344 exceeds latest 360.000.",
+        "customer 23 service_start 391.287 exceeds latest 360.000."
+      ],
+      "repair_operator": "best_mode_repair",
+      "rollback_fingerprint_match": true,
+      "root_cause": "incomplete diagnostics mapping for 'service_start ... exceeds latest'; correctly rejected infeasible final search candidate, not a checker false-positive or commit bug",
+      "same_van_or_cross_van": "mixed",
+      "true_category": "Timing / synchronization"
+    },
+    {
+      "affected_customers": [
+        6,
+        11,
+        12,
+        16
+      ],
+      "affected_drones": [
+        "drone_10",
+        "drone_6",
+        "drone_8"
+      ],
+      "affected_vans": [
+        "van_3",
+        "van_4",
+        "van_5"
+      ],
+      "best_state_affected": false,
+      "candidate_accepted": false,
+      "candidate_committed": false,
+      "candidate_source": "regret_repair → _all_moves → _apply_move → _finalize_repair",
+      "candidate_state_fingerprint": "a42e37d9d98e613180df644d9e5c23295428762d84656b6495e83f6c6b88c463",
+      "destroy_operator": "switch_transshipment_operator",
+      "full_checker_result": "infeasible; _record_customer_service lines 167-170 records service_start > latest, propagated by check_solution_feasible lines 1439-1441",
+      "id": 2,
+      "iteration": 3,
+      "local_feasibility_result": {
+        "drone_calls": 7895,
+        "drone_pass": 460,
+        "interpretation": "selected insertions passed their applicable local checks; no final whole-state local checker is run after the repair combination/finalization",
+        "van_calls": 714,
+        "van_pass": 164
+      },
+      "raw_violations": [
+        "customer 16 service_start 434.487 exceeds latest 360.000.",
+        "customer 6 service_start 440.147 exceeds latest 360.000.",
+        "customer 12 service_start 466.837 exceeds latest 360.000.",
+        "customer 11 service_start 397.108 exceeds latest 360.000."
+      ],
+      "repair_operator": "regret_repair",
+      "rollback_fingerprint_match": true,
+      "root_cause": "incomplete diagnostics mapping for 'service_start ... exceeds latest'; correctly rejected infeasible final search candidate, not a checker false-positive or commit bug",
+      "same_van_or_cross_van": "mixed",
+      "true_category": "Timing / synchronization"
+    },
+    {
+      "affected_customers": [
+        6,
+        7,
+        9,
+        15,
+        16
+      ],
+      "affected_drones": [
+        "drone_0",
+        "drone_1",
+        "drone_3"
+      ],
+      "affected_vans": [
+        "van_0",
+        "van_1"
+      ],
+      "best_state_affected": false,
+      "candidate_accepted": false,
+      "candidate_committed": false,
+      "candidate_source": "greedy_drone_repair → _best_drone_move → _drone_insert_hard_feasible → _apply_move → optional greedy_van_repair → _finalize_repair",
+      "candidate_state_fingerprint": "c078bedf868983ebb9c304a3926d3fd0c1be2a477de602fd9b3c3aaf92b3f676",
+      "destroy_operator": "route_segment_removal",
+      "full_checker_result": "infeasible; _record_customer_service lines 167-170 records service_start > latest, propagated by check_solution_feasible lines 1439-1441",
+      "id": 3,
+      "iteration": 4,
+      "local_feasibility_result": {
+        "drone_calls": 1055,
+        "drone_pass": 650,
+        "interpretation": "selected insertions passed their applicable local checks; no final whole-state local checker is run after the repair combination/finalization",
+        "van_calls": 31,
+        "van_pass": 16
+      },
+      "raw_violations": [
+        "customer 9 service_start 360.165 exceeds latest 360.000.",
+        "customer 7 service_start 368.754 exceeds latest 360.000.",
+        "customer 15 service_start 373.529 exceeds latest 360.000.",
+        "customer 6 service_start 386.715 exceeds latest 360.000.",
+        "customer 16 service_start 382.945 exceeds latest 360.000."
+      ],
+      "repair_operator": "greedy_drone_repair",
+      "rollback_fingerprint_match": true,
+      "root_cause": "incomplete diagnostics mapping for 'service_start ... exceeds latest'; correctly rejected infeasible final search candidate, not a checker false-positive or commit bug",
+      "same_van_or_cross_van": "mixed",
+      "true_category": "Timing / synchronization"
+    },
+    {
+      "affected_customers": [
+        13,
+        23
+      ],
+      "affected_drones": [
+        "drone_2"
+      ],
+      "affected_vans": [
+        "van_1"
+      ],
+      "best_state_affected": false,
+      "candidate_accepted": false,
+      "candidate_committed": false,
+      "candidate_source": "greedy_van_repair → _best_van_move → _van_insert_hard_feasible → _apply_move → _finalize_repair",
+      "candidate_state_fingerprint": "bf3dfcb57913f208556cd15e66ed6d77bbe728a92b944821acf3409aa0e2701a",
+      "destroy_operator": "route_segment_removal",
+      "full_checker_result": "infeasible; _record_customer_service lines 167-170 records service_start > latest, propagated by check_solution_feasible lines 1439-1441",
+      "id": 4,
+      "iteration": 9,
+      "local_feasibility_result": {
+        "drone_calls": 0,
+        "drone_pass": 0,
+        "interpretation": "selected insertions passed their applicable local checks; no final whole-state local checker is run after the repair combination/finalization",
+        "van_calls": 62,
+        "van_pass": 21
+      },
+      "raw_violations": [
+        "customer 23 service_start 366.048 exceeds latest 360.000.",
+        "customer 13 service_start 365.115 exceeds latest 360.000."
+      ],
+      "repair_operator": "greedy_van_repair",
+      "rollback_fingerprint_match": true,
+      "root_cause": "incomplete diagnostics mapping for 'service_start ... exceeds latest'; correctly rejected infeasible final search candidate, not a checker false-positive or commit bug",
+      "same_van_or_cross_van": "same-van",
+      "true_category": "Timing / synchronization"
+    }
+  ],
+  "visual_artifact_file_sha256": {
+    "route_load_timeline.png": "81c93d2698c9f6144307b551844064ce859089331d4970f945c6db2d1e9c2f80",
+    "route_plan_detail.txt": "fd3127e2d9fd8329f8e9a179f8b392a7055cfd7091af669aed39169d8822a754",
+    "routes.png": "b8b1fffbcda904eedda3fe204889ba8e61ff7c48d7a0fda86175801fa6546518"
+  },
+  "visual_artifact_state_fingerprints": {
+    "route_load_timeline.png": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+    "route_plan_detail.txt": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4",
+    "routes.png": "f3f8e33f54d0a6b5d0c6e2f5db7ee33854f72845945012d5da75e9002d61ddf4"
+  }
+}

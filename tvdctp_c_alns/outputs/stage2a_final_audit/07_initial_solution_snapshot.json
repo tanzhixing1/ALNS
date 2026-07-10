@@ -1,0 +1,416 @@
+{
+  "container_destinations": {
+    "0": 3,
+    "1": 3
+  },
+  "container_routes": {
+    "0": {
+      "assigned_orders": [
+        0,
+        2,
+        4,
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18
+      ],
+      "customers": [
+        6,
+        8,
+        10,
+        12,
+        14,
+        16,
+        18,
+        20,
+        22,
+        24
+      ],
+      "destination_warehouse": 3,
+      "load_complete": 46.68332812825267,
+      "load_start": 46.68332812825267,
+      "origin": 0,
+      "service_sequence_index": 0,
+      "tractor_id": "tractor_0",
+      "trailer_id": "trailer_0",
+      "unload_complete": 106.34906368895787,
+      "unload_start": 106.34906368895787
+    },
+    "1": {
+      "assigned_orders": [
+        1,
+        3,
+        5,
+        7,
+        9,
+        11,
+        13,
+        15,
+        17,
+        19
+      ],
+      "customers": [
+        7,
+        9,
+        11,
+        13,
+        15,
+        17,
+        19,
+        21,
+        23,
+        25
+      ],
+      "destination_warehouse": 3,
+      "load_complete": 166.01479924966307,
+      "load_start": 166.01479924966307,
+      "origin": 0,
+      "service_sequence_index": 1,
+      "tractor_id": "tractor_0",
+      "trailer_id": "trailer_0",
+      "unload_complete": 225.68053481036827,
+      "unload_start": 225.68053481036827
+    }
+  },
+  "drone_physical_sorties": {
+    "drone_2": [
+      {
+        "customers": [
+          19,
+          13
+        ],
+        "drone_arrival_time": 349.9196838734708,
+        "launch_node": 14,
+        "launch_position": 4,
+        "launch_time": 339.4055999569953,
+        "launch_van_id": "van_1",
+        "recovery_node": 23,
+        "recovery_position": 5,
+        "recovery_time": 349.9196838734708,
+        "recovery_van_id": "van_1"
+      }
+    ],
+    "drone_3": [
+      {
+        "customers": [
+          18
+        ],
+        "drone_arrival_time": 362.06232054897896,
+        "launch_node": 23,
+        "launch_position": 5,
+        "launch_time": 349.9196838734708,
+        "launch_van_id": "van_1",
+        "recovery_node": 4,
+        "recovery_position": 12,
+        "recovery_time": 368.9197470931769,
+        "recovery_van_id": "van_0"
+      }
+    ]
+  },
+  "drone_sorties": [
+    {
+      "customers": [
+        18
+      ],
+      "drone_arrival_time": 362.06232054897896,
+      "drone_id": "drone_3",
+      "drone_waiting_time": 6.857426544197949,
+      "launch": 23,
+      "launch_position": 5,
+      "launch_time": 349.9196838734708,
+      "launch_van_id": "van_1",
+      "recovery": 4,
+      "recovery_position": 12,
+      "recovery_time": 368.9197470931769,
+      "recovery_van_id": "van_0",
+      "same_node": false,
+      "synchronized_recovery_time": 368.9197470931769,
+      "van_waiting_time": 0.0
+    },
+    {
+      "customers": [
+        19,
+        13
+      ],
+      "drone_arrival_time": 349.9196838734708,
+      "drone_id": "drone_2",
+      "drone_waiting_time": 0.0,
+      "launch": 14,
+      "launch_position": 4,
+      "launch_time": 339.4055999569953,
+      "launch_van_id": "van_1",
+      "recovery": 23,
+      "recovery_position": 5,
+      "recovery_time": 349.9196838734708,
+      "recovery_van_id": "van_1",
+      "same_node": false,
+      "synchronized_recovery_time": 349.9196838734708,
+      "van_waiting_time": 0.5714995200139015
+    }
+  ],
+  "feasible": true,
+  "objective": 1177.5906540861547,
+  "order_assignment": {
+    "10": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 10,
+      "demand": 13.0,
+      "order_id": 4,
+      "pickup_demand": 16.0,
+      "service_required": true
+    },
+    "11": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 11,
+      "demand": 14.0,
+      "order_id": 5,
+      "pickup_demand": 16.0,
+      "service_required": true
+    },
+    "12": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 12,
+      "demand": 2.0,
+      "order_id": 6,
+      "pickup_demand": 16.0,
+      "service_required": true
+    },
+    "13": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 13,
+      "demand": 6.0,
+      "order_id": 7,
+      "pickup_demand": 13.0,
+      "service_required": true
+    },
+    "14": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 14,
+      "demand": 16.0,
+      "order_id": 8,
+      "pickup_demand": 9.0,
+      "service_required": true
+    },
+    "15": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 15,
+      "demand": 17.0,
+      "order_id": 9,
+      "pickup_demand": 14.0,
+      "service_required": true
+    },
+    "16": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 16,
+      "demand": 9.0,
+      "order_id": 10,
+      "pickup_demand": 5.0,
+      "service_required": true
+    },
+    "17": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 17,
+      "demand": 16.0,
+      "order_id": 11,
+      "pickup_demand": 16.0,
+      "service_required": true
+    },
+    "18": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 18,
+      "demand": 17.0,
+      "order_id": 12,
+      "pickup_demand": 11.0,
+      "service_required": true
+    },
+    "19": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 19,
+      "demand": 8.0,
+      "order_id": 13,
+      "pickup_demand": 9.0,
+      "service_required": true
+    },
+    "20": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 20,
+      "demand": 18.0,
+      "order_id": 14,
+      "pickup_demand": 10.0,
+      "service_required": true
+    },
+    "21": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 21,
+      "demand": 6.0,
+      "order_id": 15,
+      "pickup_demand": 11.0,
+      "service_required": true
+    },
+    "22": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 22,
+      "demand": 5.0,
+      "order_id": 16,
+      "pickup_demand": 0.0,
+      "service_required": true
+    },
+    "23": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 23,
+      "demand": 14.0,
+      "order_id": 17,
+      "pickup_demand": 2.0,
+      "service_required": true
+    },
+    "24": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 24,
+      "demand": 13.0,
+      "order_id": 18,
+      "pickup_demand": 5.0,
+      "service_required": true
+    },
+    "25": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 25,
+      "demand": 2.0,
+      "order_id": 19,
+      "pickup_demand": 2.0,
+      "service_required": true
+    },
+    "6": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 6,
+      "demand": 19.0,
+      "order_id": 0,
+      "pickup_demand": 17.0,
+      "service_required": true
+    },
+    "7": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 7,
+      "demand": 9.0,
+      "order_id": 1,
+      "pickup_demand": 4.0,
+      "service_required": true
+    },
+    "8": {
+      "assigned_transshipment": 3,
+      "container_id": 0,
+      "container_origin": 0,
+      "customer_id": 8,
+      "demand": 3.0,
+      "order_id": 2,
+      "pickup_demand": 16.0,
+      "service_required": true
+    },
+    "9": {
+      "assigned_transshipment": 3,
+      "container_id": 1,
+      "container_origin": 0,
+      "customer_id": 9,
+      "demand": 17.0,
+      "order_id": 3,
+      "pickup_demand": 0.0,
+      "service_required": true
+    }
+  },
+  "service_mode": {
+    "10": "van",
+    "11": "van",
+    "12": "van",
+    "13": "drone",
+    "14": "van",
+    "15": "van",
+    "16": "van",
+    "17": "van",
+    "18": "drone",
+    "19": "drone",
+    "20": "van",
+    "21": "van",
+    "22": "van",
+    "23": "van",
+    "24": "van",
+    "25": "van",
+    "6": "van",
+    "7": "van",
+    "8": "van",
+    "9": "van"
+  },
+  "unassigned": [],
+  "van_routes": {
+    "van_0": [
+      3,
+      22,
+      10,
+      24,
+      25,
+      20,
+      8,
+      11,
+      12,
+      9,
+      7,
+      6,
+      4
+    ],
+    "van_1": [
+      3,
+      17,
+      15,
+      16,
+      14,
+      23,
+      3
+    ],
+    "van_2": [
+      3,
+      21,
+      3
+    ]
+  },
+  "violations": [],
+  "warehouse_ready_times": {
+    "3": 225.68053481036827
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "alns": {
+    "collect_full_candidate_diagnostics": true,
+    "collect_local_feasibility_cache_stats": false,
+    "cooling_rate": 0.9995,
+    "customer_removal_ratio": 0.2,
+    "early_stop_enabled": true,
+    "enable_local_feasibility_cache": false,
+    "enable_shadow_prefilter": false,
+    "initial_temperature": 1000.0,
+    "max_iterations": 10,
+    "max_no_improve": 100,
+    "max_no_improvement": 100,
+    "random_seed": 42,
+    "reaction_coefficient": 0.2,
+    "scores": [
+      5.0,
+      3.0,
+      1.0,
+      0.0
+    ],
+    "weight_update_interval": 50
+  },
+  "config_builder_path": "D:\\STUDY\\game\\github-program\\noteread\\ALNS\\tvdctp_c_alns\\config.py",
+  "cost": {
+    "drone_cost_per_km": 0.052,
+    "drone_fixed_cost": 169.0,
+    "infeasible_penalty": 10000.0,
+    "time_penalty_per_hour": 38.9,
+    "tractor_cost_per_km": 1.93,
+    "tractor_fixed_cost": 166.0,
+    "trailer_fixed_cost": 0.0,
+    "van_cost_per_km": 0.875,
+    "van_fixed_cost": 59.0
+  },
+  "data": {
+    "container_origin": "port",
+    "high_floor_ratio": 0.15,
+    "max_demand_kg": 20,
+    "max_pickup_demand_kg": 20,
+    "min_demand_kg": 0,
+    "min_pickup_demand_kg": 0,
+    "num_containers": 2,
+    "num_customers": 20,
+    "num_orders": 20,
+    "num_transshipments": 3,
+    "port_node": 0,
+    "road_distance_factor": 1.0,
+    "service_time_min": 0.0,
+    "time_window_end_min": 360.0,
+    "time_window_start_min": 0.0,
+    "tractor_depot_node": null,
+    "trailer_depot_node": null,
+    "transshipment_start_node": 3,
+    "truck_depot_node": 1,
+    "vans_per_transshipment_by_scale": {
+      "large": 4,
+      "medium": 3,
+      "small": 2
+    },
+    "warehouse_num_vans": {}
+  },
+  "data_generator_path": "D:\\STUDY\\game\\github-program\\noteread\\ALNS\\tvdctp_c_alns\\dataset_loader.py",
+  "derived_warehouse_num_drones": {
+    "3": 6,
+    "4": 6,
+    "5": 6
+  },
+  "derived_warehouse_num_vans": {
+    "3": 3,
+    "4": 3,
+    "5": 3
+  },
+  "fixed_run_parameters": {
+    "iterations": 10,
+    "num_containers": 2,
+    "num_customers": 20,
+    "num_orders": 20,
+    "num_transshipments": 3,
+    "seed": 42
+  },
+  "fleet": {
+    "container_load_time": 0.0,
+    "container_unload_time": 0.0,
+    "drone_base_energy_coeff": 0.18,
+    "drone_battery_capacity_kwh": 13.8,
+    "drone_capacity_kg": 30.0,
+    "drone_enabled": true,
+    "drone_endurance_km": 90.0,
+    "drone_payload_energy_coeff": 0.5,
+    "drone_self_weight_kg": 5.0,
+    "drone_speed_kmph": 80.0,
+    "drones_per_van": 2,
+    "max_drones_carried_per_van": 3,
+    "num_tractors": 1,
+    "num_trailers": 1,
+    "num_trucks": 1,
+    "tractor_speed_kmph": 30.0,
+    "trailer_attach_time": 0.0,
+    "trailer_detach_time": 0.0,
+    "van_capacity_kg": 500.0,
+    "van_speed_kmph": 40.0
+  },
+  "objective_note": "current initial objective is produced by the regression fixture's explicit high_floor_ratio=0.15",
+  "operator_registry": {
+    "candidate_search_space_changed": false,
+    "destroy_registry": [
+      "cascade_aware_removal",
+      "drone_task_removal",
+      "greedy_removal",
+      "random_customer_removal",
+      "related_customer_removal",
+      "route_segment_removal",
+      "switch_transshipment_operator"
+    ],
+    "extended_mode": true,
+    "operator_semantics_changed": false,
+    "paper_destroy_registry": [
+      "random_customer_removal",
+      "greedy_removal",
+      "related_customer_removal",
+      "cascade_aware_removal"
+    ],
+    "paper_mode": false,
+    "paper_repair_registry": [
+      "best_mode_repair",
+      "greedy_van_repair",
+      "regret_repair",
+      "cascade_repair"
+    ],
+    "repair_registry": [
+      "best_mode_repair",
+      "cascade_repair",
+      "greedy_drone_repair",
+      "greedy_van_repair",
+      "regret_repair"
+    ]
+  },
+  "output_dir": "D:\\STUDY\\game\\github-program\\noteread\\ALNS\\tvdctp_c_alns\\outputs\\stage2a_final_audit",
+  "profile_entry": "run_c_alns",
+  "profile_script_path": "D:\\STUDY\\game\\github-program\\noteread\\ALNS\\tvdctp_c_alns\\alns_solver.py",
+  "source": "tests/test_regression_rules.py::_solve equivalent fixed medium fixture; high_floor_ratio explicitly set to 0.15"
+}

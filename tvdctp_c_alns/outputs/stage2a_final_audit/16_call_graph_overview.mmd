@@ -1,0 +1,15 @@
+flowchart TD
+  P[profile entry] --> C[build_config]
+  C --> D[generate_toy_data]
+  D --> A[run_c_alns]
+  A --> I[initial_solution]
+  I --> O[objective]
+  O --> F[check_solution_feasible]
+  A --> S[operator selection]
+  S --> X[destroy]
+  X --> R[repair]
+  R --> L[local feasibility]
+  L --> AP[candidate apply]
+  AP --> F
+  F --> SA[SA acceptance]
+  SA --> U[current/best update]
