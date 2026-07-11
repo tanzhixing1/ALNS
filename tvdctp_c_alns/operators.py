@@ -46,6 +46,21 @@ class InsertionMove:
     sortie: Optional[dict] = None
 
 
+@dataclass
+class RegretEvaluation:
+    customer: int
+    moves: List[InsertionMove]
+    best_move: InsertionMove
+    second_move: Optional[InsertionMove]
+    regret: Optional[float]
+    original_order: int
+    raw_candidate_count: int
+    van_candidate_count: int
+    drone_candidate_count: int
+    enumeration_seconds: float
+    ranking_seconds: float
+
+
 def _removal_count(data: InstanceData, config: TVDConfig) -> int:
     return max(1, int(round(len(data.customers) * config.alns.customer_removal_ratio)))
 
@@ -1115,6 +1130,49 @@ def _best_van_move(customer: int, state: TVDState, data: InstanceData, config: T
     return best
 
 
+def _enumerate_feasible_van_moves(
+    customer: int,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[InsertionMove]:
+    """Return every concrete hard-feasible van insertion for Regret-2."""
+    if data.is_high_floor.get(int(customer), False):
+        return []
+    moves: List[InsertionMove] = []
+    for van_id, route in _repair_van_routes(state).items():
+        if not _can_van_insert(customer, route, data, config):
+            continue
+        fixed_delta = 0.0 if len(route) > 2 else config.cost.van_fixed_cost
+        for idx in range(1, len(route)):
+            increment("van_insert_candidates")
+            increment("service_mode_switch_candidates")
+            if len(route) <= 2:
+                increment("new_van_activation_candidates")
+            candidate_route = route[:idx] + [int(customer)] + route[idx:]
+            feasible = _van_insert_hard_feasible(
+                customer,
+                van_id,
+                candidate_route,
+                state,
+                data,
+                config,
+            )
+            record_repair_candidate("van", feasible)
+            if not feasible:
+                continue
+            delta = _van_insert_cost(customer, route, idx, data)
+            moves.append(
+                InsertionMove(
+                    mode="van",
+                    cost=delta * config.cost.van_cost_per_km + fixed_delta,
+                    index=idx,
+                    van_id=van_id,
+                )
+            )
+    return moves
+
+
 def _stable_van_id_key(van_id: str) -> Tuple[int, object]:
     """Return the existing numeric van order, with a stable string fallback."""
     text = str(van_id)
@@ -1456,6 +1514,171 @@ def _best_drone_move_for_customers(
                     if best is None or cost < best.cost:
                         best = move
     return best
+
+
+def _enumerate_feasible_drone_moves_for_customers(
+    customers: List[int],
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[InsertionMove]:
+    """Return all concrete hard-feasible drone moves for one customer tuple."""
+    if not config.fleet.drone_enabled or not customers:
+        return []
+    if any(not data.drone_eligible.get(customer, False) for customer in customers):
+        return []
+    if _drone_payload(customers, data) > config.fleet.drone_capacity_kg:
+        return []
+
+    moves: List[InsertionMove] = []
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    existing_drone_ids = {
+        str(existing.get("drone_id"))
+        for existing in state.drone_sorties
+        if isinstance(existing, dict)
+    }
+    existing_van_ids = {
+        van_id
+        for van_id, route in routes.items()
+        if len(route) > 2
+        or any(
+            isinstance(sortie, dict)
+            and (
+                sortie.get("launch_van_id") == van_id
+                or sortie.get("recovery_van_id") == van_id
+            )
+            for sortie in state.drone_sorties
+        )
+    }
+
+    for launch_van_id, launch_route in routes.items():
+        drone_id = _first_drone_for_van(state, launch_van_id)
+        if not drone_id:
+            continue
+        for launch_pos, launch in enumerate(launch_route):
+            if launch_pos == len(launch_route) - 1:
+                continue
+            if int(launch) in customers:
+                continue
+            for recovery_van_id, recovery_route in routes.items():
+                for recovery_pos, recovery in enumerate(recovery_route):
+                    if int(recovery) in customers:
+                        continue
+                    if launch_van_id == recovery_van_id:
+                        if recovery_pos < launch_pos:
+                            continue
+                        if launch == recovery and recovery_pos != launch_pos:
+                            continue
+                    sortie = _make_drone_sortie(
+                        launch,
+                        customers,
+                        recovery,
+                        drone_id=drone_id,
+                        launch_van_id=launch_van_id,
+                        recovery_van_id=recovery_van_id,
+                    )
+                    sortie["launch_position"] = int(launch_pos)
+                    sortie["recovery_position"] = int(recovery_pos)
+                    candidate_key = _drone_local_feasibility_cache_key(
+                        customers,
+                        sortie,
+                        state,
+                    )
+                    increment("drone_insert_candidates")
+                    increment("service_mode_switch_candidates")
+                    if launch_van_id != recovery_van_id:
+                        increment("cross_van_docking_candidates")
+                    for van_id in {launch_van_id, recovery_van_id}:
+                        if van_id not in existing_van_ids:
+                            increment("new_van_activation_candidates")
+                    if not record_local_drone_candidate(candidate_key):
+                        continue
+                    feasible = _drone_insert_hard_feasible(
+                        customers,
+                        sortie,
+                        state,
+                        data,
+                        config,
+                        cache_key=candidate_key,
+                    )
+                    record_repair_candidate("drone", feasible)
+                    if not feasible:
+                        continue
+                    fixed_delta = (
+                        0.0
+                        if drone_id in existing_drone_ids
+                        else config.cost.drone_fixed_cost
+                    )
+                    van_fixed_delta = sum(
+                        config.cost.van_fixed_cost
+                        for van_id in {launch_van_id, recovery_van_id}
+                        if van_id not in existing_van_ids
+                    )
+                    moves.append(
+                        InsertionMove(
+                            mode="drone",
+                            cost=(
+                                drone_sortie_distance(sortie, data)
+                                * config.cost.drone_cost_per_km
+                                + fixed_delta
+                                + van_fixed_delta
+                            ),
+                            sortie=sortie,
+                        )
+                    )
+    return moves
+
+
+def _enumerate_feasible_drone_moves(
+    customer: int,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[InsertionMove]:
+    """Enumerate all unique customer tuples, then all concrete drone moves."""
+    if not config.fleet.drone_enabled or not data.drone_eligible.get(customer, False):
+        return []
+    if (
+        data.demands[customer]
+        + getattr(data, "pickup_demands", {}).get(customer, 0.0)
+        > config.fleet.drone_capacity_kg
+    ):
+        return []
+
+    customer_tuples: List[Tuple[int, ...]] = [(int(customer),)]
+    seen_customer_tuples = {customer_tuples[0]}
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    for launch_route in routes.values():
+        for launch_pos, launch in enumerate(launch_route):
+            if launch_pos == len(launch_route) - 1:
+                continue
+            for recovery_route in routes.values():
+                for recovery in recovery_route:
+                    sortie_customers = tuple(
+                        _extend_drone_customers(
+                            customer,
+                            launch,
+                            recovery,
+                            state,
+                            data,
+                            config,
+                        )
+                    )
+                    if sortie_customers not in seen_customer_tuples:
+                        seen_customer_tuples.add(sortie_customers)
+                        customer_tuples.append(sortie_customers)
+
+    moves: List[InsertionMove] = []
+    for customer_tuple in customer_tuples:
+        moves.extend(
+            _enumerate_feasible_drone_moves_for_customers(
+                list(customer_tuple),
+                state,
+                data,
+                config,
+            )
+        )
+    return moves
 
 
 def _sortie_van_id(sortie: dict, field: str, fallback: str = "") -> str:
@@ -1914,27 +2137,318 @@ def best_mode_repair(
         exit_repair("best_mode_repair")
 
 
+def _regret_move_identity(
+    customer: int,
+    move: InsertionMove,
+    state: TVDState,
+) -> Tuple[object, ...]:
+    """Stable complete identity used for Regret-only deduplication."""
+    assignment = state.order_assignment.get(int(customer), {})
+    container_id = int(assignment.get("container_id", -1)) if isinstance(assignment, dict) else -1
+    assigned_warehouse = (
+        int(assignment.get("assigned_transshipment", -1))
+        if isinstance(assignment, dict)
+        else -1
+    )
+    if move.mode == "van":
+        van_id = str(move.van_id or "")
+        route = _repair_van_routes(state).get(van_id, [])
+        return (
+            "van",
+            int(customer),
+            van_id,
+            tuple(int(node) for node in route),
+            int(move.index if move.index is not None else -1),
+            int(state.van_home.get(van_id, state.selected_transshipment)),
+            container_id,
+            assigned_warehouse,
+        )
+
+    sortie = move.sortie or {}
+    launch, sortie_customers, recovery = sortie_nodes(sortie)
+    launch_van = str(sortie.get("launch_van_id", ""))
+    recovery_van = str(sortie.get("recovery_van_id", launch_van))
+    routes = state.van_routes if state.van_routes else {"van_0": state.van_route}
+    return (
+        "drone",
+        int(customer),
+        str(sortie.get("drone_id", "")),
+        launch_van,
+        int(launch),
+        int(sortie.get("launch_position", -1)),
+        tuple(int(node) for node in routes.get(launch_van, [])),
+        recovery_van,
+        int(recovery),
+        int(sortie.get("recovery_position", -1)),
+        tuple(int(node) for node in routes.get(recovery_van, [])),
+        tuple(int(item) for item in sortie_customers),
+        container_id,
+        assigned_warehouse,
+    )
+
+
+def _deduplicate_regret_moves(
+    customer: int,
+    moves: List[InsertionMove],
+    state: TVDState,
+) -> List[InsertionMove]:
+    """Implementation choice: deduplicate by move identity, never by cost."""
+    unique: Dict[Tuple[object, ...], InsertionMove] = {}
+    for move in moves:
+        identity = _regret_move_identity(customer, move, state)
+        if identity not in unique:
+            unique[identity] = move
+    return list(unique.values())
+
+
+def _copy_move(move: InsertionMove, *, cost: Optional[float] = None) -> InsertionMove:
+    sortie = None
+    if move.sortie is not None:
+        sortie = dict(move.sortie)
+        sortie["customers"] = list(move.sortie.get("customers", []))
+    return InsertionMove(
+        mode=move.mode,
+        cost=float(move.cost if cost is None else cost),
+        index=move.index,
+        van_id=move.van_id,
+        sortie=sortie,
+    )
+
+
+def _score_regret_moves_with_exact_objective_delta(
+    customer: int,
+    moves: List[InsertionMove],
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> List[InsertionMove]:
+    """Score Regret candidates by exact full-objective delta on State copies."""
+    base_cost, _ = objective(state.copy(), data, config)
+    scored: List[InsertionMove] = []
+    for move in moves:
+        candidate = state.copy()
+        candidate_move = _copy_move(move)
+        _apply_move(candidate, customer, candidate_move)
+        candidate_cost, _ = objective(candidate, data, config)
+        scored.append(_copy_move(move, cost=float(candidate_cost - base_cost)))
+    return scored
+
+
+def _regret_move_order_key(
+    customer: int,
+    move: InsertionMove,
+    state: TVDState,
+) -> Tuple[object, ...]:
+    # Preserve the existing stable van-before-drone tie behavior, then use
+    # complete identity so equal-cost concrete strategies remain deterministic.
+    mode_order = 0 if move.mode == "van" else 1
+    return (float(move.cost), mode_order, _regret_move_identity(customer, move, state))
+
+
+def _enumerate_regret_moves(
+    customer: int,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+) -> Tuple[List[InsertionMove], Dict[str, object]]:
+    started = time.perf_counter()
+    van_moves = _enumerate_feasible_van_moves(customer, state, data, config)
+    drone_moves = _enumerate_feasible_drone_moves(customer, state, data, config)
+    raw_moves = van_moves + drone_moves
+    unique_moves = _deduplicate_regret_moves(customer, raw_moves, state)
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+        customer,
+        unique_moves,
+        state,
+        data,
+        config,
+    )
+    return scored_moves, {
+        "raw_candidate_count": len(raw_moves),
+        "unique_candidate_count": len(unique_moves),
+        "van_candidate_count": len(van_moves),
+        "drone_candidate_count": len(drone_moves),
+        "enumeration_seconds": time.perf_counter() - started,
+    }
+
+
+def _evaluate_regret_customer(
+    customer: int,
+    state: TVDState,
+    data: InstanceData,
+    config: TVDConfig,
+    original_order: int,
+) -> Tuple[Optional[RegretEvaluation], Dict[str, object]]:
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+    ranking_started = time.perf_counter()
+    moves.sort(key=lambda move: _regret_move_order_key(customer, move, state))
+    ranking_seconds = time.perf_counter() - ranking_started
+    stats["ranking_seconds"] = ranking_seconds
+    if not moves:
+        return None, stats
+    second_move = moves[1] if len(moves) > 1 else None
+    regret = (
+        float(second_move.cost - moves[0].cost)
+        if second_move is not None
+        else None
+    )
+    return (
+        RegretEvaluation(
+            customer=int(customer),
+            moves=moves,
+            best_move=moves[0],
+            second_move=second_move,
+            regret=regret,
+            original_order=int(original_order),
+            raw_candidate_count=int(stats["raw_candidate_count"]),
+            van_candidate_count=int(stats["van_candidate_count"]),
+            drone_candidate_count=int(stats["drone_candidate_count"]),
+            enumeration_seconds=float(stats["enumeration_seconds"]),
+            ranking_seconds=float(ranking_seconds),
+        ),
+        stats,
+    )
+
+
+def _regret_customer_priority_key(
+    evaluation: RegretEvaluation,
+) -> Tuple[object, ...]:
+    """Return an ascending key for the required customer priority.
+
+    Implementation choice: the paper does not explicitly specify how to
+    handle a customer with only one feasible insertion strategy. Such a
+    customer receives structured priority above every multi-candidate one.
+    """
+    if evaluation.second_move is None:
+        return (
+            0,
+            float(evaluation.best_move.cost),
+            evaluation.original_order,
+            evaluation.customer,
+        )
+    assert evaluation.regret is not None
+    return (
+        1,
+        -float(evaluation.regret),
+        float(evaluation.best_move.cost),
+        evaluation.original_order,
+        evaluation.customer,
+    )
+
+
+def _regret_trace_event(
+    evaluation: Optional[RegretEvaluation],
+    stats: Dict[str, object],
+    *,
+    customer: int,
+    round_index: int,
+    selected_customer: Optional[int],
+    repair_elapsed_seconds: float,
+) -> Dict[str, object]:
+    best_move = evaluation.best_move if evaluation is not None else None
+    second_move = evaluation.second_move if evaluation is not None else None
+    return {
+        "repair": "regret_repair",
+        "round": int(round_index),
+        "state_revision": int(round_index),
+        "customer_id": int(customer),
+        "raw_candidate_count": int(stats.get("raw_candidate_count", 0)),
+        "unique_candidate_count": int(stats.get("unique_candidate_count", 0)),
+        "van_candidate_count": int(stats.get("van_candidate_count", 0)),
+        "drone_candidate_count": int(stats.get("drone_candidate_count", 0)),
+        "best_move_identity": (
+            _regret_move_identity(customer, best_move, stats["state"])
+            if best_move is not None
+            else None
+        ),
+        "best_delta": float(best_move.cost) if best_move is not None else None,
+        "second_move_identity": (
+            _regret_move_identity(customer, second_move, stats["state"])
+            if second_move is not None
+            else None
+        ),
+        "second_delta": float(second_move.cost) if second_move is not None else None,
+        "regret": evaluation.regret if evaluation is not None else None,
+        "single_candidate": bool(
+            evaluation is not None and evaluation.second_move is None
+        ),
+        "customer_priority_key": (
+            _regret_customer_priority_key(evaluation)
+            if evaluation is not None
+            else None
+        ),
+        "selected_customer": selected_customer,
+        "selected": int(customer) == selected_customer,
+        "enumeration_seconds": float(stats.get("enumeration_seconds", 0.0)),
+        "ranking_seconds": float(stats.get("ranking_seconds", 0.0)),
+        "repair_elapsed_seconds": float(repair_elapsed_seconds),
+    }
+
+
 def regret_repair(
-    state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+    state: TVDState,
+    rng: np.random.Generator,
+    data: InstanceData,
+    config: TVDConfig,
+    trace_collector: Optional[Callable[[Dict[str, object]], None]] = None,
 ) -> TVDState:
     enter_repair("regret_repair")
+    repair_started = time.perf_counter()
     try:
         repaired = state.copy()
+        original_order = {
+            int(customer): index
+            for index, customer in enumerate(repaired.unassigned)
+        }
+        round_index = 0
         while repaired.unassigned:
-            best_choice = None
+            round_index += 1
+            evaluations: List[RegretEvaluation] = []
+            trace_rows = []
             for customer in repaired.unassigned:
-                moves = _all_moves(customer, repaired, data, config)
-                if not moves:
-                    continue
-                regret = (moves[1].cost - moves[0].cost) if len(moves) > 1 else moves[0].cost
-                candidate = (regret, customer, moves[0])
-                if best_choice is None or candidate[0] > best_choice[0]:
-                    best_choice = candidate
+                evaluation, stats = _evaluate_regret_customer(
+                    customer,
+                    repaired,
+                    data,
+                    config,
+                    original_order.get(int(customer), len(original_order)),
+                )
+                stats["state"] = repaired
+                trace_rows.append((int(customer), evaluation, stats))
+                if evaluation is not None:
+                    evaluations.append(evaluation)
 
-            if best_choice is None:
+            if not evaluations:
+                if trace_collector is not None:
+                    for customer, evaluation, stats in trace_rows:
+                        trace_collector(
+                            _regret_trace_event(
+                                evaluation,
+                                stats,
+                                customer=customer,
+                                round_index=round_index,
+                                selected_customer=None,
+                                repair_elapsed_seconds=time.perf_counter()
+                                - repair_started,
+                            )
+                        )
                 break
-            _, customer, move = best_choice
-            _apply_move(repaired, customer, move)
+
+            selected = min(evaluations, key=_regret_customer_priority_key)
+            if trace_collector is not None:
+                for customer, evaluation, stats in trace_rows:
+                    trace_collector(
+                        _regret_trace_event(
+                            evaluation,
+                            stats,
+                            customer=customer,
+                            round_index=round_index,
+                            selected_customer=selected.customer,
+                            repair_elapsed_seconds=time.perf_counter()
+                            - repair_started,
+                        )
+                    )
+            _apply_move(repaired, selected.customer, selected.best_move)
         return _finalize_repair(repaired, data, config)
     finally:
         exit_repair("regret_repair")

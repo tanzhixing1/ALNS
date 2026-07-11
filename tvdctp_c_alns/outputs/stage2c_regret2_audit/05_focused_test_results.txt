@@ -1,0 +1,21 @@
+Stage 2C focused validation
+Date: 2026-07-11
+
+Command 1:
+python -m pytest tests/test_stage2c_regret2.py -q
+
+Result:
+20 passed in 7.66s
+
+Command 2 covered:
+- Stage 2C Regret-2 tests
+- Stage 2B Local tests
+- Stage 2A drone-feasibility differential tests
+- Stage 1 drone generator regression
+- core model capabilities
+- focused existing van, cross-van, timing, candidate, and consolidation regressions
+
+Result:
+84 passed in 47.81s
+
+All 20 required Stage 2C semantic cases passed, including exact objective delta for van, same-van drone, and cross-van drone candidates.

@@ -1,0 +1,4 @@
+run,seed,iterations,actual_iterations,initial_objective,best_objective,final_objective,selected_events,raw_candidates,unique_candidates,van_candidates,drone_candidates,accepted_count,infeasible_count,selected_customer_sequence,semantic_trace_hash,best_fingerprint,full_feasible
+1,42,30,30,637.594910064123,619.802720191427,708.028468056919,18,825,825,128,697,29,1,"9 8 7 6 10 5 6 9 7 8 10 7 6 8 10 10 9 10",dab8008371f54fbe0445,68da68ee6a1645917f8f,true
+2,42,30,30,637.594910064123,619.802720191427,708.028468056919,18,825,825,128,697,29,1,"9 8 7 6 10 5 6 9 7 8 10 7 6 8 10 10 9 10",dab8008371f54fbe0445,68da68ee6a1645917f8f,true
+3,42,30,30,637.594910064123,619.802720191427,708.028468056919,18,825,825,128,697,29,1,"9 8 7 6 10 5 6 9 7 8 10 7 6 8 10 10 9 10",dab8008371f54fbe0445,68da68ee6a1645917f8f,true
