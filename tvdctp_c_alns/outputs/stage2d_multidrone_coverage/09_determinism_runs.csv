@@ -1,0 +1,4 @@
+run,bundle_ids,bundle_sizes,snapshot_counts,van_block_counts,drone_bundle_counts,raw_counts,feasible_counts,unique_counts,state_copies,objective_calls,checker_calls,max_depth,selected_objectives,fingerprint,full_feasible,lossy_truncation
+1,0000|0001,2|2,1|1,2|7,6|92,9|100,9|100,9|100,111,109,219,1,10505.816968706673|514.5292389699055,b6d0e2008cc0ecc0d765bcc4996af7a2dbc9065ccdd1ef1582fcc72883e94441,true,false
+2,0000|0001,2|2,1|1,2|7,6|92,9|100,9|100,9|100,111,109,219,1,10505.816968706673|514.5292389699055,b6d0e2008cc0ecc0d765bcc4996af7a2dbc9065ccdd1ef1582fcc72883e94441,true,false
+3,0000|0001,2|2,1|1,2|7,6|92,9|100,9|100,9|100,111,109,219,1,10505.816968706673|514.5292389699055,b6d0e2008cc0ecc0d765bcc4996af7a2dbc9065ccdd1ef1582fcc72883e94441,true,false

@@ -1744,6 +1744,38 @@ def _first_drone_for_van(state: TVDState, van_id: str) -> str:
     )
 
 
+def _candidate_drones_for_launch_van(state: TVDState, van_id: str) -> List[str]:
+    """Return every named drone that can possibly reach this launch van.
+
+    This is only a safe necessary-condition filter.  Exact current-carrier,
+    availability-time, existing-sortie order, and warehouse-return semantics
+    remain owned by ``_drone_physical_local_check`` for each concrete sortie.
+    """
+
+    possible = {
+        str(drone_id)
+        for drone_id, carrier in state.drone_initial_carrier.items()
+        if str(carrier) == str(van_id)
+    }
+    for sortie in state.drone_sorties:
+        if not isinstance(sortie, dict):
+            continue
+        drone_id = str(sortie.get("drone_id", ""))
+        if drone_id not in state.drone_initial_carrier:
+            continue
+        _, _, recovery = sortie_nodes(sortie)
+        recovery_van = str(
+            sortie.get("recovery_van_id", sortie.get("launch_van_id", ""))
+        )
+        if recovery_van == str(van_id) and int(recovery) not in state.transshipment_nodes:
+            possible.add(drone_id)
+    return [
+        str(drone_id)
+        for drone_id in state.drone_initial_carrier
+        if str(drone_id) in possible
+    ]
+
+
 def _extend_drone_customers(
     seed_customer: int,
     launch: int,
@@ -1823,86 +1855,87 @@ def _best_drone_move_for_customers(
     for launch_van_id, launch_route in routes.items():
         if launch_scope is not None and str(launch_van_id) not in launch_scope:
             continue
-        drone_id = _first_drone_for_van(state, launch_van_id)
-        if not drone_id:
+        candidate_drone_ids = _candidate_drones_for_launch_van(state, launch_van_id)
+        if not candidate_drone_ids:
             continue
         for launch_pos, launch in enumerate(launch_route):
             if launch_pos == len(launch_route) - 1:
                 continue
             if int(launch) in customers:
                 continue
-            for recovery_van_id, recovery_route in routes.items():
-                for recovery_pos, recovery in enumerate(recovery_route):
-                    if int(recovery) in customers:
-                        continue
-                    if launch_van_id == recovery_van_id:
-                        if recovery_pos < launch_pos:
+            for drone_id in candidate_drone_ids:
+                for recovery_van_id, recovery_route in routes.items():
+                    for recovery_pos, recovery in enumerate(recovery_route):
+                        if int(recovery) in customers:
                             continue
-                        if launch == recovery and recovery_pos != launch_pos:
+                        if launch_van_id == recovery_van_id:
+                            if recovery_pos < launch_pos:
+                                continue
+                            if launch == recovery and recovery_pos != launch_pos:
+                                continue
+                        sortie = _make_drone_sortie(
+                            launch,
+                            customers,
+                            recovery,
+                            drone_id=drone_id,
+                            launch_van_id=launch_van_id,
+                            recovery_van_id=recovery_van_id,
+                        )
+                        sortie["launch_position"] = int(launch_pos)
+                        sortie["recovery_position"] = int(recovery_pos)
+                        candidate_key = _drone_local_feasibility_cache_key(
+                            customers,
+                            sortie,
+                            state,
+                        )
+                        increment("drone_insert_candidates")
+                        increment("service_mode_switch_candidates")
+                        if candidate_trace is not None:
+                            candidate_trace["drone_candidate_count"] = int(
+                                candidate_trace.get("drone_candidate_count", 0)
+                            ) + 1
+                            launch_ids = candidate_trace.setdefault("launch_van_ids", set())
+                            recovery_ids = candidate_trace.setdefault("recovery_van_ids", set())
+                            assert isinstance(launch_ids, set)
+                            assert isinstance(recovery_ids, set)
+                            launch_ids.add(str(launch_van_id))
+                            recovery_ids.add(str(recovery_van_id))
+                        if launch_van_id != recovery_van_id:
+                            increment("cross_van_docking_candidates")
+                        for van_id in {launch_van_id, recovery_van_id}:
+                            if van_id not in existing_van_ids:
+                                increment("new_van_activation_candidates")
+                        if not record_local_drone_candidate(candidate_key):
                             continue
-                    sortie = _make_drone_sortie(
-                        launch,
-                        customers,
-                        recovery,
-                        drone_id=drone_id,
-                        launch_van_id=launch_van_id,
-                        recovery_van_id=recovery_van_id,
-                    )
-                    sortie["launch_position"] = int(launch_pos)
-                    sortie["recovery_position"] = int(recovery_pos)
-                    candidate_key = _drone_local_feasibility_cache_key(
-                        customers,
-                        sortie,
-                        state,
-                    )
-                    increment("drone_insert_candidates")
-                    increment("service_mode_switch_candidates")
-                    if candidate_trace is not None:
-                        candidate_trace["drone_candidate_count"] = int(
-                            candidate_trace.get("drone_candidate_count", 0)
-                        ) + 1
-                        launch_ids = candidate_trace.setdefault("launch_van_ids", set())
-                        recovery_ids = candidate_trace.setdefault("recovery_van_ids", set())
-                        assert isinstance(launch_ids, set)
-                        assert isinstance(recovery_ids, set)
-                        launch_ids.add(str(launch_van_id))
-                        recovery_ids.add(str(recovery_van_id))
-                    if launch_van_id != recovery_van_id:
-                        increment("cross_van_docking_candidates")
-                    for van_id in {launch_van_id, recovery_van_id}:
-                        if van_id not in existing_van_ids:
-                            increment("new_van_activation_candidates")
-                    if not record_local_drone_candidate(candidate_key):
-                        continue
-                    feasible = _drone_insert_hard_feasible(
-                        customers,
-                        sortie,
-                        state,
-                        data,
-                        config,
-                        cache_key=candidate_key,
-                    )
-                    record_repair_candidate("drone", feasible)
-                    if not feasible:
-                        continue
-                    fixed_delta = (
-                        0.0
-                        if drone_id in existing_drone_ids
-                        else config.cost.drone_fixed_cost
-                    )
-                    van_fixed_delta = sum(
-                        config.cost.van_fixed_cost
-                        for van_id in {launch_van_id, recovery_van_id}
-                        if van_id not in existing_van_ids
-                    )
-                    cost = (
-                        drone_sortie_distance(sortie, data) * config.cost.drone_cost_per_km
-                        + fixed_delta
-                        + van_fixed_delta
-                    )
-                    move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
-                    if best is None or cost < best.cost:
-                        best = move
+                        feasible = _drone_insert_hard_feasible(
+                            customers,
+                            sortie,
+                            state,
+                            data,
+                            config,
+                            cache_key=candidate_key,
+                        )
+                        record_repair_candidate("drone", feasible)
+                        if not feasible:
+                            continue
+                        fixed_delta = (
+                            0.0
+                            if drone_id in existing_drone_ids
+                            else config.cost.drone_fixed_cost
+                        )
+                        van_fixed_delta = sum(
+                            config.cost.van_fixed_cost
+                            for van_id in {launch_van_id, recovery_van_id}
+                            if van_id not in existing_van_ids
+                        )
+                        cost = (
+                            drone_sortie_distance(sortie, data) * config.cost.drone_cost_per_km
+                            + fixed_delta
+                            + van_fixed_delta
+                        )
+                        move = InsertionMove(mode="drone", cost=cost, sortie=sortie)
+                        if best is None or cost < best.cost:
+                            best = move
     return best
 
 
@@ -1942,80 +1975,81 @@ def _enumerate_feasible_drone_moves_for_customers(
     }
 
     for launch_van_id, launch_route in routes.items():
-        drone_id = _first_drone_for_van(state, launch_van_id)
-        if not drone_id:
+        candidate_drone_ids = _candidate_drones_for_launch_van(state, launch_van_id)
+        if not candidate_drone_ids:
             continue
         for launch_pos, launch in enumerate(launch_route):
             if launch_pos == len(launch_route) - 1:
                 continue
             if int(launch) in customers:
                 continue
-            for recovery_van_id, recovery_route in routes.items():
-                for recovery_pos, recovery in enumerate(recovery_route):
-                    if int(recovery) in customers:
-                        continue
-                    if launch_van_id == recovery_van_id:
-                        if recovery_pos < launch_pos:
+            for drone_id in candidate_drone_ids:
+                for recovery_van_id, recovery_route in routes.items():
+                    for recovery_pos, recovery in enumerate(recovery_route):
+                        if int(recovery) in customers:
                             continue
-                        if launch == recovery and recovery_pos != launch_pos:
-                            continue
-                    sortie = _make_drone_sortie(
-                        launch,
-                        customers,
-                        recovery,
-                        drone_id=drone_id,
-                        launch_van_id=launch_van_id,
-                        recovery_van_id=recovery_van_id,
-                    )
-                    sortie["launch_position"] = int(launch_pos)
-                    sortie["recovery_position"] = int(recovery_pos)
-                    candidate_key = _drone_local_feasibility_cache_key(
-                        customers,
-                        sortie,
-                        state,
-                    )
-                    increment("drone_insert_candidates")
-                    increment("service_mode_switch_candidates")
-                    if launch_van_id != recovery_van_id:
-                        increment("cross_van_docking_candidates")
-                    for van_id in {launch_van_id, recovery_van_id}:
-                        if van_id not in existing_van_ids:
-                            increment("new_van_activation_candidates")
-                    if not record_local_drone_candidate(candidate_key):
-                        continue
-                    feasible = _drone_insert_hard_feasible(
-                        customers,
-                        sortie,
-                        state,
-                        data,
-                        config,
-                        cache_key=candidate_key,
-                    )
-                    record_repair_candidate("drone", feasible)
-                    if not feasible:
-                        continue
-                    fixed_delta = (
-                        0.0
-                        if drone_id in existing_drone_ids
-                        else config.cost.drone_fixed_cost
-                    )
-                    van_fixed_delta = sum(
-                        config.cost.van_fixed_cost
-                        for van_id in {launch_van_id, recovery_van_id}
-                        if van_id not in existing_van_ids
-                    )
-                    moves.append(
-                        InsertionMove(
-                            mode="drone",
-                            cost=(
-                                drone_sortie_distance(sortie, data)
-                                * config.cost.drone_cost_per_km
-                                + fixed_delta
-                                + van_fixed_delta
-                            ),
-                            sortie=sortie,
+                        if launch_van_id == recovery_van_id:
+                            if recovery_pos < launch_pos:
+                                continue
+                            if launch == recovery and recovery_pos != launch_pos:
+                                continue
+                        sortie = _make_drone_sortie(
+                            launch,
+                            customers,
+                            recovery,
+                            drone_id=drone_id,
+                            launch_van_id=launch_van_id,
+                            recovery_van_id=recovery_van_id,
                         )
-                    )
+                        sortie["launch_position"] = int(launch_pos)
+                        sortie["recovery_position"] = int(recovery_pos)
+                        candidate_key = _drone_local_feasibility_cache_key(
+                            customers,
+                            sortie,
+                            state,
+                        )
+                        increment("drone_insert_candidates")
+                        increment("service_mode_switch_candidates")
+                        if launch_van_id != recovery_van_id:
+                            increment("cross_van_docking_candidates")
+                        for van_id in {launch_van_id, recovery_van_id}:
+                            if van_id not in existing_van_ids:
+                                increment("new_van_activation_candidates")
+                        if not record_local_drone_candidate(candidate_key):
+                            continue
+                        feasible = _drone_insert_hard_feasible(
+                            customers,
+                            sortie,
+                            state,
+                            data,
+                            config,
+                            cache_key=candidate_key,
+                        )
+                        record_repair_candidate("drone", feasible)
+                        if not feasible:
+                            continue
+                        fixed_delta = (
+                            0.0
+                            if drone_id in existing_drone_ids
+                            else config.cost.drone_fixed_cost
+                        )
+                        van_fixed_delta = sum(
+                            config.cost.van_fixed_cost
+                            for van_id in {launch_van_id, recovery_van_id}
+                            if van_id not in existing_van_ids
+                        )
+                        moves.append(
+                            InsertionMove(
+                                mode="drone",
+                                cost=(
+                                    drone_sortie_distance(sortie, data)
+                                    * config.cost.drone_cost_per_km
+                                    + fixed_delta
+                                    + van_fixed_delta
+                                ),
+                                sortie=sortie,
+                            )
+                        )
     return moves
 
 

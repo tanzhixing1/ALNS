@@ -1,0 +1,30 @@
+........................................................................ [ 45%]
+........................................................................ [ 90%]
+................                                                         [100%]
+============================== warnings summary ===============================
+tvdctp_c_alns/tests/test_regression_rules.py::test_initial_solution_rejects_infeasible_high_floor_without_drone
+  D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\tests\test_regression_rules.py:223: RuntimeWarning: initial_solution could not assign customer 6 after van insertion and drone fallback.
+    initial_solution(data, config)
+
+tvdctp_c_alns/tests/test_regression_rules.py::test_initial_solution_rejects_infeasible_high_floor_without_drone
+  D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\tests\test_regression_rules.py:223: RuntimeWarning: initial_solution could not assign customer 8 after van insertion and drone fallback.
+    initial_solution(data, config)
+
+tvdctp_c_alns/tests/test_regression_rules.py::test_initial_solution_rejects_infeasible_high_floor_without_drone
+  D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\tests\test_regression_rules.py:223: RuntimeWarning: initial_solution could not assign customer 9 after van insertion and drone fallback.
+    initial_solution(data, config)
+
+tvdctp_c_alns/tests/test_regression_rules.py::test_initial_solution_rejects_van_capacity_fallback_insert
+  D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\tests\test_regression_rules.py:247: RuntimeWarning: initial_solution could not assign customer 5 after van insertion and drone fallback. customer 5 cannot be inserted without violating van capacity/time window; tried active vans ['van_0']; tried unused vans [].
+    initial_solution(data, config)
+
+tvdctp_c_alns/tests/test_regression_rules.py::test_initial_solution_rejects_time_window_insert
+  D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\tests\test_regression_rules.py:274: RuntimeWarning: initial_solution could not assign customer 4 after van insertion and drone fallback. customer 4 cannot be inserted without violating van capacity/time window; tried active vans ['van_0']; tried unused vans [].
+    initial_solution(data, config)
+
+-- Docs: https://docs.pytest.org/en/stable/how-to/capture-warnings.html
+=============================== tests coverage ================================
+______________ coverage: platform win32, python 3.12.13-final-0 _______________
+
+Coverage XML written to file coverage.xml
+160 passed, 5 warnings in 1511.42s (0:25:11)

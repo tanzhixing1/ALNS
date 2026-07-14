@@ -1,0 +1,32 @@
+Stage 2D multi-drone focused regression results
+================================================
+
+1. New real-model multi-drone coverage tests
+   tests/test_stage2d_multidrone_coverage.py
+   7 passed in 3.96s
+
+2. Shared drone-enumeration / local feasibility coverage
+   tests/test_stage2a_drone_feasibility.py
+   25 passed in 2.99s
+
+3. Stage 2C Regret
+   tests/test_stage2c_regret2.py
+   20 passed in 6.82s
+
+4. Stage 2D Cascade
+   tests/test_stage2d1_cascade_repair.py
+   33 passed in 15.16s
+
+5. Stage 2D.0 contract
+   tests/test_stage2d0_cascade_contract.py
+   18 passed in 2.40s
+
+6-9. Cross-van, carrier transfer, flexible docking, State.copy and metadata
+   Selected relevant tests across the existing suite
+   36 passed, 123 deselected in 8.27s
+
+Additional isolation check after the first long-process full-suite anomaly:
+   exact Stage 2A downstream_time_window test: 1 passed in 2.20s
+   complete Stage 2A file: 25 passed in 2.99s
+
+No test was deleted, skipped, xfailed, or relaxed.
