@@ -1,0 +1,43 @@
+Stage 2D.1 / Stage 2D.2 focused validation
+Date: 2026-07-14 Asia/Shanghai
+Python: Codex bundled Python 3.12.13
+
+Default `python -m pytest` result:
+FAILED TO START: C:\Users\19088\.agent-reach-venv\Scripts\python.exe has no pytest module.
+
+Documented project venv result:
+FAILED TO START: its launcher references a missing C:\Users\19088\AppData\Local\Programs\Python\Python312\python.exe.
+
+The bundled Python runtime was therefore used for every pytest result below.
+
+1. Stage 2D.1 semantic tests
+command: python -m pytest tests/test_stage2d1_cascade_repair.py -q
+result: 33 passed in 9.51s
+
+2. Stage 2D.0 contract regression
+command: python -m pytest tests/test_stage2d0_cascade_contract.py -q
+result: 18 passed in 6.03s
+
+3. Stage 2B Local regression
+command: python -m pytest tests/test_stage2b_local_greedy.py -q
+result: 10 passed in 2.19s
+
+4. Stage 2C Regret regression
+command: python -m pytest tests/test_stage2c_regret2.py -q
+result: 20 passed in 4.81s
+
+One preexisting Cascade integration fixture was updated, without relaxing its assertion, to use a valid cascade_aware_removal contract instead of the newly forbidden missing-metadata fallback. Regret implementation behavior was unchanged.
+
+5. Cross-van regression
+command: python -m pytest tests/test_regression_rules.py -q -k cross_van
+result: 5 passed, 21 deselected in 2.44s
+
+6. State.copy / metadata / atomic apply-commit selection
+command: six explicit node IDs from Stage 2D.0, Stage 2D.1 and Stage 2C
+result: 6 passed in 3.28s
+
+7. Syntax smoke test
+command: python -m py_compile operators.py state.py feasibility.py objective.py
+result: PASS
+
+Focused result: PASS

@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import hashlib
 import time
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
-from typing import Callable, Dict, Iterable, List, Optional, Tuple
+from typing import Callable, Dict, Iterable, List, Optional, Set, Tuple
 
 import numpy as np
 
@@ -81,6 +81,41 @@ class RegretEvaluation:
     drone_candidate_count: int
     enumeration_seconds: float
     ranking_seconds: float
+
+
+@dataclass
+class BundleReconstructionStrategy:
+    """One complete, atomic reconstruction candidate for a Cascade bundle.
+
+    Implementation choice: the paper does not explicitly specify the concrete
+    construction of Ω(B).  This identity describes the complete reconstructed
+    bundle and affected structures; it never uses objective cost for identity
+    or deduplication.
+    """
+
+    bundle_id: str
+    customer_ids: Tuple[int, ...]
+    service_mode_reconstruction: Tuple[Tuple[int, str], ...]
+    van_route_segment_reconstruction: Tuple[Tuple[str, Tuple[int, ...]], ...]
+    drone_subroute_reconstruction: Tuple[Tuple[object, ...], ...]
+    launch_recovery_reconstruction: Tuple[Tuple[object, ...], ...]
+    carrier_transfer_reconstruction: Tuple[Tuple[object, ...], ...]
+    coordination_links: Tuple[str, ...]
+    resulting_state: TVDState = field(repr=False, compare=False)
+    source_kind: str = field(default="", compare=False)
+    objective_value: Optional[float] = field(default=None, compare=False)
+
+    def stable_identity(self) -> Tuple[object, ...]:
+        return (
+            self.bundle_id,
+            self.customer_ids,
+            self.service_mode_reconstruction,
+            self.van_route_segment_reconstruction,
+            self.drone_subroute_reconstruction,
+            self.launch_recovery_reconstruction,
+            self.carrier_transfer_reconstruction,
+            self.coordination_links,
+        )
 
 
 def _removal_count(data: InstanceData, config: TVDConfig) -> int:
@@ -2824,176 +2859,769 @@ def _finish_repair(
     return finished
 
 
-def _candidate_score(
-    state: TVDState, data: InstanceData, config: TVDConfig
-) -> Optional[float]:
-    feasible, _ = check_solution_feasible(state, data, config)
-    if not feasible:
-        return None
-    total, _ = objective(state, data, config)
-    return float(total)
+def _cascade_state_copy(
+    state: TVDState, metrics: Dict[str, object]
+) -> TVDState:
+    metrics["state_copy_count"] = int(metrics.get("state_copy_count", 0)) + 1
+    return state.copy()
 
 
-def _repair_bundle_all_van(
-    state: TVDState,
-    bundle: List[int],
-    data: InstanceData,
-    config: TVDConfig,
-) -> Optional[TVDState]:
-    candidate = state.copy()
-    for customer in bundle:
-        if customer not in candidate.unassigned:
-            continue
-        move = _best_van_move(customer, candidate, data, config)
-        if move is None:
-            return None
-        _apply_move(candidate, customer, move)
-    return candidate
+def _stable_freeze(value: object) -> object:
+    if isinstance(value, dict):
+        return tuple(
+            (str(key), _stable_freeze(item))
+            for key, item in sorted(value.items(), key=lambda pair: str(pair[0]))
+        )
+    if isinstance(value, (list, tuple)):
+        return tuple(_stable_freeze(item) for item in value)
+    if isinstance(value, set):
+        return tuple(sorted((_stable_freeze(item) for item in value), key=repr))
+    return value
 
 
-def _repair_bundle_best_modes(
-    state: TVDState,
-    bundle: List[int],
-    data: InstanceData,
-    config: TVDConfig,
-) -> Optional[TVDState]:
-    candidate = state.copy()
-    for customer in bundle:
-        if customer not in candidate.unassigned:
-            continue
-        moves = _all_moves(customer, candidate, data, config)
-        if not moves:
-            return None
-        _apply_move(candidate, customer, moves[0])
-    return candidate
-
-
-def _repair_bundle_as_drone(
-    state: TVDState,
-    bundle: List[int],
-    data: InstanceData,
-    config: TVDConfig,
-) -> Optional[TVDState]:
-    if any(customer not in state.unassigned for customer in bundle):
-        return None
-    candidate = state.copy()
-    move = _best_drone_move_for_customers(bundle, candidate, data, config)
-    if move is None:
-        return None
-    _apply_move(candidate, bundle[0], move)
-    return candidate
-
-
-def _repair_bundle_partial_candidates(
-    state: TVDState,
-    bundle: List[int],
-    data: InstanceData,
-    config: TVDConfig,
-) -> List[TVDState]:
-    if len(bundle) < 2 or len(bundle) > 3:
-        return []
-
-    candidates: List[TVDState] = []
-    bundle_set = set(bundle)
-    for size in range(1, len(bundle)):
-        for drone_part_tuple in combinations(bundle, size):
-            drone_part = list(drone_part_tuple)
-            van_part = [customer for customer in bundle if customer not in drone_part_tuple]
-            candidate = state.copy()
-            move = _best_drone_move_for_customers(drone_part, candidate, data, config)
-            if move is None:
-                continue
-            _apply_move(candidate, drone_part[0], move)
-            failed = False
-            for customer in van_part:
-                if customer not in candidate.unassigned:
-                    continue
-                van_move = _best_van_move(customer, candidate, data, config)
-                if van_move is None:
-                    failed = True
-                    break
-                _apply_move(candidate, customer, van_move)
-            if failed:
-                continue
-            if bundle_set.isdisjoint(candidate.unassigned):
-                candidates.append(candidate)
-    return candidates
-
-
-def _best_bundle_repair(
-    state: TVDState,
-    bundle: List[int],
-    rng: np.random.Generator,
-    data: InstanceData,
-    config: TVDConfig,
-) -> Optional[TVDState]:
-    candidates = []
-    builders = (
-        _repair_bundle_all_van,
-        _repair_bundle_best_modes,
-        _repair_bundle_as_drone,
+def _sortie_structural_identity(sortie: object) -> Tuple[object, ...]:
+    if not isinstance(sortie, dict):
+        return ("legacy", _stable_freeze(sortie))
+    launch, customers, recovery = sortie_nodes(sortie)
+    return (
+        str(sortie.get("drone_id", "")),
+        str(sortie.get("launch_van_id", "")),
+        int(launch),
+        int(sortie.get("launch_position", -1)),
+        tuple(int(customer) for customer in customers),
+        str(sortie.get("recovery_van_id", sortie.get("launch_van_id", ""))),
+        int(recovery),
+        int(sortie.get("recovery_position", -1)),
     )
-    for builder in builders:
-        candidate = builder(state, bundle, data, config)
-        if candidate is None:
+
+
+def _route_segment_contract_id(snapshot: VanRouteSegmentSnapshot) -> str:
+    if snapshot.start_position < 0 or snapshot.end_position < 0:
+        return f"van:{snapshot.van_id}:unresolved"
+    return (
+        f"van:{snapshot.van_id}:"
+        f"{snapshot.start_position}-{snapshot.end_position}"
+    )
+
+
+def _validate_bundle_snapshot(
+    bundle: CascadeBundleSnapshot,
+    contract: Dict[str, object],
+    state: TVDState,
+) -> List[str]:
+    errors: List[str] = []
+    customers = tuple(int(customer) for customer in bundle.customer_ids)
+    customer_set = set(customers)
+    if bundle.schema_version != CASCADE_CONTRACT_SCHEMA_VERSION:
+        errors.append(f"{bundle.bundle_id}: schema mismatch")
+    if bundle.source_operator != CASCADE_SOURCE_OPERATOR:
+        errors.append(f"{bundle.bundle_id}: source operator mismatch")
+    if bundle.source_destroy_call_id != contract.get("destroy_call_id"):
+        errors.append(f"{bundle.bundle_id}: destroy revision mismatch")
+    if bundle.source_state_fingerprint != contract.get("source_state_fingerprint"):
+        errors.append(f"{bundle.bundle_id}: source fingerprint mismatch")
+    if not bundle.captured_before_removal:
+        errors.append(f"{bundle.bundle_id}: snapshot was not captured before removal")
+    if not customers or len(customer_set) != len(customers):
+        errors.append(f"{bundle.bundle_id}: customer membership is empty or duplicated")
+    if set(bundle.dependency_order) != customer_set or len(bundle.dependency_order) != len(
+        customers
+    ):
+        errors.append(f"{bundle.bundle_id}: dependency_order is not the bundle membership")
+    if bundle.dependency_order_semantics != (
+        "current implementation order; Paper unspecified"
+    ):
+        errors.append(f"{bundle.bundle_id}: dependency_order semantics mismatch")
+
+    services = bundle.customer_service_snapshots
+    if (
+        not all(isinstance(item, CustomerServiceSnapshot) for item in services)
+        or {item.customer_id for item in services} != customer_set
+        or len(services) != len(customers)
+    ):
+        errors.append(f"{bundle.bundle_id}: customer service snapshots mismatch")
+    else:
+        for service in services:
+            if service.service_mode not in {"van", "drone"}:
+                errors.append(
+                    f"{bundle.bundle_id}: customer {service.customer_id} has invalid source mode"
+                )
+            if service.service_mode == "van" and len(service.van_route_positions) != 1:
+                errors.append(
+                    f"{bundle.bundle_id}: van customer {service.customer_id} lacks one route position"
+                )
+
+    route_snapshots = bundle.affected_route_segments
+    drone_snapshots = bundle.removed_drone_subroutes
+    link_snapshots = bundle.launch_recovery_snapshots
+    carrier_snapshots = bundle.carrier_transfer_snapshots
+    if not all(isinstance(item, VanRouteSegmentSnapshot) for item in route_snapshots):
+        errors.append(f"{bundle.bundle_id}: invalid route snapshots")
+    if not all(isinstance(item, DroneSubrouteSnapshot) for item in drone_snapshots):
+        errors.append(f"{bundle.bundle_id}: invalid sortie snapshots")
+    if not all(isinstance(item, LaunchRecoverySnapshot) for item in link_snapshots):
+        errors.append(f"{bundle.bundle_id}: invalid launch/recovery snapshots")
+    if not all(isinstance(item, CarrierTransferSnapshot) for item in carrier_snapshots):
+        errors.append(f"{bundle.bundle_id}: invalid carrier snapshots")
+
+    route_vans = {item.van_id for item in route_snapshots}
+    for service in services:
+        for position in service.van_route_positions:
+            if position.van_id not in route_vans:
+                errors.append(
+                    f"{bundle.bundle_id}: van position is outside affected route scope"
+                )
+    if any(not set(item.customer_ids).issubset(customer_set) for item in drone_snapshots):
+        errors.append(f"{bundle.bundle_id}: sortie includes a customer outside the bundle")
+    drone_customer_ids = {
+        customer
+        for snapshot in drone_snapshots
+        for customer in snapshot.customer_ids
+    }
+    expected_drone_customers = {
+        service.customer_id
+        for service in services
+        if service.service_mode == "drone"
+    }
+    if drone_customer_ids != expected_drone_customers:
+        errors.append(f"{bundle.bundle_id}: drone service/sortie membership mismatch")
+
+    sortie_ids = tuple(item.sortie_id for item in drone_snapshots)
+    if {item.sortie_id for item in link_snapshots} != set(sortie_ids):
+        errors.append(f"{bundle.bundle_id}: launch/recovery links mismatch sorties")
+    if {item.sortie_id for item in carrier_snapshots} != set(sortie_ids):
+        errors.append(f"{bundle.bundle_id}: carrier links mismatch sorties")
+    for link in link_snapshots:
+        if link.launch_van_id not in route_vans or link.recovery_van_id not in route_vans:
+            errors.append(f"{bundle.bundle_id}: launch/recovery van is outside route scope")
+
+    scope = bundle.affected_structure_scope
+    expected_route_ids = tuple(_route_segment_contract_id(item) for item in route_snapshots)
+    expected_link_ids = tuple(
+        edge
+        for sortie_id in sortie_ids
+        for edge in (f"{sortie_id}:launch", f"{sortie_id}:recovery")
+    )
+    expected_carrier_ids = tuple(f"{sortie_id}:carrier" for sortie_id in sortie_ids)
+    expected_coordination_ids = tuple(
+        edge
+        for sortie_id in sortie_ids
+        for edge in (
+            f"{sortie_id}:truck-van-context",
+            f"{sortie_id}:van-drone-launch",
+            f"{sortie_id}:van-drone-recovery",
+        )
+    )
+    if scope.van_route_segment_ids != expected_route_ids:
+        errors.append(f"{bundle.bundle_id}: affected route scope mismatch")
+    if scope.drone_subroute_ids != sortie_ids:
+        errors.append(f"{bundle.bundle_id}: affected sortie scope mismatch")
+    if scope.launch_recovery_link_ids != expected_link_ids:
+        errors.append(f"{bundle.bundle_id}: affected launch/recovery scope mismatch")
+    if scope.carrier_link_ids != expected_carrier_ids:
+        errors.append(f"{bundle.bundle_id}: affected carrier scope mismatch")
+    if scope.coordination_edge_ids != expected_coordination_ids:
+        errors.append(f"{bundle.bundle_id}: affected coordination scope mismatch")
+    expected_truck_context = f"selected_transshipment:{state.selected_transshipment}"
+    if expected_truck_context not in scope.truck_context_ids:
+        errors.append(f"{bundle.bundle_id}: truck/warehouse context mismatch")
+    if bundle.truck_warehouse_context.selected_transshipment != state.selected_transshipment:
+        errors.append(f"{bundle.bundle_id}: selected transshipment snapshot mismatch")
+    return errors
+
+
+def _validated_cascade_bundles(
+    state: TVDState,
+) -> Tuple[Optional[List[CascadeBundleSnapshot]], List[str]]:
+    contract = state.metadata.get("cascade_contract")
+    raw_bundles = state.metadata.get("cascade_bundles")
+    if not isinstance(contract, dict) or not isinstance(raw_bundles, list):
+        return None, ["missing cascade contract or bundle metadata"]
+    if not cascade_metadata_is_current(state):
+        return None, ["cascade contract is stale or does not match destroyed State"]
+    if not all(isinstance(bundle, CascadeBundleSnapshot) for bundle in raw_bundles):
+        return None, ["cascade bundle metadata contains an unsupported snapshot"]
+
+    bundles = list(raw_bundles)
+    errors: List[str] = []
+    bundle_ids = [bundle.bundle_id for bundle in bundles]
+    if len(set(bundle_ids)) != len(bundle_ids):
+        errors.append("bundle IDs are not unique")
+    memberships = [set(bundle.customer_ids) for bundle in bundles]
+    seen: Set[int] = set()
+    for membership in memberships:
+        if seen.intersection(membership):
+            errors.append("bundle memberships overlap")
+        seen.update(membership)
+    removed = state.metadata.get("cascade_removed")
+    if not isinstance(removed, list) or set(int(customer) for customer in removed) != seen:
+        errors.append("cascade_removed does not equal the bundle membership union")
+    if not seen.issubset(set(int(customer) for customer in state.unassigned)):
+        errors.append("a bundle customer is not unassigned in the destroyed State")
+    for bundle in bundles:
+        errors.extend(_validate_bundle_snapshot(bundle, contract, state))
+    return (None, errors) if errors else (bundles, [])
+
+
+def _external_structure_projection(
+    state: TVDState,
+    bundle_customers: Set[int],
+) -> Tuple[object, ...]:
+    outside_modes = tuple(
+        (int(customer), str(mode))
+        for customer, mode in sorted(state.service_mode.items())
+        if int(customer) not in bundle_customers
+    )
+    normalized_routes = tuple(
+        (
+            str(van_id),
+            tuple(int(node) for node in route if int(node) not in bundle_customers),
+        )
+        for van_id, route in sorted(state.van_routes.items())
+    )
+    outside_sorties = tuple(
+        _sortie_structural_identity(sortie)
+        for sortie in state.drone_sorties
+        if bundle_customers.isdisjoint(set(sortie_nodes(sortie)[1]))
+    )
+    outside_assignments = tuple(
+        (int(customer), _stable_freeze(assignment))
+        for customer, assignment in sorted(state.order_assignment.items())
+        if int(customer) not in bundle_customers
+    )
+    return (
+        int(state.selected_transshipment),
+        tuple(int(node) for node in state.truck_route),
+        _stable_freeze(state.tractor_routes),
+        _stable_freeze(state.container_routes),
+        normalized_routes,
+        outside_sorties,
+        outside_modes,
+        outside_assignments,
+        _stable_freeze(state.container_assignment),
+        _stable_freeze(state.van_home),
+        _stable_freeze(state.drone_initial_carrier),
+        _stable_freeze(state.drone_home_warehouse),
+    )
+
+
+def _candidate_changes_only_affected_scope(
+    before: TVDState,
+    candidate: TVDState,
+    bundle: CascadeBundleSnapshot,
+) -> bool:
+    bundle_customers = set(bundle.customer_ids)
+    affected_vans = {snapshot.van_id for snapshot in bundle.affected_route_segments}
+    all_vans = set(before.van_routes) | set(candidate.van_routes)
+    for van_id in all_vans - affected_vans:
+        if before.van_routes.get(van_id) != candidate.van_routes.get(van_id):
+            return False
+    for customer in bundle_customers:
+        for van_id, route in candidate.van_routes.items():
+            if customer in route and van_id not in affected_vans:
+                return False
+    for sortie in candidate.drone_sorties:
+        _, customers, _ = sortie_nodes(sortie)
+        if bundle_customers.intersection(customers):
+            if not isinstance(sortie, dict):
+                return False
+            launch_van = str(sortie.get("launch_van_id", ""))
+            recovery_van = str(sortie.get("recovery_van_id", launch_van))
+            if launch_van not in affected_vans or recovery_van not in affected_vans:
+                return False
+    return _external_structure_projection(before, bundle_customers) == (
+        _external_structure_projection(candidate, bundle_customers)
+    )
+
+
+def _validate_cascade_candidate(
+    state: TVDState,
+    *,
+    bundle_customers: Set[int],
+    allowed_unassigned: Set[int],
+    data: InstanceData,
+    config: TVDConfig,
+    metrics: Dict[str, object],
+) -> Tuple[bool, List[str]]:
+    """Thin partial-validation wrapper around the canonical full checker."""
+
+    metrics["checker_call_count"] = int(metrics.get("checker_call_count", 0)) + 1
+    _, violations = check_solution_feasible(state, data, config)
+    actual_unassigned = set(int(customer) for customer in state.unassigned)
+    retained: List[str] = []
+    exact_missing = f"unassigned customers remain: {sorted(state.unassigned)}"
+    for violation in violations:
+        if (
+            violation == exact_missing
+            and actual_unassigned == allowed_unassigned
+            and bundle_customers.isdisjoint(actual_unassigned)
+        ):
             continue
-        candidate = _finish_repair(candidate, rng, data, config)
-        score = _candidate_score(candidate, data, config)
-        if score is not None:
-            candidates.append((score, candidate))
-    for candidate in _repair_bundle_partial_candidates(state, bundle, data, config):
-        candidate = _finish_repair(candidate, rng, data, config)
-        score = _candidate_score(candidate, data, config)
-        if score is not None:
-            candidates.append((score, candidate))
-    if not candidates:
+        retained.append(violation)
+    if actual_unassigned != allowed_unassigned:
+        retained.append(
+            "candidate changed the explicit allowed-unassigned customer set"
+        )
+    if bundle_customers.intersection(actual_unassigned):
+        retained.append("bundle customer remains unassigned")
+    return not retained, retained
+
+
+def _restore_snapshot_strategy_state(
+    state: TVDState,
+    bundle: CascadeBundleSnapshot,
+    metrics: Dict[str, object],
+) -> Optional[TVDState]:
+    candidate = _cascade_state_copy(state, metrics)
+    if any(customer not in candidate.unassigned for customer in bundle.customer_ids):
         return None
-    return min(candidates, key=lambda item: item[0])[1]
+
+    van_services = [
+        service
+        for service in bundle.customer_service_snapshots
+        if service.service_mode == "van"
+    ]
+    van_services.sort(
+        key=lambda service: (
+            service.van_route_positions[0].van_id,
+            service.van_route_positions[0].route_position,
+            service.customer_id,
+        )
+    )
+    for service in van_services:
+        position = service.van_route_positions[0]
+        route = candidate.van_routes.get(position.van_id)
+        if route is None or len(route) < 2:
+            return None
+        insert_at = min(max(1, position.route_position), len(route) - 1)
+        route.insert(insert_at, int(service.customer_id))
+        candidate.service_mode[int(service.customer_id)] = "van"
+        candidate.clean_unassigned(int(service.customer_id))
+    candidate.sync_primary_van_route()
+
+    links = {item.sortie_id: item for item in bundle.launch_recovery_snapshots}
+    carriers = {item.sortie_id: item for item in bundle.carrier_transfer_snapshots}
+    for snapshot in sorted(
+        bundle.removed_drone_subroutes,
+        key=lambda item: (item.source_sortie_index, item.sortie_id),
+    ):
+        link = links.get(snapshot.sortie_id)
+        carrier = carriers.get(snapshot.sortie_id)
+        if link is None or carrier is None or snapshot.drone_id is None:
+            return None
+        if carrier.initial_carrier_van_id != candidate.drone_initial_carrier.get(
+            snapshot.drone_id
+        ):
+            return None
+        sortie = _make_drone_sortie(
+            snapshot.launch_node,
+            list(snapshot.customer_ids),
+            snapshot.recovery_node,
+            drone_id=snapshot.drone_id,
+            launch_van_id=str(link.launch_van_id or ""),
+            recovery_van_id=str(link.recovery_van_id or ""),
+        )
+        sortie["launch_position"] = int(link.launch_position or 0)
+        sortie["recovery_position"] = int(link.recovery_position or 0)
+        candidate.drone_sorties.append(sortie)
+        for customer in snapshot.customer_ids:
+            candidate.service_mode[int(customer)] = "drone"
+            candidate.clean_unassigned(int(customer))
+    return candidate
+
+
+def _van_block_strategy_states(
+    state: TVDState,
+    bundle: CascadeBundleSnapshot,
+    data: InstanceData,
+    metrics: Dict[str, object],
+) -> List[TVDState]:
+    customers = tuple(int(customer) for customer in bundle.dependency_order)
+    if any(data.is_high_floor.get(customer, False) for customer in customers):
+        return []
+    states: List[TVDState] = []
+    for snapshot in sorted(
+        bundle.affected_route_segments,
+        key=lambda item: (item.van_id, item.start_position, item.end_position),
+    ):
+        route = state.van_routes.get(snapshot.van_id)
+        if route is None or len(route) < 2 or snapshot.start_position < 0:
+            continue
+        first = max(1, min(snapshot.start_position, len(route) - 1))
+        last = max(first, min(snapshot.end_position, len(route) - 1))
+        for insert_at in range(first, last + 1):
+            candidate = _cascade_state_copy(state, metrics)
+            candidate.van_routes[snapshot.van_id][insert_at:insert_at] = list(customers)
+            candidate.sync_primary_van_route()
+            for customer in customers:
+                candidate.service_mode[customer] = "van"
+                candidate.clean_unassigned(customer)
+            states.append(candidate)
+    return states
+
+
+def _drone_bundle_strategy_states(
+    state: TVDState,
+    bundle: CascadeBundleSnapshot,
+    data: InstanceData,
+    config: TVDConfig,
+    metrics: Dict[str, object],
+) -> List[TVDState]:
+    customers = list(int(customer) for customer in bundle.dependency_order)
+    route_scope = {
+        snapshot.van_id: set(int(node) for node in snapshot.route_nodes)
+        for snapshot in bundle.affected_route_segments
+    }
+    if not route_scope:
+        return []
+    states: List[TVDState] = []
+    for move in _enumerate_feasible_drone_moves_for_customers(
+        customers, state, data, config
+    ):
+        sortie = move.sortie or {}
+        launch_van = str(sortie.get("launch_van_id", ""))
+        recovery_van = str(sortie.get("recovery_van_id", launch_van))
+        launch, _, recovery = sortie_nodes(sortie)
+        if launch_van not in route_scope or recovery_van not in route_scope:
+            continue
+        if int(launch) not in route_scope[launch_van]:
+            continue
+        if int(recovery) not in route_scope[recovery_van]:
+            continue
+        candidate = _cascade_state_copy(state, metrics)
+        _apply_move(candidate, customers[0], _copy_move(move))
+        states.append(candidate)
+    return states
+
+
+def _bundle_strategy_from_state(
+    bundle: CascadeBundleSnapshot,
+    state: TVDState,
+    *,
+    source_kind: str,
+) -> BundleReconstructionStrategy:
+    customer_set = set(bundle.customer_ids)
+    affected_vans = sorted(
+        {snapshot.van_id for snapshot in bundle.affected_route_segments}
+    )
+    relevant_sorties = sorted(
+        (
+            _sortie_structural_identity(sortie)
+            for sortie in state.drone_sorties
+            if customer_set.intersection(sortie_nodes(sortie)[1])
+        ),
+        key=repr,
+    )
+    launch_recovery = tuple(
+        (
+            identity[1],
+            identity[2],
+            identity[3],
+            identity[5],
+            identity[6],
+            identity[7],
+        )
+        for identity in relevant_sorties
+    )
+    carrier_transfer = tuple(
+        (
+            identity[0],
+            str(state.drone_initial_carrier.get(str(identity[0]), "")),
+            identity[1],
+            identity[5],
+            identity[1] != identity[5],
+        )
+        for identity in relevant_sorties
+    )
+    return BundleReconstructionStrategy(
+        bundle_id=bundle.bundle_id,
+        customer_ids=tuple(int(customer) for customer in bundle.customer_ids),
+        service_mode_reconstruction=tuple(
+            (int(customer), str(state.service_mode.get(int(customer), "unassigned")))
+            for customer in sorted(bundle.customer_ids)
+        ),
+        van_route_segment_reconstruction=tuple(
+            (van_id, tuple(int(node) for node in state.van_routes.get(van_id, [])))
+            for van_id in affected_vans
+        ),
+        drone_subroute_reconstruction=tuple(relevant_sorties),
+        launch_recovery_reconstruction=launch_recovery,
+        carrier_transfer_reconstruction=carrier_transfer,
+        coordination_links=tuple(bundle.affected_structure_scope.coordination_edge_ids),
+        resulting_state=state,
+        source_kind=source_kind,
+    )
+
+
+def _enumerate_bundle_reconstruction_strategies(
+    state: TVDState,
+    bundle: CascadeBundleSnapshot,
+    *,
+    allowed_unassigned: Set[int],
+    data: InstanceData,
+    config: TVDConfig,
+    metrics: Dict[str, object],
+) -> Tuple[List[BundleReconstructionStrategy], Dict[str, object]]:
+    """Construct a disclosed bundle-level Ω(B), without customer products.
+
+    Implementation choice: the paper does not explicitly specify this detail.
+    The family is the exact snapshot reconstruction, every affected-segment
+    contiguous all-van reconstruction, and every scoped all-bundle drone
+    reconstruction.  No per-customer Cartesian product, top-K, beam, or
+    candidate truncation is used.
+    """
+
+    started = time.perf_counter()
+    raw_states: List[Tuple[str, TVDState]] = []
+    snapshot_state = _restore_snapshot_strategy_state(state, bundle, metrics)
+    if snapshot_state is not None:
+        raw_states.append(("snapshot", snapshot_state))
+    raw_states.extend(
+        ("van_block", candidate)
+        for candidate in _van_block_strategy_states(state, bundle, data, metrics)
+    )
+    raw_states.extend(
+        ("drone_bundle", candidate)
+        for candidate in _drone_bundle_strategy_states(
+            state, bundle, data, config, metrics
+        )
+    )
+
+    feasible_strategies: List[BundleReconstructionStrategy] = []
+    rejection_reasons: List[str] = []
+    bundle_customers = set(bundle.customer_ids)
+    for source_kind, candidate in raw_states:
+        if not _candidate_changes_only_affected_scope(state, candidate, bundle):
+            rejection_reasons.append(f"{source_kind}: outside affected scope")
+            continue
+        valid, violations = _validate_cascade_candidate(
+            candidate,
+            bundle_customers=bundle_customers,
+            allowed_unassigned=allowed_unassigned,
+            data=data,
+            config=config,
+            metrics=metrics,
+        )
+        if not valid:
+            rejection_reasons.extend(
+                f"{source_kind}: {violation}" for violation in violations
+            )
+            continue
+        feasible_strategies.append(
+            _bundle_strategy_from_state(
+                bundle,
+                candidate,
+                source_kind=source_kind,
+            )
+        )
+
+    unique: Dict[Tuple[object, ...], BundleReconstructionStrategy] = {}
+    for strategy in feasible_strategies:
+        identity = strategy.stable_identity()
+        if identity not in unique:
+            unique[identity] = strategy
+    strategies = [unique[key] for key in sorted(unique, key=repr)]
+    return strategies, {
+        "bundle_id": bundle.bundle_id,
+        "bundle_size": len(bundle.customer_ids),
+        "affected_route_segment_count": len(bundle.affected_route_segments),
+        "affected_drone_subroute_count": len(bundle.removed_drone_subroutes),
+        "raw_bundle_strategy_count": len(raw_states),
+        "feasible_bundle_strategy_count": len(feasible_strategies),
+        "unique_bundle_strategy_count": len(strategies),
+        "strategy_generation_sequence": [
+            strategy.stable_identity() for strategy in strategies
+        ],
+        "rejection_reasons": rejection_reasons,
+        "enumeration_time": time.perf_counter() - started,
+    }
+
+
+def _score_bundle_strategies(
+    strategies: List[BundleReconstructionStrategy],
+    data: InstanceData,
+    config: TVDConfig,
+    metrics: Dict[str, object],
+) -> float:
+    started = time.perf_counter()
+    for strategy in strategies:
+        metrics["objective_call_count"] = int(
+            metrics.get("objective_call_count", 0)
+        ) + 1
+        # objective() invokes the canonical checker, even when its feasibility
+        # result is served from the State cache.
+        metrics["checker_call_count"] = int(metrics.get("checker_call_count", 0)) + 1
+        total, _ = objective(strategy.resulting_state, data, config)
+        strategy.objective_value = float(total)
+    return time.perf_counter() - started
+
+
+def _select_bundle_strategy(
+    strategies: Iterable[BundleReconstructionStrategy],
+) -> Optional[BundleReconstructionStrategy]:
+    """Select by complete objective, then stable complete identity.
+
+    Implementation choice: the paper does not specify exact objective ties.
+    """
+
+    scored = [strategy for strategy in strategies if strategy.objective_value is not None]
+    if not scored:
+        return None
+    return min(
+        scored,
+        key=lambda strategy: (
+            float(strategy.objective_value),
+            strategy.stable_identity(),
+        ),
+    )
+
+
+def _finish_cascade_result(
+    state: TVDState,
+    *,
+    status: str,
+    reason: Optional[str],
+    metrics: Dict[str, object],
+    bundle_rows: List[Dict[str, object]],
+    started: float,
+) -> TVDState:
+    _clear_stale_cascade_metadata(state)
+    metrics["bundle_repair_time"] = time.perf_counter() - started
+    diagnostics = {
+        "status": status,
+        "reason": reason,
+        "bundle_processing_sequence": [row["bundle_id"] for row in bundle_rows],
+        "bundles": bundle_rows,
+        **metrics,
+        "maximum_reconstruction_depth": int(
+            metrics.get("maximum_reconstruction_depth", 0)
+        ),
+        "lossy_pruning_used": False,
+        "customer_compositional_product_used": False,
+    }
+    diagnostics["result_state_fingerprint"] = _state_business_fingerprint(state)
+    state.metadata["cascade_repair_diagnostics"] = diagnostics
+    return state
 
 
 def cascade_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     enter_repair("cascade_repair")
+    started = time.perf_counter()
+    metrics: Dict[str, object] = {
+        "state_copy_count": 0,
+        "objective_call_count": 0,
+        "checker_call_count": 0,
+        "maximum_reconstruction_depth": 0,
+        "enumeration_time": 0.0,
+        "scoring_time": 0.0,
+    }
+    bundle_rows: List[Dict[str, object]] = []
     try:
-        repaired = state.copy()
-        raw_bundles = repaired.metadata.get("cascade_bundles") or [
-            repaired.unassigned.copy()
-        ]
-        bundles = [
-            sorted(
-                {int(customer) for customer in bundle if int(customer) in repaired.unassigned},
-                key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
+        # rng is intentionally unused: bundle order and exact ties are stable.
+        _ = rng
+        repair_base = _cascade_state_copy(state, metrics)
+        bundles, contract_errors = _validated_cascade_bundles(repair_base)
+        if bundles is None:
+            return _finish_cascade_result(
+                repair_base,
+                status="failure",
+                reason="; ".join(contract_errors),
+                metrics=metrics,
+                bundle_rows=bundle_rows,
+                started=started,
             )
-            for bundle in raw_bundles
-            if bundle
-        ]
-        for bundle in bundles:
-            bundle = [customer for customer in bundle if customer in repaired.unassigned]
-            if not bundle:
-                continue
-            candidate = _best_bundle_repair(repaired, bundle, rng, data, config)
-            if candidate is not None:
-                repaired = candidate
-            else:
-                for customer in bundle:
-                    if customer not in repaired.unassigned:
-                        continue
-                    moves = _all_moves(customer, repaired, data, config)
-                    if moves:
-                        _apply_move(repaired, customer, moves[0])
 
-        ordered = sorted(
-            repaired.unassigned.copy(),
-            key=lambda customer: (not data.is_high_floor.get(customer, False), customer),
+        working_state = _cascade_state_copy(repair_base, metrics)
+        all_bundle_customers = {
+            int(customer)
+            for bundle in bundles
+            for customer in bundle.customer_ids
+        }
+        external_unassigned = set(int(customer) for customer in repair_base.unassigned) - (
+            all_bundle_customers
         )
-        for customer in ordered:
-            if customer not in repaired.unassigned:
-                continue
-            moves = _all_moves(customer, repaired, data, config)
-            if moves:
-                _apply_move(repaired, customer, moves[0])
-        return _finalize_repair(repaired, data, config)
+
+        # Implementation choice: the paper does not explicitly specify bundle
+        # order. Preserve the stable order emitted by Cascade removal.
+        for bundle_index, bundle in enumerate(bundles):
+            later_bundle_customers = {
+                int(customer)
+                for later in bundles[bundle_index + 1 :]
+                for customer in later.customer_ids
+            }
+            allowed_unassigned = external_unassigned | later_bundle_customers
+            metrics["maximum_reconstruction_depth"] = max(
+                int(metrics.get("maximum_reconstruction_depth", 0)),
+                1,
+            )
+            strategies, row = _enumerate_bundle_reconstruction_strategies(
+                working_state,
+                bundle,
+                allowed_unassigned=allowed_unassigned,
+                data=data,
+                config=config,
+                metrics=metrics,
+            )
+            metrics["enumeration_time"] = float(metrics["enumeration_time"]) + float(
+                row["enumeration_time"]
+            )
+            scoring_time = _score_bundle_strategies(
+                strategies, data, config, metrics
+            )
+            metrics["scoring_time"] = float(metrics["scoring_time"]) + scoring_time
+            row["scoring_time"] = scoring_time
+            selected = _select_bundle_strategy(strategies)
+            row["selected_strategy_identity"] = (
+                selected.stable_identity() if selected is not None else None
+            )
+            row["selected_objective"] = (
+                float(selected.objective_value)
+                if selected is not None and selected.objective_value is not None
+                else None
+            )
+            bundle_rows.append(row)
+            if selected is None:
+                # Empty Ω(B): fail the entire repair and discard earlier bundle
+                # changes. No Global/Local/Regret/Best-mode fallback is called.
+                return _finish_cascade_result(
+                    repair_base,
+                    status="failure",
+                    reason=f"empty feasible strategy set for {bundle.bundle_id}",
+                    metrics=metrics,
+                    bundle_rows=bundle_rows,
+                    started=started,
+                )
+            working_state = selected.resulting_state
+
+        final_valid, final_violations = _validate_cascade_candidate(
+            working_state,
+            bundle_customers=all_bundle_customers,
+            allowed_unassigned=external_unassigned,
+            data=data,
+            config=config,
+            metrics=metrics,
+        )
+        if not final_valid:
+            return _finish_cascade_result(
+                repair_base,
+                status="failure",
+                reason="final validation failed: " + "; ".join(final_violations),
+                metrics=metrics,
+                bundle_rows=bundle_rows,
+                started=started,
+            )
+        # Cascade deliberately performs no global sortie consolidation. The
+        # selected strategy already reconstructs only the affected scope.
+        return _finish_cascade_result(
+            working_state,
+            status="success",
+            reason=None,
+            metrics=metrics,
+            bundle_rows=bundle_rows,
+            started=started,
+        )
     finally:
         exit_repair("cascade_repair")
 

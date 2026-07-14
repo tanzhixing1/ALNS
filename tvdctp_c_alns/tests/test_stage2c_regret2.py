@@ -397,17 +397,24 @@ def test_cascade_does_not_call_regret_candidate_enumerator(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     config, data, state = _base_case(drone_enabled=False)
-    customer = data.customers[0]
-    operators._remove_customer(state, customer)
+    config.alns.customer_removal_ratio = 1.0 / len(data.customers)
+    destroyed = operators.cascade_aware_removal(
+        state,
+        np.random.default_rng(7),
+        data,
+        config,
+    )
+    removed = set(destroyed.metadata["cascade_removed"])
+    assert removed
     monkeypatch.setattr(
         operators,
         "_enumerate_regret_moves",
         lambda *_args: pytest.fail("Cascade called Regret enumeration"),
     )
     repaired = operators.cascade_repair(
-        state, np.random.default_rng(7), data, config
+        destroyed, np.random.default_rng(7), data, config
     )
-    assert customer not in repaired.unassigned
+    assert removed.isdisjoint(repaired.unassigned)
 
 
 def test_regret_candidates_preserve_cross_van_recovery_and_full_feasibility() -> None:

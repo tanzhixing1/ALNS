@@ -1,0 +1,24 @@
+Full pytest result
+Date: 2026-07-14 Asia/Shanghai
+Command:
+C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m pytest tests
+
+Platform: win32
+Python: 3.12.13
+pytest: 9.1.1
+Collected: 153 items
+
+Result:
+153 passed, 5 warnings in 760.70s (0:12:40)
+
+Baseline supplied by Stage 2D.0:
+120 passed, 5 warnings
+
+Delta:
++33 passed tests
+warning count unchanged
+no failures, skips, or xfails
+
+The five warnings remain the expected RuntimeWarnings from infeasible initial-solution regression fixtures (high-floor without drones, van capacity, and hard time window cases).
+
+FULL PYTEST PASS
