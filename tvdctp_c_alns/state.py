@@ -1,14 +1,145 @@
 from __future__ import annotations
 
 import copy
+import hashlib
+import json
 import time
-from dataclasses import dataclass, field
-from typing import Dict, List, Tuple
+from dataclasses import asdict, dataclass, field
+from typing import Dict, Iterator, List, Optional, Tuple
 
 from alns_profile import add_value, increment
 
 
 DroneSortie = Dict[str, object]
+
+
+@dataclass(frozen=True)
+class VanRoutePositionSnapshot:
+    van_id: str
+    route_position: int
+    warehouse_id: Optional[int]
+
+
+@dataclass(frozen=True)
+class CustomerServiceSnapshot:
+    customer_id: int
+    service_mode: Optional[str]
+    van_route_positions: Tuple[VanRoutePositionSnapshot, ...]
+    container_id: Optional[int]
+    assigned_transshipment: Optional[int]
+
+
+@dataclass(frozen=True)
+class VanRouteSegmentSnapshot:
+    van_id: str
+    warehouse_id: Optional[int]
+    start_position: int
+    end_position: int
+    route_nodes: Tuple[int, ...]
+    affected_positions: Tuple[int, ...]
+
+
+@dataclass(frozen=True)
+class DroneSubrouteSnapshot:
+    sortie_id: str
+    source_sortie_index: int
+    drone_id: Optional[str]
+    customer_ids: Tuple[int, ...]
+    launch_node: int
+    recovery_node: int
+
+
+@dataclass(frozen=True)
+class LaunchRecoverySnapshot:
+    sortie_id: str
+    launch_van_id: Optional[str]
+    recovery_van_id: Optional[str]
+    launch_node: int
+    recovery_node: int
+    launch_position: Optional[int]
+    recovery_position: Optional[int]
+    same_van_recovery: Optional[bool]
+
+
+@dataclass(frozen=True)
+class CarrierTransferSnapshot:
+    sortie_id: str
+    drone_id: Optional[str]
+    initial_carrier_van_id: Optional[str]
+    launch_carrier_van_id: Optional[str]
+    recovery_carrier_van_id: Optional[str]
+    carrier_transfer: Optional[bool]
+
+
+@dataclass(frozen=True)
+class ContainerDecisionSnapshot:
+    container_id: int
+    origin_node: Optional[int]
+    destination_warehouse: Optional[int]
+    tractor_id: Optional[str]
+    trailer_id: Optional[str]
+    unload_complete: Optional[float]
+
+
+@dataclass(frozen=True)
+class TruckWarehouseContextSnapshot:
+    selected_transshipment: int
+    container_decisions: Tuple[ContainerDecisionSnapshot, ...]
+
+
+@dataclass(frozen=True)
+class AffectedStructureScope:
+    truck_context_ids: Tuple[str, ...]
+    van_route_segment_ids: Tuple[str, ...]
+    drone_subroute_ids: Tuple[str, ...]
+    launch_recovery_link_ids: Tuple[str, ...]
+    carrier_link_ids: Tuple[str, ...]
+    coordination_edge_ids: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class CascadeBundleSnapshot:
+    """Immutable destroy-to-repair input for one Cascade customer bundle.
+
+    ``dependency_order`` preserves only the order already produced by the
+    current removal implementation.  The paper does not prescribe this order.
+    Iteration is retained solely for compatibility with the pre-Stage-2D.1
+    ``cascade_repair`` reader; this class does not implement repair semantics.
+    """
+
+    schema_version: int
+    bundle_id: str
+    source_operator: str
+    source_destroy_call_id: str
+    source_state_fingerprint: str
+    customer_ids: Tuple[int, ...]
+    dependency_order: Tuple[int, ...]
+    dependency_order_semantics: str
+    customer_service_snapshots: Tuple[CustomerServiceSnapshot, ...]
+    affected_route_segments: Tuple[VanRouteSegmentSnapshot, ...]
+    removed_drone_subroutes: Tuple[DroneSubrouteSnapshot, ...]
+    launch_recovery_snapshots: Tuple[LaunchRecoverySnapshot, ...]
+    carrier_transfer_snapshots: Tuple[CarrierTransferSnapshot, ...]
+    truck_warehouse_context: TruckWarehouseContextSnapshot
+    affected_structure_scope: AffectedStructureScope
+    captured_before_removal: bool = True
+
+    def __iter__(self) -> Iterator[int]:
+        return iter(self.customer_ids)
+
+    def __len__(self) -> int:
+        return len(self.customer_ids)
+
+    def canonical_json(self) -> str:
+        return json.dumps(
+            asdict(self),
+            ensure_ascii=False,
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+
+    def contract_fingerprint(self) -> str:
+        return hashlib.sha256(self.canonical_json().encode("utf-8")).hexdigest()
 
 
 def default_timing() -> Dict[str, object]:

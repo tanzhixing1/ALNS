@@ -1,0 +1,44 @@
+Stage 2D.0 focused and regression verification
+Runtime: Codex bundled Python 3.12.13 / pytest 9.1.1
+
+1. Stage 2D.0 focused tests
+Command: python -m pytest tests\test_stage2d0_cascade_contract.py -q
+Result: PASS
+Summary: 18 passed in 2.18s
+
+2. Existing Cascade-related regression
+No dedicated pre-existing Cascade-removal test file existed.
+Command: python -m pytest tests\test_stage2c_regret2.py -k cascade -q
+Result: PASS
+Summary: 1 passed, 19 deselected in 1.86s
+
+3. Stage 2B Local
+Command: python -m pytest tests\test_stage2b_local_greedy.py -q
+Result: PASS
+Summary: 10 passed in 1.99s
+
+4. Stage 2C Regret
+Command: python -m pytest tests\test_stage2c_regret2.py -q
+Result: PASS
+Summary: 20 passed in 4.12s
+
+5. Cross-van focused selection
+Command: python -m pytest tests\test_regression_rules.py tests\test_stage2a_drone_feasibility.py tests\test_stage2b_local_greedy.py tests\test_stage2c_regret2.py tests\test_stage2d0_cascade_contract.py -k cross_van -q
+Result: PASS
+Summary: 11 passed, 88 deselected in 2.73s
+
+6. Metadata / State.copy / determinism
+Command: python -m pytest tests\test_stage2d0_cascade_contract.py -k "metadata or copy or deterministic" -q
+Result: PASS
+Summary: 9 passed, 9 deselected in 2.20s
+
+7. Combined Stage 2A/2B/2C regression run performed during implementation
+Command: python -m pytest tests\test_stage2b_local_greedy.py tests\test_stage2c_regret2.py tests\test_stage2a_drone_feasibility.py -q
+Result: PASS
+Summary: 55 passed in 5.40s
+
+8. Syntax compilation
+Command: python -m py_compile state.py operators.py
+Result: PASS
+
+No skip or xfail marker was added.

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import time
 from dataclasses import dataclass
 from itertools import combinations
@@ -30,11 +31,32 @@ from feasibility import (
     sortie_nodes,
 )
 from objective import objective
-from state import TVDState, default_timing
+from state import (
+    AffectedStructureScope,
+    CarrierTransferSnapshot,
+    CascadeBundleSnapshot,
+    ContainerDecisionSnapshot,
+    CustomerServiceSnapshot,
+    DroneSubrouteSnapshot,
+    LaunchRecoverySnapshot,
+    TruckWarehouseContextSnapshot,
+    TVDState,
+    VanRoutePositionSnapshot,
+    VanRouteSegmentSnapshot,
+    default_timing,
+)
 
 
 DestroyOperator = Callable[[TVDState, np.random.Generator, InstanceData, TVDConfig], TVDState]
 RepairOperator = Callable[[TVDState, np.random.Generator, InstanceData, TVDConfig], TVDState]
+
+CASCADE_CONTRACT_SCHEMA_VERSION = 1
+CASCADE_SOURCE_OPERATOR = "cascade_aware_removal"
+CASCADE_METADATA_KEYS = (
+    "cascade_removed",
+    "cascade_bundles",
+    "cascade_contract",
+)
 
 
 @dataclass
@@ -67,6 +89,48 @@ def _removal_count(data: InstanceData, config: TVDConfig) -> int:
 
 def _served_customers(state: TVDState) -> List[int]:
     return sorted(set(state.get_van_customers() + state.get_drone_customers()))
+
+
+def _clear_stale_cascade_metadata(state: TVDState) -> None:
+    for key in CASCADE_METADATA_KEYS:
+        state.metadata.pop(key, None)
+
+
+def _state_business_fingerprint(state: TVDState) -> str:
+    payload = repr(state.cache_signature()).encode("utf-8")
+    return hashlib.sha256(payload).hexdigest()
+
+
+def cascade_metadata_is_current(state: TVDState) -> bool:
+    """Return whether Cascade metadata describes this exact destroyed State.
+
+    Stage 2D.0 establishes this validator for the future Stage 2D.1 reader; it
+    intentionally does not change the current ``cascade_repair`` algorithm.
+    """
+
+    contract = state.metadata.get("cascade_contract")
+    bundles = state.metadata.get("cascade_bundles")
+    if not isinstance(contract, dict) or not isinstance(bundles, list):
+        return False
+    if contract.get("schema_version") != CASCADE_CONTRACT_SCHEMA_VERSION:
+        return False
+    if contract.get("source_operator") != CASCADE_SOURCE_OPERATOR:
+        return False
+    if contract.get("destroyed_state_fingerprint") != _state_business_fingerprint(state):
+        return False
+    if not all(isinstance(bundle, CascadeBundleSnapshot) for bundle in bundles):
+        return False
+    bundle_ids = tuple(bundle.bundle_id for bundle in bundles)
+    bundle_fingerprints = tuple(bundle.contract_fingerprint() for bundle in bundles)
+    return (
+        bundle_ids == tuple(contract.get("bundle_ids", ()))
+        and bundle_fingerprints == tuple(contract.get("bundle_fingerprints", ()))
+        and all(
+            bundle.source_destroy_call_id == contract.get("destroy_call_id")
+            and bundle.source_state_fingerprint == contract.get("source_state_fingerprint")
+            for bundle in bundles
+        )
+    )
 
 
 def _record_destroy_diagnostics(
@@ -132,6 +196,7 @@ def random_customer_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     selected = rng.choice(served, size=count, replace=False).tolist() if served else []
@@ -145,6 +210,7 @@ def greedy_removal(
     """论文 greedy removal：删除边际贡献最大的客户。"""
 
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
     base_cost, _ = objective(destroyed.copy(), data, config)
     scores: List[Tuple[float, int]] = []
     for customer in _served_customers(destroyed):
@@ -164,6 +230,7 @@ def related_customer_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
     served = _served_customers(destroyed)
     if not served:
         return destroyed
@@ -181,6 +248,7 @@ def route_segment_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
     internal = destroyed.get_van_customers()
     if not internal:
         return random_customer_removal(destroyed, rng, data, config)
@@ -196,6 +264,7 @@ def drone_task_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
     if not destroyed.drone_sorties:
         return random_customer_removal(destroyed, rng, data, config)
 
@@ -222,10 +291,264 @@ def _cascade_dependencies(state: TVDState, customer: int) -> set[int]:
     return deps
 
 
+def _optional_int(value: object) -> Optional[int]:
+    return None if value is None else int(value)
+
+
+def _optional_float(value: object) -> Optional[float]:
+    return None if value is None else float(value)
+
+
+def _optional_str(value: object) -> Optional[str]:
+    return None if value is None else str(value)
+
+
+def _cascade_destroy_call_id(
+    source_state_fingerprint: str,
+    initial: Iterable[int],
+    removal: Iterable[int],
+    bundles: Iterable[Iterable[int]],
+) -> str:
+    payload = (
+        CASCADE_CONTRACT_SCHEMA_VERSION,
+        CASCADE_SOURCE_OPERATOR,
+        source_state_fingerprint,
+        tuple(int(customer) for customer in initial),
+        tuple(sorted(int(customer) for customer in removal)),
+        tuple(tuple(int(customer) for customer in bundle) for bundle in bundles),
+    )
+    return hashlib.sha256(repr(payload).encode("utf-8")).hexdigest()
+
+
+def _capture_cascade_bundle_snapshot(
+    state: TVDState,
+    bundle: Iterable[int],
+    *,
+    bundle_index: int,
+    source_state_fingerprint: str,
+    destroy_call_id: str,
+    data: InstanceData,
+) -> CascadeBundleSnapshot:
+    customer_ids = tuple(int(customer) for customer in bundle)
+    customer_set = set(customer_ids)
+
+    service_snapshots = []
+    affected_van_ids = set()
+    affected_nodes = set(customer_ids)
+    affected_container_ids = set()
+    for customer in customer_ids:
+        positions = []
+        for van_id, route in sorted(state.van_routes.items()):
+            for route_position, node in enumerate(route):
+                if int(node) == customer:
+                    affected_van_ids.add(str(van_id))
+                    positions.append(
+                        VanRoutePositionSnapshot(
+                            van_id=str(van_id),
+                            route_position=route_position,
+                            warehouse_id=_optional_int(state.van_home.get(str(van_id))),
+                        )
+                    )
+        assignment = state.order_assignment.get(customer, {})
+        container_id = _optional_int(assignment.get("container_id"))
+        if container_id is not None:
+            affected_container_ids.add(container_id)
+        service_snapshots.append(
+            CustomerServiceSnapshot(
+                customer_id=customer,
+                service_mode=_optional_str(state.service_mode.get(customer)),
+                van_route_positions=tuple(positions),
+                container_id=container_id,
+                assigned_transshipment=_optional_int(
+                    assignment.get("assigned_transshipment")
+                ),
+            )
+        )
+
+    drone_subroutes = []
+    launch_recovery_snapshots = []
+    carrier_snapshots = []
+    for sortie_index, sortie in enumerate(state.drone_sorties):
+        launch, sortie_customers, recovery = sortie_nodes(sortie)
+        related = set(int(customer) for customer in sortie_customers)
+        if launch in data.customers:
+            related.add(int(launch))
+        if recovery in data.customers:
+            related.add(int(recovery))
+        if not customer_set.intersection(related):
+            continue
+
+        sortie_id = f"sortie:{sortie_index}"
+        sortie_dict = sortie if isinstance(sortie, dict) else {}
+        drone_id = _optional_str(sortie_dict.get("drone_id"))
+        launch_van_id = _optional_str(sortie_dict.get("launch_van_id"))
+        recovery_van_id = _optional_str(sortie_dict.get("recovery_van_id"))
+        launch_position = _optional_int(sortie_dict.get("launch_position"))
+        recovery_position = _optional_int(sortie_dict.get("recovery_position"))
+        same_van_recovery = (
+            launch_van_id == recovery_van_id
+            if launch_van_id is not None and recovery_van_id is not None
+            else None
+        )
+        carrier_transfer = (
+            launch_van_id != recovery_van_id
+            if launch_van_id is not None and recovery_van_id is not None
+            else None
+        )
+        initial_carrier = (
+            _optional_str(state.drone_initial_carrier.get(drone_id))
+            if drone_id is not None
+            else None
+        )
+
+        affected_nodes.update((int(launch), int(recovery)))
+        if launch_van_id is not None:
+            affected_van_ids.add(launch_van_id)
+        if recovery_van_id is not None:
+            affected_van_ids.add(recovery_van_id)
+        drone_subroutes.append(
+            DroneSubrouteSnapshot(
+                sortie_id=sortie_id,
+                source_sortie_index=sortie_index,
+                drone_id=drone_id,
+                customer_ids=tuple(int(customer) for customer in sortie_customers),
+                launch_node=int(launch),
+                recovery_node=int(recovery),
+            )
+        )
+        launch_recovery_snapshots.append(
+            LaunchRecoverySnapshot(
+                sortie_id=sortie_id,
+                launch_van_id=launch_van_id,
+                recovery_van_id=recovery_van_id,
+                launch_node=int(launch),
+                recovery_node=int(recovery),
+                launch_position=launch_position,
+                recovery_position=recovery_position,
+                same_van_recovery=same_van_recovery,
+            )
+        )
+        carrier_snapshots.append(
+            CarrierTransferSnapshot(
+                sortie_id=sortie_id,
+                drone_id=drone_id,
+                initial_carrier_van_id=initial_carrier,
+                launch_carrier_van_id=launch_van_id,
+                recovery_carrier_van_id=recovery_van_id,
+                carrier_transfer=carrier_transfer,
+            )
+        )
+
+    route_segments = []
+    route_segment_ids = []
+    for van_id in sorted(affected_van_ids):
+        route = state.van_routes.get(van_id, [])
+        affected_positions = tuple(
+            position
+            for position, node in enumerate(route)
+            if int(node) in affected_nodes
+        )
+        if affected_positions:
+            start_position = max(0, min(affected_positions) - 1)
+            end_position = min(len(route) - 1, max(affected_positions) + 1)
+            route_nodes = tuple(
+                int(node) for node in route[start_position : end_position + 1]
+            )
+            route_segment_id = f"van:{van_id}:{start_position}-{end_position}"
+        else:
+            start_position = -1
+            end_position = -1
+            route_nodes = ()
+            route_segment_id = f"van:{van_id}:unresolved"
+        route_segments.append(
+            VanRouteSegmentSnapshot(
+                van_id=van_id,
+                warehouse_id=_optional_int(state.van_home.get(van_id)),
+                start_position=start_position,
+                end_position=end_position,
+                route_nodes=route_nodes,
+                affected_positions=affected_positions,
+            )
+        )
+        route_segment_ids.append(route_segment_id)
+
+    container_decisions = []
+    for container_id in sorted(affected_container_ids):
+        route = state.container_routes.get(container_id, {})
+        container_decisions.append(
+            ContainerDecisionSnapshot(
+                container_id=container_id,
+                origin_node=_optional_int(route.get("origin")),
+                destination_warehouse=_optional_int(
+                    route.get("destination_warehouse")
+                ),
+                tractor_id=_optional_str(route.get("tractor_id")),
+                trailer_id=_optional_str(route.get("trailer_id")),
+                unload_complete=_optional_float(route.get("unload_complete")),
+            )
+        )
+
+    drone_subroute_ids = tuple(snapshot.sortie_id for snapshot in drone_subroutes)
+    launch_recovery_ids = tuple(
+        edge_id
+        for snapshot in launch_recovery_snapshots
+        for edge_id in (
+            f"{snapshot.sortie_id}:launch",
+            f"{snapshot.sortie_id}:recovery",
+        )
+    )
+    carrier_link_ids = tuple(
+        f"{snapshot.sortie_id}:carrier" for snapshot in carrier_snapshots
+    )
+    coordination_edge_ids = tuple(
+        edge_id
+        for snapshot in launch_recovery_snapshots
+        for edge_id in (
+            f"{snapshot.sortie_id}:truck-van-context",
+            f"{snapshot.sortie_id}:van-drone-launch",
+            f"{snapshot.sortie_id}:van-drone-recovery",
+        )
+    )
+    truck_context_ids = (
+        f"selected_transshipment:{int(state.selected_transshipment)}",
+        *(f"container:{container_id}" for container_id in sorted(affected_container_ids)),
+    )
+    scope = AffectedStructureScope(
+        truck_context_ids=truck_context_ids,
+        van_route_segment_ids=tuple(route_segment_ids),
+        drone_subroute_ids=drone_subroute_ids,
+        launch_recovery_link_ids=launch_recovery_ids,
+        carrier_link_ids=carrier_link_ids,
+        coordination_edge_ids=coordination_edge_ids,
+    )
+    return CascadeBundleSnapshot(
+        schema_version=CASCADE_CONTRACT_SCHEMA_VERSION,
+        bundle_id=f"cascade:{destroy_call_id[:20]}:bundle:{bundle_index:04d}",
+        source_operator=CASCADE_SOURCE_OPERATOR,
+        source_destroy_call_id=destroy_call_id,
+        source_state_fingerprint=source_state_fingerprint,
+        customer_ids=customer_ids,
+        dependency_order=customer_ids,
+        dependency_order_semantics="current implementation order; Paper unspecified",
+        customer_service_snapshots=tuple(service_snapshots),
+        affected_route_segments=tuple(route_segments),
+        removed_drone_subroutes=tuple(drone_subroutes),
+        launch_recovery_snapshots=tuple(launch_recovery_snapshots),
+        carrier_transfer_snapshots=tuple(carrier_snapshots),
+        truck_warehouse_context=TruckWarehouseContextSnapshot(
+            selected_transshipment=int(state.selected_transshipment),
+            container_decisions=tuple(container_decisions),
+        ),
+        affected_structure_scope=scope,
+    )
+
+
 def cascade_aware_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
     destroyed = state.copy()
+    _clear_stale_cascade_metadata(destroyed)
+    source_state_fingerprint = _state_business_fingerprint(destroyed)
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     initial = rng.choice(served, size=count, replace=False).tolist() if served else []
@@ -256,6 +579,24 @@ def cascade_aware_removal(
     for customer in sorted(removal - assigned):
         bundles.append([customer])
 
+    destroy_call_id = _cascade_destroy_call_id(
+        source_state_fingerprint,
+        initial,
+        removal,
+        bundles,
+    )
+    bundle_snapshots = [
+        _capture_cascade_bundle_snapshot(
+            destroyed,
+            bundle,
+            bundle_index=bundle_index,
+            source_state_fingerprint=source_state_fingerprint,
+            destroy_call_id=destroy_call_id,
+            data=data,
+        )
+        for bundle_index, bundle in enumerate(bundles)
+    ]
+
     _record_destroy_diagnostics(
         destroyed,
         removal,
@@ -264,8 +605,21 @@ def cascade_aware_removal(
     )
     destroyed = _remove_customers(destroyed, removal)
     _remove_duplicate_unassigned(destroyed)
+    destroyed_state_fingerprint = _state_business_fingerprint(destroyed)
     destroyed.metadata["cascade_removed"] = sorted(removal)
-    destroyed.metadata["cascade_bundles"] = bundles
+    destroyed.metadata["cascade_bundles"] = bundle_snapshots
+    destroyed.metadata["cascade_contract"] = {
+        "schema_version": CASCADE_CONTRACT_SCHEMA_VERSION,
+        "source_operator": CASCADE_SOURCE_OPERATOR,
+        "destroy_call_id": destroy_call_id,
+        "source_state_fingerprint": source_state_fingerprint,
+        "destroyed_state_fingerprint": destroyed_state_fingerprint,
+        "bundle_ids": tuple(bundle.bundle_id for bundle in bundle_snapshots),
+        "bundle_fingerprints": tuple(
+            bundle.contract_fingerprint() for bundle in bundle_snapshots
+        ),
+        "captured_before_removal": True,
+    }
     return destroyed
 
 
@@ -300,6 +654,7 @@ def switch_transshipment_operator(
     """Move the solution to another candidate warehouse, then let repair rebuild service."""
 
     switched = state.copy()
+    _clear_stale_cascade_metadata(switched)
     alternatives = [
         node
         for node in data.transshipment_nodes

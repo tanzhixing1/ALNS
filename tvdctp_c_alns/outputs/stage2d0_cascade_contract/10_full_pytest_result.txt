@@ -1,0 +1,26 @@
+Full pytest verification
+
+Command:
+C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe -m pytest tests
+
+Result: PASS
+Collected: 120 items
+Summary: 120 passed, 5 warnings in 597.78s (0:09:57)
+Baseline: 102 passed, 5 warnings
+Delta: +18 Stage 2D.0 tests; warning count unchanged
+
+Per-file progress:
+- test_core_model_capabilities.py: 20 passed
+- test_regression_rules.py: 26 passed
+- test_stage1_drone_generator.py: 1 passed
+- test_stage2a_drone_feasibility.py: 25 passed
+- test_stage2b_local_greedy.py: 10 passed
+- test_stage2c_regret2.py: 20 passed
+- test_stage2d0_cascade_contract.py: 18 passed
+
+The five warnings are the existing expected RuntimeWarnings from negative initial-solution fixtures:
+- three infeasible high-floor-without-drone warnings;
+- one van-capacity fallback rejection warning;
+- one time-window insertion rejection warning.
+
+No test failed, skipped, or xfailed.
