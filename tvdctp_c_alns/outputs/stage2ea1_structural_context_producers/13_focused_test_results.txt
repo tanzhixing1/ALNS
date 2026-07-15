@@ -1,0 +1,28 @@
+Stage 2E-A.1 focused test results
+=================================
+
+Runtime:
+  C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+  Python 3.12.13, pytest 9.1.1
+
+Commands and results:
+
+1. python -m pytest -q tests/test_stage2ea1_structural_context.py
+   28 passed in 13.62s
+
+2. python -m pytest -q tests/test_stage2d0_cascade_contract.py tests/test_stage2d1_cascade_repair.py
+   51 passed in 21.28s
+
+3. python -m py_compile removal_structural_context.py state.py operators.py alns_solver.py tests/test_stage2ea1_structural_context.py
+   PASS
+
+4. python -m pytest --collect-only -q
+   188 test nodes collected; 0 collection errors
+
+Focused coverage includes all 23 requested categories: four destroy shadow
+equivalence paths, selected versus actually-unassigned facts, authoritative
+footprints, exact external boundaries, context determinism/distinction,
+fingerprint/cache/Stage-2D isolation, State.copy isolation, lifecycle and
+failure cleanup, stale-context handling, objective/checker isolation, the
+13+3 pair matrix, Cascade+Cascade exact regression, and persistent-state
+guards.

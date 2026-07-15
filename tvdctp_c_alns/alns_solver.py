@@ -22,6 +22,7 @@ from alns_profile import (
 )
 from objective import objective
 from operators import DESTROY_OPERATORS, REPAIR_OPERATORS, consolidate_drone_sorties
+from removal_structural_context import assert_no_active_removal_context
 from state import TVDState
 from drone_repair_diagnostics import build_full_candidate_diagnostic
 
@@ -93,6 +94,8 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
     phase_timings["t_initial_solution_total"] = time.perf_counter() - phase_start
     current = initial.copy()
     best = initial.copy()
+    assert_no_active_removal_context(current, owner="current")
+    assert_no_active_removal_context(best, owner="best")
     phase_start = time.perf_counter()
     current_cost, _ = objective(current, data, config)
     best_cost, _ = objective(best, data, config)
@@ -142,9 +145,12 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
         previous_best_cost = float(best_cost)
         previous_current_cost = float(current_cost)
 
+        assert_no_active_removal_context(current, owner="current")
+        assert_no_active_removal_context(best, owner="best")
         enter_operator_pair(destroy_name, repair_name)
         destroyed = DESTROY_OPERATORS[destroy_name](current.copy(), rng, data, config)
         candidate = REPAIR_OPERATORS[repair_name](destroyed, rng, data, config)
+        assert_no_active_removal_context(candidate, owner="repair-returned candidate")
         candidate_cost, candidate_breakdown = objective(candidate, data, config)
         candidate_feasible = bool(candidate_breakdown.get("feasible", False))
         shadow_failures = []
@@ -262,6 +268,8 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
             break
 
     setattr(config.alns, "_inside_alns_loop", False)
+    assert_no_active_removal_context(current, owner="current")
+    assert_no_active_removal_context(best, owner="best")
     phase_timings["t_alns_loop"] = time.perf_counter() - loop_start
     runtime = time.perf_counter() - start
     phase_start = time.perf_counter()

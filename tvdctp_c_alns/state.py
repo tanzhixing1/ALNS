@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
 from typing import Dict, Iterator, List, Optional, Tuple
 
 from alns_profile import add_value, increment
+from removal_structural_context import copy_metadata_with_immutable_context
 
 
 DroneSortie = Dict[str, object]
@@ -321,7 +322,7 @@ class TVDState:
             container_assignment=copy.deepcopy(self.container_assignment),
             service_mode=self.service_mode.copy(),
             unassigned=self.unassigned.copy(),
-            metadata=copy.deepcopy(self.metadata),
+            metadata=copy_metadata_with_immutable_context(self.metadata),
             timing=copy.deepcopy(self.timing),
         )
 

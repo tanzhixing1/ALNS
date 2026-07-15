@@ -31,6 +31,13 @@ from feasibility import (
     sortie_nodes,
 )
 from objective import objective
+from removal_structural_context import (
+    attach_active_removal_context,
+    capture_structural_projection,
+    discard_active_removal_context,
+    finalize_removal_structural_context,
+    removal_context_boundary,
+)
 from state import (
     AffectedStructureScope,
     CarrierTransferSnapshot,
@@ -129,6 +136,7 @@ def _served_customers(state: TVDState) -> List[int]:
 def _clear_stale_cascade_metadata(state: TVDState) -> None:
     for key in CASCADE_METADATA_KEYS:
         state.metadata.pop(key, None)
+    discard_active_removal_context(state)
 
 
 def _state_business_fingerprint(state: TVDState) -> str:
@@ -211,10 +219,55 @@ def _remove_customer(state: TVDState, customer: int) -> None:
         state.mark_unassigned(removed_customer)
 
 
-def _remove_customers(state: TVDState, customers: Iterable[int]) -> TVDState:
+def _remove_customers(
+    state: TVDState,
+    customers: Iterable[int],
+    *,
+    deletion_attempt_order: Optional[List[int]] = None,
+    actual_unassignment_order: Optional[List[int]] = None,
+) -> TVDState:
     for customer in customers:
-        _remove_customer(state, int(customer))
+        normalized = int(customer)
+        if deletion_attempt_order is not None:
+            deletion_attempt_order.append(normalized)
+        before_unassigned = set(int(item) for item in state.unassigned)
+        _remove_customer(state, normalized)
+        if actual_unassignment_order is not None:
+            actual_unassignment_order.extend(
+                int(item)
+                for item in state.unassigned
+                if int(item) not in before_unassigned
+                and int(item) not in actual_unassignment_order
+            )
     return state
+
+
+def _attach_removal_structural_context(
+    destroyed: TVDState,
+    *,
+    pre_projection,
+    source_destroy_operator: str,
+    selected_removed_customer_ids: Iterable[int],
+    customer_selection_order: Iterable[int],
+    deletion_attempt_order: Iterable[int],
+    actual_unassignment_order: Iterable[int],
+    cascade_dependency_trace: Iterable[Tuple[int, int]] = (),
+    cascade_native_partition_evidence: Iterable[Iterable[int]] = (),
+    cascade_native_dependency_order: Iterable[Iterable[int]] = (),
+) -> TVDState:
+    context = finalize_removal_structural_context(
+        pre_projection=pre_projection,
+        post_projection=capture_structural_projection(destroyed),
+        source_destroy_operator=source_destroy_operator,
+        selected_removed_customer_ids=selected_removed_customer_ids,
+        customer_selection_order=customer_selection_order,
+        deletion_attempt_order=deletion_attempt_order,
+        actual_unassignment_order=actual_unassignment_order,
+        cascade_dependency_trace=cascade_dependency_trace,
+        cascade_native_partition_evidence=cascade_native_partition_evidence,
+        cascade_native_dependency_order=cascade_native_dependency_order,
+    )
+    return attach_active_removal_context(destroyed, context)
 
 
 def _remove_duplicate_unassigned(state: TVDState) -> None:
@@ -232,11 +285,28 @@ def random_customer_removal(
 ) -> TVDState:
     destroyed = state.copy()
     _clear_stale_cascade_metadata(destroyed)
+    pre_projection = capture_structural_projection(destroyed)
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     selected = rng.choice(served, size=count, replace=False).tolist() if served else []
     _record_destroy_diagnostics(destroyed, selected, data)
-    return _remove_customers(destroyed, selected)
+    deletion_order: List[int] = []
+    actual_order: List[int] = []
+    _remove_customers(
+        destroyed,
+        selected,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
+    return _attach_removal_structural_context(
+        destroyed,
+        pre_projection=pre_projection,
+        source_destroy_operator="random_customer_removal",
+        selected_removed_customer_ids=selected,
+        customer_selection_order=selected,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
 
 
 def greedy_removal(
@@ -246,6 +316,7 @@ def greedy_removal(
 
     destroyed = state.copy()
     _clear_stale_cascade_metadata(destroyed)
+    pre_projection = capture_structural_projection(destroyed)
     base_cost, _ = objective(destroyed.copy(), data, config)
     scores: List[Tuple[float, int]] = []
     for customer in _served_customers(destroyed):
@@ -258,7 +329,23 @@ def greedy_removal(
     count = min(_removal_count(data, config), len(scores))
     selected = [customer for _, customer in sorted(scores, reverse=True)[:count]]
     _record_destroy_diagnostics(destroyed, selected, data)
-    return _remove_customers(destroyed, selected)
+    deletion_order: List[int] = []
+    actual_order: List[int] = []
+    _remove_customers(
+        destroyed,
+        selected,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
+    return _attach_removal_structural_context(
+        destroyed,
+        pre_projection=pre_projection,
+        source_destroy_operator="greedy_removal",
+        selected_removed_customer_ids=selected,
+        customer_selection_order=selected,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
 
 
 def related_customer_removal(
@@ -266,9 +353,18 @@ def related_customer_removal(
 ) -> TVDState:
     destroyed = state.copy()
     _clear_stale_cascade_metadata(destroyed)
+    pre_projection = capture_structural_projection(destroyed)
     served = _served_customers(destroyed)
     if not served:
-        return destroyed
+        return _attach_removal_structural_context(
+            destroyed,
+            pre_projection=pre_projection,
+            source_destroy_operator="related_customer_removal",
+            selected_removed_customer_ids=(),
+            customer_selection_order=(),
+            deletion_attempt_order=(),
+            actual_unassignment_order=(),
+        )
 
     seed = int(rng.choice(served))
     count = min(_removal_count(data, config), len(served))
@@ -276,7 +372,23 @@ def related_customer_removal(
         served, key=lambda customer: data.ground_distance_matrix[seed, customer]
     )[:count]
     _record_destroy_diagnostics(destroyed, selected, data)
-    return _remove_customers(destroyed, selected)
+    deletion_order: List[int] = []
+    actual_order: List[int] = []
+    _remove_customers(
+        destroyed,
+        selected,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
+    return _attach_removal_structural_context(
+        destroyed,
+        pre_projection=pre_projection,
+        source_destroy_operator="related_customer_removal",
+        selected_removed_customer_ids=selected,
+        customer_selection_order=(seed,),
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
 
 
 def route_segment_removal(
@@ -583,17 +695,23 @@ def cascade_aware_removal(
 ) -> TVDState:
     destroyed = state.copy()
     _clear_stale_cascade_metadata(destroyed)
+    pre_projection = capture_structural_projection(destroyed)
     source_state_fingerprint = _state_business_fingerprint(destroyed)
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     initial = rng.choice(served, size=count, replace=False).tolist() if served else []
     removal = set(initial)
+    dependency_trace: List[Tuple[int, int]] = []
 
     changed = True
     while changed:
         changed = False
         for customer in list(removal):
             deps = _cascade_dependencies(destroyed, customer)
+            dependency_trace.extend(
+                (int(customer), int(dependency))
+                for dependency in sorted(deps - removal)
+            )
             if not deps.issubset(removal):
                 removal |= deps
                 changed = True
@@ -638,7 +756,14 @@ def cascade_aware_removal(
         data,
         cascade_expansion_count=max(0, len(removal) - len(initial)),
     )
-    destroyed = _remove_customers(destroyed, removal)
+    deletion_order: List[int] = []
+    actual_order: List[int] = []
+    destroyed = _remove_customers(
+        destroyed,
+        removal,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
     _remove_duplicate_unassigned(destroyed)
     destroyed_state_fingerprint = _state_business_fingerprint(destroyed)
     destroyed.metadata["cascade_removed"] = sorted(removal)
@@ -655,7 +780,22 @@ def cascade_aware_removal(
         ),
         "captured_before_removal": True,
     }
-    return destroyed
+    return _attach_removal_structural_context(
+        destroyed,
+        pre_projection=pre_projection,
+        source_destroy_operator=CASCADE_SOURCE_OPERATOR,
+        selected_removed_customer_ids=removal,
+        customer_selection_order=initial,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+        cascade_dependency_trace=dependency_trace,
+        cascade_native_partition_evidence=(
+            bundle.customer_ids for bundle in bundle_snapshots
+        ),
+        cascade_native_dependency_order=(
+            bundle.dependency_order for bundle in bundle_snapshots
+        ),
+    )
 
 
 def _truck_route_for_transshipment(data: InstanceData, selected_transshipment: int) -> List[int]:
@@ -2426,6 +2566,7 @@ def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
     state.clean_unassigned(customer)
 
 
+@removal_context_boundary
 def greedy_van_repair(
     state: TVDState,
     rng: np.random.Generator,
@@ -2525,6 +2666,7 @@ def greedy_van_repair(
         exit_repair("greedy_van_repair")
 
 
+@removal_context_boundary
 def greedy_drone_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
@@ -2544,6 +2686,7 @@ def greedy_drone_repair(
         exit_repair("greedy_drone_repair")
 
 
+@removal_context_boundary
 def best_mode_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
@@ -2809,6 +2952,7 @@ def _regret_trace_event(
     }
 
 
+@removal_context_boundary
 def regret_repair(
     state: TVDState,
     rng: np.random.Generator,
@@ -3538,6 +3682,7 @@ def _finish_cascade_result(
     return state
 
 
+@removal_context_boundary
 def cascade_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
