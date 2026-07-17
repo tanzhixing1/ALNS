@@ -390,10 +390,21 @@ pre-commit hook. This project does not write `.git/hooks` automatically.
 
 ## How to Run
 
+The default operator universe is the strict paper 4 x 4 catalog. Its 16
+destroy/repair pairs have stable action IDs `0..15`. Engineering-only operators
+are available only when callers explicitly select `extended_mode`; invalid or
+incomplete registries fail fast and never fall back to another mode.
+
 From the `ALNS` root directory:
 
 ```bash
 python tvdctp_c_alns/main.py --num_orders 6 --num_transshipments 2 --num_containers 1 --container_origin port --iterations 100
+```
+
+To explicitly enable the approved engineering extension catalog:
+
+```bash
+python tvdctp_c_alns/main.py --operator-mode extended_mode --iterations 100
 ```
 
 The project venv command is:

@@ -3,6 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Dict, List, Optional
 
+from operator_modes import OperatorMode, resolve_operator_mode
+
 
 @dataclass
 class CostConfig:
@@ -62,6 +64,7 @@ class ALNSConfig:
     collect_local_feasibility_cache_stats: bool = False
     enable_shadow_prefilter: bool = False
     collect_full_candidate_diagnostics: bool = False
+    operator_mode: OperatorMode = OperatorMode.PAPER
 
 
 @dataclass
@@ -212,6 +215,7 @@ def build_config(
     early_stop_enabled: bool = True,
     enable_local_feasibility_cache: bool = False,
     collect_full_candidate_diagnostics: bool = False,
+    operator_mode: OperatorMode | str = OperatorMode.PAPER,
 ) -> TVDConfig:
     config = TVDConfig()
     config.data.num_customers = num_customers
@@ -228,6 +232,7 @@ def build_config(
     config.alns.collect_full_candidate_diagnostics = bool(
         collect_full_candidate_diagnostics
     )
+    config.alns.operator_mode = resolve_operator_mode(operator_mode)
     config.fleet.drone_enabled = drone_enabled
     config.fleet.drones_per_van = int(drones_per_van)
     config.fleet.max_drones_carried_per_van = int(max_drones_carried_per_van)

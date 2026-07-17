@@ -22,6 +22,7 @@ from dataset_loader import InstanceData, generate_toy_data
 from feasibility import check_solution_feasible
 from initial_solution import initial_solution
 from objective import objective
+from operator_modes import OperatorMode
 from drone_repair_diagnostics import (
     drone_candidate_key,
     shadow_state_failures,
@@ -49,6 +50,14 @@ PAPER_REPAIR_LABELS = {
     "regret_repair": "regret-based repair",
     "cascade_repair": "multi-node cascade repair",
 }
+
+
+def operator_mode_for_set(name: str) -> OperatorMode:
+    if name == "paper_4x4":
+        return OperatorMode.PAPER
+    if name == "current":
+        return OperatorMode.EXTENDED
+    raise ValueError(f"unknown operator set: {name}")
 
 
 @contextmanager
@@ -205,6 +214,7 @@ def run_case(
     data = generate_toy_data(config)
     t_data = time.perf_counter() - t0
     config.alns.random_seed = int(seed)
+    config.alns.operator_mode = operator_mode_for_set(operator_set_name)
     with operator_set(operator_set_name):
         result = run_c_alns(data, config)
     row = summarize_result(operator_set_name, seed, config, data, result)
@@ -233,6 +243,7 @@ def run_diagnostic_case(
     data = generate_toy_data(config)
     t_data = time.perf_counter() - t0
     config.alns.random_seed = int(seed)
+    config.alns.operator_mode = operator_mode_for_set(operator_set_name)
     with operator_set(operator_set_name):
         if probe is None:
             result = run_c_alns(data, config)

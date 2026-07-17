@@ -1,0 +1,20 @@
+Stage 2E.1 focused tests (final):
+54 passed in 30.07s
+
+Stage 2E.1 + 2E-A.2 + 2E-A.1 + Stage 2D focused regression:
+166 passed in 71.07s
+
+Paper 16-pair matrix targeted rerun:
+1 passed in 8.27s
+
+Final non-medium grouped regression:
+274 passed, 1 deselected, 5 warnings in 224.24s
+
+Full-suite attempt:
+timed out after 901.2s at the existing medium position; 22 dots; no traceback
+
+Exact medium node:
+timed out after 901.4s; no traceback
+
+Result: BASELINE-RELATIVE GROUPED REGRESSION PASS
+Full-suite pass claimed: NO

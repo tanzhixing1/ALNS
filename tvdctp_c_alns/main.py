@@ -8,6 +8,7 @@ from config import build_config
 from dataset_loader import generate_toy_data
 from evaluation import evaluate_and_save
 from objective import objective
+from operator_modes import OperatorMode
 
 
 def _parse_bool(value: str | bool) -> bool:
@@ -29,6 +30,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--drone_enabled", type=_parse_bool, nargs="?", const=True, default=True)
     parser.add_argument("--output_dir", type=str, default="outputs")
+    parser.add_argument(
+        "--operator-mode",
+        choices=(OperatorMode.PAPER.value, OperatorMode.EXTENDED.value),
+        default=OperatorMode.PAPER.value,
+    )
     return parser.parse_args()
 
 
@@ -47,6 +53,7 @@ def main() -> None:
         output_dir=args.output_dir,
         max_no_improve=args.max_no_improve,
         early_stop_enabled=args.early_stop,
+        operator_mode=args.operator_mode,
     )
     if not Path(config.output_dir).is_absolute():
         config.output_dir = str(Path(__file__).resolve().parent / config.output_dir)
