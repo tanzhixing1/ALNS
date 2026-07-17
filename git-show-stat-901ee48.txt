@@ -1,0 +1,26 @@
+901ee48 feat: add universal removal structural context
+ tvdctp_c_alns/alns_solver.py                       |    8 +
+ tvdctp_c_alns/operators.py                         |  161 ++-
+ .../00_preimplementation_baseline.md               |  104 ++
+ .../00a_current_environment_test_baseline.md       |   95 ++
+ .../01_context_schema.md                           |   33 +
+ .../02_structural_projection.md                    |   30 +
+ .../03_mutation_footprint.md                       |   32 +
+ .../04_producer_capabilities.md                    |   25 +
+ .../05_destroy_equivalence.md                      |   16 +
+ .../06_context_lifecycle_and_ownership.md          |   24 +
+ .../07_structural_fingerprint_isolation.md         |   24 +
+ .../08_state_copy_isolation.md                     |   15 +
+ .../09_cascade_strict_regression.md                |   23 +
+ .../10_existing_13_pair_regression.md              |   26 +
+ .../11_three_pairs_still_blocked.md                |   22 +
+ .../12_determinism_runs.csv                        |   13 +
+ .../13_focused_test_results.txt                    |   28 +
+ .../14_full_test_coverage.md                       |   46 +
+ .../15_scope_diff_review.md                        |   51 +
+ .../16_gate_decision.md                            |   48 +
+ .../README.md                                      |   24 +
+ tvdctp_c_alns/removal_structural_context.py        | 1026 ++++++++++++++++++++
+ tvdctp_c_alns/state.py                             |    3 +-
+ .../tests/test_stage2ea1_structural_context.py     |  646 ++++++++++++
+ 24 files changed, 2514 insertions(+), 9 deletions(-)

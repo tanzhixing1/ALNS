@@ -1,0 +1,2847 @@
+commit 901ee48da0e1d83fb05dcfb9903c91566e3c69fc
+Author:     tanzhixing1 <1908884368@qq.com>
+AuthorDate: Thu Jul 16 02:01:35 2026 +0800
+Commit:     tanzhixing1 <1908884368@qq.com>
+CommitDate: Thu Jul 16 02:01:35 2026 +0800
+
+    feat: add universal removal structural context
+
+diff --git a/tvdctp_c_alns/alns_solver.py b/tvdctp_c_alns/alns_solver.py
+index 846786e..96afaf8 100644
+--- a/tvdctp_c_alns/alns_solver.py
++++ b/tvdctp_c_alns/alns_solver.py
+@@ -22,6 +22,7 @@ from alns_profile import (
+ )
+ from objective import objective
+ from operators import DESTROY_OPERATORS, REPAIR_OPERATORS, consolidate_drone_sorties
++from removal_structural_context import assert_no_active_removal_context
+ from state import TVDState
+ from drone_repair_diagnostics import build_full_candidate_diagnostic
+ 
+@@ -93,6 +94,8 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
+     phase_timings["t_initial_solution_total"] = time.perf_counter() - phase_start
+     current = initial.copy()
+     best = initial.copy()
++    assert_no_active_removal_context(current, owner="current")
++    assert_no_active_removal_context(best, owner="best")
+     phase_start = time.perf_counter()
+     current_cost, _ = objective(current, data, config)
+     best_cost, _ = objective(best, data, config)
+@@ -142,9 +145,12 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
+         previous_best_cost = float(best_cost)
+         previous_current_cost = float(current_cost)
+ 
++        assert_no_active_removal_context(current, owner="current")
++        assert_no_active_removal_context(best, owner="best")
+         enter_operator_pair(destroy_name, repair_name)
+         destroyed = DESTROY_OPERATORS[destroy_name](current.copy(), rng, data, config)
+         candidate = REPAIR_OPERATORS[repair_name](destroyed, rng, data, config)
++        assert_no_active_removal_context(candidate, owner="repair-returned candidate")
+         candidate_cost, candidate_breakdown = objective(candidate, data, config)
+         candidate_feasible = bool(candidate_breakdown.get("feasible", False))
+         shadow_failures = []
+@@ -262,6 +268,8 @@ def run_c_alns(data: InstanceData, config: TVDConfig) -> ALNSResult:
+             break
+ 
+     setattr(config.alns, "_inside_alns_loop", False)
++    assert_no_active_removal_context(current, owner="current")
++    assert_no_active_removal_context(best, owner="best")
+     phase_timings["t_alns_loop"] = time.perf_counter() - loop_start
+     runtime = time.perf_counter() - start
+     phase_start = time.perf_counter()
+diff --git a/tvdctp_c_alns/operators.py b/tvdctp_c_alns/operators.py
+index 7fb5551..3a040c2 100644
+--- a/tvdctp_c_alns/operators.py
++++ b/tvdctp_c_alns/operators.py
+@@ -31,6 +31,13 @@ from feasibility import (
+     sortie_nodes,
+ )
+ from objective import objective
++from removal_structural_context import (
++    attach_active_removal_context,
++    capture_structural_projection,
++    discard_active_removal_context,
++    finalize_removal_structural_context,
++    removal_context_boundary,
++)
+ from state import (
+     AffectedStructureScope,
+     CarrierTransferSnapshot,
+@@ -129,6 +136,7 @@ def _served_customers(state: TVDState) -> List[int]:
+ def _clear_stale_cascade_metadata(state: TVDState) -> None:
+     for key in CASCADE_METADATA_KEYS:
+         state.metadata.pop(key, None)
++    discard_active_removal_context(state)
+ 
+ 
+ def _state_business_fingerprint(state: TVDState) -> str:
+@@ -211,12 +219,57 @@ def _remove_customer(state: TVDState, customer: int) -> None:
+         state.mark_unassigned(removed_customer)
+ 
+ 
+-def _remove_customers(state: TVDState, customers: Iterable[int]) -> TVDState:
++def _remove_customers(
++    state: TVDState,
++    customers: Iterable[int],
++    *,
++    deletion_attempt_order: Optional[List[int]] = None,
++    actual_unassignment_order: Optional[List[int]] = None,
++) -> TVDState:
+     for customer in customers:
+-        _remove_customer(state, int(customer))
++        normalized = int(customer)
++        if deletion_attempt_order is not None:
++            deletion_attempt_order.append(normalized)
++        before_unassigned = set(int(item) for item in state.unassigned)
++        _remove_customer(state, normalized)
++        if actual_unassignment_order is not None:
++            actual_unassignment_order.extend(
++                int(item)
++                for item in state.unassigned
++                if int(item) not in before_unassigned
++                and int(item) not in actual_unassignment_order
++            )
+     return state
+ 
+ 
++def _attach_removal_structural_context(
++    destroyed: TVDState,
++    *,
++    pre_projection,
++    source_destroy_operator: str,
++    selected_removed_customer_ids: Iterable[int],
++    customer_selection_order: Iterable[int],
++    deletion_attempt_order: Iterable[int],
++    actual_unassignment_order: Iterable[int],
++    cascade_dependency_trace: Iterable[Tuple[int, int]] = (),
++    cascade_native_partition_evidence: Iterable[Iterable[int]] = (),
++    cascade_native_dependency_order: Iterable[Iterable[int]] = (),
++) -> TVDState:
++    context = finalize_removal_structural_context(
++        pre_projection=pre_projection,
++        post_projection=capture_structural_projection(destroyed),
++        source_destroy_operator=source_destroy_operator,
++        selected_removed_customer_ids=selected_removed_customer_ids,
++        customer_selection_order=customer_selection_order,
++        deletion_attempt_order=deletion_attempt_order,
++        actual_unassignment_order=actual_unassignment_order,
++        cascade_dependency_trace=cascade_dependency_trace,
++        cascade_native_partition_evidence=cascade_native_partition_evidence,
++        cascade_native_dependency_order=cascade_native_dependency_order,
++    )
++    return attach_active_removal_context(destroyed, context)
++
++
+ def _remove_duplicate_unassigned(state: TVDState) -> None:
+     seen = set()
+     cleaned = []
+@@ -232,11 +285,28 @@ def random_customer_removal(
+ ) -> TVDState:
+     destroyed = state.copy()
+     _clear_stale_cascade_metadata(destroyed)
++    pre_projection = capture_structural_projection(destroyed)
+     served = _served_customers(destroyed)
+     count = min(_removal_count(data, config), len(served))
+     selected = rng.choice(served, size=count, replace=False).tolist() if served else []
+     _record_destroy_diagnostics(destroyed, selected, data)
+-    return _remove_customers(destroyed, selected)
++    deletion_order: List[int] = []
++    actual_order: List[int] = []
++    _remove_customers(
++        destroyed,
++        selected,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
++    return _attach_removal_structural_context(
++        destroyed,
++        pre_projection=pre_projection,
++        source_destroy_operator="random_customer_removal",
++        selected_removed_customer_ids=selected,
++        customer_selection_order=selected,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
+ 
+ 
+ def greedy_removal(
+@@ -246,6 +316,7 @@ def greedy_removal(
+ 
+     destroyed = state.copy()
+     _clear_stale_cascade_metadata(destroyed)
++    pre_projection = capture_structural_projection(destroyed)
+     base_cost, _ = objective(destroyed.copy(), data, config)
+     scores: List[Tuple[float, int]] = []
+     for customer in _served_customers(destroyed):
+@@ -258,7 +329,23 @@ def greedy_removal(
+     count = min(_removal_count(data, config), len(scores))
+     selected = [customer for _, customer in sorted(scores, reverse=True)[:count]]
+     _record_destroy_diagnostics(destroyed, selected, data)
+-    return _remove_customers(destroyed, selected)
++    deletion_order: List[int] = []
++    actual_order: List[int] = []
++    _remove_customers(
++        destroyed,
++        selected,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
++    return _attach_removal_structural_context(
++        destroyed,
++        pre_projection=pre_projection,
++        source_destroy_operator="greedy_removal",
++        selected_removed_customer_ids=selected,
++        customer_selection_order=selected,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
+ 
+ 
+ def related_customer_removal(
+@@ -266,9 +353,18 @@ def related_customer_removal(
+ ) -> TVDState:
+     destroyed = state.copy()
+     _clear_stale_cascade_metadata(destroyed)
++    pre_projection = capture_structural_projection(destroyed)
+     served = _served_customers(destroyed)
+     if not served:
+-        return destroyed
++        return _attach_removal_structural_context(
++            destroyed,
++            pre_projection=pre_projection,
++            source_destroy_operator="related_customer_removal",
++            selected_removed_customer_ids=(),
++            customer_selection_order=(),
++            deletion_attempt_order=(),
++            actual_unassignment_order=(),
++        )
+ 
+     seed = int(rng.choice(served))
+     count = min(_removal_count(data, config), len(served))
+@@ -276,7 +372,23 @@ def related_customer_removal(
+         served, key=lambda customer: data.ground_distance_matrix[seed, customer]
+     )[:count]
+     _record_destroy_diagnostics(destroyed, selected, data)
+-    return _remove_customers(destroyed, selected)
++    deletion_order: List[int] = []
++    actual_order: List[int] = []
++    _remove_customers(
++        destroyed,
++        selected,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
++    return _attach_removal_structural_context(
++        destroyed,
++        pre_projection=pre_projection,
++        source_destroy_operator="related_customer_removal",
++        selected_removed_customer_ids=selected,
++        customer_selection_order=(seed,),
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
+ 
+ 
+ def route_segment_removal(
+@@ -583,17 +695,23 @@ def cascade_aware_removal(
+ ) -> TVDState:
+     destroyed = state.copy()
+     _clear_stale_cascade_metadata(destroyed)
++    pre_projection = capture_structural_projection(destroyed)
+     source_state_fingerprint = _state_business_fingerprint(destroyed)
+     served = _served_customers(destroyed)
+     count = min(_removal_count(data, config), len(served))
+     initial = rng.choice(served, size=count, replace=False).tolist() if served else []
+     removal = set(initial)
++    dependency_trace: List[Tuple[int, int]] = []
+ 
+     changed = True
+     while changed:
+         changed = False
+         for customer in list(removal):
+             deps = _cascade_dependencies(destroyed, customer)
++            dependency_trace.extend(
++                (int(customer), int(dependency))
++                for dependency in sorted(deps - removal)
++            )
+             if not deps.issubset(removal):
+                 removal |= deps
+                 changed = True
+@@ -638,7 +756,14 @@ def cascade_aware_removal(
+         data,
+         cascade_expansion_count=max(0, len(removal) - len(initial)),
+     )
+-    destroyed = _remove_customers(destroyed, removal)
++    deletion_order: List[int] = []
++    actual_order: List[int] = []
++    destroyed = _remove_customers(
++        destroyed,
++        removal,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++    )
+     _remove_duplicate_unassigned(destroyed)
+     destroyed_state_fingerprint = _state_business_fingerprint(destroyed)
+     destroyed.metadata["cascade_removed"] = sorted(removal)
+@@ -655,7 +780,22 @@ def cascade_aware_removal(
+         ),
+         "captured_before_removal": True,
+     }
+-    return destroyed
++    return _attach_removal_structural_context(
++        destroyed,
++        pre_projection=pre_projection,
++        source_destroy_operator=CASCADE_SOURCE_OPERATOR,
++        selected_removed_customer_ids=removal,
++        customer_selection_order=initial,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++        cascade_dependency_trace=dependency_trace,
++        cascade_native_partition_evidence=(
++            bundle.customer_ids for bundle in bundle_snapshots
++        ),
++        cascade_native_dependency_order=(
++            bundle.dependency_order for bundle in bundle_snapshots
++        ),
++    )
+ 
+ 
+ def _truck_route_for_transshipment(data: InstanceData, selected_transshipment: int) -> List[int]:
+@@ -2426,6 +2566,7 @@ def _apply_move(state: TVDState, customer: int, move: InsertionMove) -> None:
+     state.clean_unassigned(customer)
+ 
+ 
++@removal_context_boundary
+ def greedy_van_repair(
+     state: TVDState,
+     rng: np.random.Generator,
+@@ -2525,6 +2666,7 @@ def greedy_van_repair(
+         exit_repair("greedy_van_repair")
+ 
+ 
++@removal_context_boundary
+ def greedy_drone_repair(
+     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+ ) -> TVDState:
+@@ -2544,6 +2686,7 @@ def greedy_drone_repair(
+         exit_repair("greedy_drone_repair")
+ 
+ 
++@removal_context_boundary
+ def best_mode_repair(
+     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+ ) -> TVDState:
+@@ -2809,6 +2952,7 @@ def _regret_trace_event(
+     }
+ 
+ 
++@removal_context_boundary
+ def regret_repair(
+     state: TVDState,
+     rng: np.random.Generator,
+@@ -3538,6 +3682,7 @@ def _finish_cascade_result(
+     return state
+ 
+ 
++@removal_context_boundary
+ def cascade_repair(
+     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
+ ) -> TVDState:
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00_preimplementation_baseline.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00_preimplementation_baseline.md
+new file mode 100644
+index 0000000..60a30ca
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00_preimplementation_baseline.md
+@@ -0,0 +1,104 @@
++# Stage 2E-A.1 pre-implementation behavior baseline
++
++Captured before any Stage 2E-A.1 production-source change.
++
++- Audit commit / starting baseline: `e5d6ca16beb2dea928cbf2717352edf408d141c6`
++- Fixture: real coordinated Stage 2D fixture from `tests/test_stage2d0_cascade_contract.py`
++- Destroy count: one customer; fresh NumPy PCG64 seed `29` per run
++- Input business fingerprint: `b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc`
++- RNG-before digest: `6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292`
++- Source State remained unchanged in every run: **YES**
++
++The fingerprint values in this file are SHA-256 digests of the baseline
++`TVDState.cache_signature()` representation. They are regression evidence, not
++a redefinition of the canonical or Stage 2D fingerprints.
++
++## Four destroy baselines
++
++| Destroy | Selection order | Selected/final R* | Deletion/actual-unassignment order | Output fingerprint | RNG-after |
++| --- | --- | --- | --- | --- | --- |
++| Random | `[12]` | `[12]` | `[12]` | `994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978` | `6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1` |
++| Greedy | ranking winner `[7]` | `[7]` | `[7]` | `ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb` | unchanged from RNG-before |
++| Related | seed `[12]` | `[12]` | `[12]` | `994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978` | `6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1` |
++| Cascade | initial `[12]` | `[12]` | `[12]` | `994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978` | `6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1` |
++
++For all four rows, `actually_unassigned_customer_ids` is exactly the displayed
++actual-unassignment order for this fixture. Tests also use anchor and
++multi-customer-sortie counterexamples where selected and actually-unassigned
++sets differ; equality is not assumed by the implementation.
++
++### Shared output structural facts for Random, Related, and Cascade
++
++- Van routes: `van_0=[3,5,9,10,11,3]`, `van_1=[3,6,3]`.
++- Drone sorties remain `(drone_0, van_0->van_0, 5,[7],5)` and
++  `(drone_1, van_0->van_1, 3,[8],6)`.
++- Service mode changes only for customer `12`: `van -> unassigned`.
++- Drone initial-carrier map remains
++  `drone_0/1->van_0`, `drone_2/3->van_1`,
++  `drone_4/5->van_2`, `drone_6/7->van_3`.
++- Pre-existing business metadata remains present; ordinary destroys add no
++  Cascade metadata.
++
++### Greedy-specific output facts
++
++- The single pre-state trial/ranking winner is customer `7`; Greedy consumes no
++  RNG.
++- Van routes are unchanged from the input fixture.
++- Sortie `drone_0: van_0->van_0, 5,[7],5` is removed; the cross-van sortie for
++  customer `8` remains unchanged.
++- Service mode changes only for customer `7`: `drone -> unassigned`.
++
++### Related-specific evidence
++
++- Seed customer: `12`.
++- Static distance order: `[12,9,5,6,11,8,10,7]`.
++- Selection and output equal Random for this fixture, while the selection
++  mechanism remains the existing distance ranking.
++
++### Cascade-specific evidence
++
++- Initial set: `[12]`; final closure `R*`: `[12]`; dependency trace: empty.
++- Native partition and dependency order: `[[12]]` and `[[12]]`.
++- Native affected scope:
++  `selected_transshipment:3`, `container:0`, `van:van_0:4-6`; no sortie,
++  launch/recovery, carrier, or coordination-edge IDs.
++- Old contract schema/source: `1` / `cascade_aware_removal`.
++- Old destroy call ID:
++  `85e5862611154e12ca70c77ed253dd4c4e0b0ee5d825033781752b690e2e7176`.
++- Old bundle fingerprint:
++  `8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c`.
++- Old Cascade contract is current at this baseline.
++
++## Current 16-pair compatibility and exact result baseline
++
++The action numbers below are audit/planned destroy-major, repair-minor labels;
++they are **not** current production registry IDs.
++
++| Pair | Removed order | Candidate-sequence digest if exposed | Selected result | Objective | Final fingerprint | Feasible | Contract |
++| --- | --- | --- | --- | ---: | --- | --- | --- |
++| Random + Global | `[12]` | not exposed | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Random + Local | `[12]` | `1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943` | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Random + Regret | `[12]` | `b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65` | returned | 926.373751792 | `3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc` | Yes | compatible |
++| Random + Cascade | `[12]` | no bundle candidates | failure | 10926.095429883 | `994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978` | No | **incompatible** |
++| Greedy + Global | `[7]` | not exposed | returned | 765.252317540 | `da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76` | Yes | compatible |
++| Greedy + Local | `[7]` | `d023cf038d2c5cfcebb09f30a18ee16a7f5188478bbae33833368832761ea74f` | returned | 773.150287337 | `95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933` | Yes | compatible |
++| Greedy + Regret | `[7]` | `1b8736acc5cf5a18cc4290b707a063626fa914f861eeeaabe12baba84e68626d` | returned | 765.252317540 | `da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76` | Yes | compatible |
++| Greedy + Cascade | `[7]` | no bundle candidates | failure | 10762.799812194 | `ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb` | No | **incompatible** |
++| Related + Global | `[12]` | not exposed | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Related + Local | `[12]` | `1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943` | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Related + Regret | `[12]` | `b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65` | returned | 926.373751792 | `3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc` | Yes | compatible |
++| Related + Cascade | `[12]` | no bundle candidates | failure | 10926.095429883 | `994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978` | No | **incompatible** |
++| Cascade + Global | `[12]` | not exposed | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Cascade + Local | `[12]` | `1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943` | returned | 40927.316361140 | `819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76` | No | compatible |
++| Cascade + Regret | `[12]` | `b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65` | returned | 926.373751792 | `3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc` | Yes | compatible |
++| Cascade + Cascade | `[12]` | `5723032f866258bfdca59723af105deca19f9880202acd8d20e8886e1b2ea010` | success | 927.880274816 | `56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e` | Yes | compatible |
++
++Candidate-sequence digests include stable candidate identities, counts and
++selection fields only; diagnostic wall-clock timing fields are deliberately
++excluded.
++
++All pair runs start from a freshly recreated fixture and seed. Random,
++Related, and Cascade consume the same one `choice` call; Greedy consumes none.
++The target matrix is therefore **13 contract-compatible, 3 explicitly
++contract-incompatible, crashed/polluted 0**. Stage 2E-A.1 must preserve this
++matrix and must not unlock planned labels 3, 7, or 11.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00a_current_environment_test_baseline.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00a_current_environment_test_baseline.md
+new file mode 100644
+index 0000000..cf52872
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/00a_current_environment_test_baseline.md
+@@ -0,0 +1,95 @@
++# Current environment test baseline
++
++Baseline commit: `e5d6ca16beb2dea928cbf2717352edf408d141c6`.
++
++## Runtime discovery
++
++- Default `python`: `C:\Users\19088\.agent-reach-venv\Scripts\python.exe`
++  (Python 3.12.13), but that environment has no pytest.
++- README venv: `D:\STUDY\STUDY\PythonProject\.venv`, but its interpreter
++  target no longer exists and it cannot create a process.
++- Working project runtime:
++  `C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe`.
++- Pytest: 9.1.1 on Python 3.12.13; coverage plugin enabled by repository
++  `pyproject.toml`.
++
++## Collection
++
++Command: `python -m pytest --collect-only -q`
++
++- Collected: **160 nodes** in 5.04 seconds.
++- Collection errors: **0**.
++- Test files:
++  - `tests/test_core_model_capabilities.py`
++  - `tests/test_regression_rules.py`
++  - `tests/test_stage1_drone_generator.py`
++  - `tests/test_stage2a_drone_feasibility.py`
++  - `tests/test_stage2b_local_greedy.py`
++  - `tests/test_stage2c_regret2.py`
++  - `tests/test_stage2d_multidrone_coverage.py`
++  - `tests/test_stage2d0_cascade_contract.py`
++  - `tests/test_stage2d1_cascade_repair.py`
++
++## Full-suite attempt
++
++Command: `python -m pytest -vv --durations=30`
++
++- Result: **timeout after 901.5 seconds; not a PASS**.
++- The first 22 nodes passed: all 20 nodes in
++  `test_core_model_capabilities.py` plus the tiny and small parametrizations in
++  `test_regression_rules.py`.
++- Execution was still inside
++  `test_regression_model_rules_across_scales[medium]` when the tool terminated.
++- Assertion failure traceback before timeout: none.
++
++The suspected node was then run alone with the same repository pytest config:
++
++`python -m pytest -vv --durations=30 tests/test_regression_rules.py::test_regression_model_rules_across_scales[medium]`
++
++- Collected: 1.
++- Result: **timeout after 901.5 seconds; not a PASS**.
++- Assertion failure traceback: none.
++- Classification: repeatable baseline hanging/very-slow test, not an A.1
++  regression and not counted as passed.
++
++## Mutually exclusive grouped coverage
++
++| Group | Selected | Passed | Failed | Warnings | Wall time / result |
++| --- | ---: | ---: | ---: | ---: | --- |
++| `test_regression_rules.py -k "not medium"` | 25 | 25 | 0 | 5 | 194.45s pytest / 199.1s process |
++| `test_core_model_capabilities.py` | 20 | 20 | 0 | 0 | 57.97s pytest / 60.996s process |
++| `test_stage1_drone_generator.py` | 1 | 1 | 0 | 0 | 7.44s / 9.526s |
++| `test_stage2a_drone_feasibility.py` | 25 | 25 | 0 | 0 | 3.31s / 5.565s |
++| `test_stage2b_local_greedy.py` | 10 | 10 | 0 | 0 | 3.02s / 4.974s |
++| `test_stage2c_regret2.py` | 20 | 20 | 0 | 0 | 8.18s / 10.620s |
++| `test_stage2d_multidrone_coverage.py` | 7 | 7 | 0 | 0 | 5.05s / 7.412s |
++| `test_stage2d0_cascade_contract.py` | 18 | 18 | 0 | 0 | 3.44s / 5.329s |
++| `test_stage2d1_cascade_repair.py` | 33 | 33 | 0 | 0 | 16.76s / 18.783s |
++| medium node alone | 1 | 0 | 0 | 0 | timeout at 901.5s |
++
++Coverage arithmetic: `25+20+1+25+10+20+7+18+33+1 = 160`.
++The groups are mutually exclusive: the medium node is deselected from its file
++group and appears only in the individual diagnostic group. No node is omitted
++or counted twice.
++
++## Slowest completed baseline tests
++
++- regression small: 124.94s.
++- core two-container cache integration smoke: 53.73s.
++- regression tiny: 36.42s.
++- tiny multi-van resource model: 22.29s.
++- route-plan detail output: 4.27s.
++- Stage 2D.1 multiple-bundle deterministic run: 3.96s.
++- Regret fixed-seed three-run test: 3.20s.
++
++The five warnings are the existing expected `RuntimeWarning` cases for
++controlled initial-solution assignment failures in
++`test_regression_rules.py`.
++
++## Baseline decision
++
++Current full-suite PASS is **not** claimed. The environment satisfies the
++task's condition B: one repeatable baseline hanging node is isolated, and a
++reproducible mutually exclusive plan covers every collected node. Production
++implementation may proceed, but post-change evidence must compare the same
++medium node separately and must not report its timeout as PASS.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/01_context_schema.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/01_context_schema.md
+new file mode 100644
+index 0000000..cdf81e8
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/01_context_schema.md
+@@ -0,0 +1,33 @@
++# RemovalStructuralContext schema
++
++Implementation: `removal_structural_context.py`.
++
++`RemovalStructuralContext` is a frozen dataclass whose complete descendant
++graph consists of frozen dataclasses, tuples and scalar primitives. It stores
++no live `TVDState`, route list, sortie dict, RNG, UUID or object identity.
++
++Required fields are implemented directly:
++
++- version/identity: `schema_version`, `structural_context_version`,
++  `context_id`, `source_destroy_operator`, `producer_capabilities`;
++- fingerprints: `pre_destroy_structural_fingerprint`,
++  `post_destroy_structural_fingerprint`;
++- removal facts: `selected_removed_customer_ids`,
++  `actually_unassigned_customer_ids`, `removal_order`, plus the disambiguated
++  selection/deletion/actual-unassignment orders;
++- immutable pre/post structural projections;
++- customer service, route position/segment, drone sortie, launch/recovery,
++  carrier-transfer and coordination-edge facts;
++- authoritative `mutation_footprint` and factual
++  `external_boundary_entities`/projection;
++- optional Cascade producer evidence: dependency trace, native partition and
++  native dependency order.
++
++Forbidden repair concepts are absent: ordinary repair bundles, ordinary
++dependency order, repair strategy/candidate/selection, objective value, top-K,
++beam and candidate truncation.
++
++The context is stable-JSON serializable with sorted keys, compact separators,
++UTF-8 and `allow_nan=False`. Context validation recomputes both structural
++fingerprints, actual-unassigned transition, mutation diff, external boundary,
++trusted capabilities and context ID.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/02_structural_projection.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/02_structural_projection.md
+new file mode 100644
+index 0000000..86d656a
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/02_structural_projection.md
+@@ -0,0 +1,30 @@
++# Immutable structural projection
++
++`capture_structural_projection(state)` is a read-only allowlist projection. It
++does not call RNG, objective, checker, operator selection, cache helpers or
++State mutation helpers.
++
++Included business structure:
++
++- unassigned and service mode;
++- ordered van routes, positions and adjacent segments;
++- ordered drone sorties and ordered sortie customers;
++- launch/recovery nodes, vans and positions;
++- drone initial/current carriers and carrier transfers;
++- launch/recovery/coordination edge identities;
++- order/container assignment, container routes, tractor routes and warehouse
++  context;
++- selected transshipment, truck route, vehicle homes;
++- only the business metadata allowlist `route_endpoints` and
++  `warehouse_ready_time`.
++
++Excluded:
++
++- active `RemovalStructuralContext` metadata and the context itself;
++- Cascade contracts/bundles/repair diagnostics;
++- objective/checker caches and timing diagnostics;
++- runtime/profile counters, addresses, UUIDs and nondeterministic reprs.
++
++All dict/list/set descendants are converted to tagged immutable tuples with
++typed stable keys. Projection capture before and after destroy is therefore
++independent of later State mutation and cannot recursively include its context.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/03_mutation_footprint.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/03_mutation_footprint.md
+new file mode 100644
+index 0000000..516d148
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/03_mutation_footprint.md
+@@ -0,0 +1,32 @@
++# Authoritative mutation footprint
++
++`diff_structural_projection(pre, post, actual)` is the only footprint source.
++Selected customer IDs are never used to predict the footprint.
++
++It records:
++
++- changed van route IDs and minimal prefix/suffix edit intervals with direct
++  predecessor/successor boundary nodes;
++- stable structural sortie identities removed/added and customer sequences;
++- changed launch/recovery links, carrier relations/transfers and coordination
++  edges;
++- service-mode and unassigned transitions;
++- directly touched external customers/resources.
++
++Stable sortie IDs use canonical structural content plus duplicate occurrence
++ordinal, so list-index shifts do not misclassify unchanged sorties.
++
++Focused evidence covers:
++
++- van customer removal (`van_0` minimal interval);
++- single and multi-customer sortie removal;
++- collateral unassignment (`selected=(5,)`, `actual=(5,7)` and a two-customer
++  sortie case);
++- launch/recovery and coordination-link removal;
++- cross-van carrier-transfer removal;
++- route boundary precision: removing customer 10 records external customers
++  `(9,11)` but not same-route customers 5 or 12.
++
++External entities never enter `actually_unassigned_customer_ids`. Whole-route,
++distance, warehouse and container co-membership are not used to broaden the
++boundary.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/04_producer_capabilities.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/04_producer_capabilities.md
+new file mode 100644
+index 0000000..9322de8
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/04_producer_capabilities.md
+@@ -0,0 +1,25 @@
++# Producer capabilities
++
++Capabilities are defined centrally by immutable trusted
++`ProducerDescriptor`s, not accepted as arbitrary strings.
++
++All four producers declare:
++
++1. `structural_context_v1`
++2. `immutable_pre_projection`
++3. `authoritative_post_diff`
++4. `selection_order`
++5. `deletion_order`
++6. `mutation_footprint`
++7. `external_boundary_facts`
++
++Cascade additionally declares:
++
++1. `cascade_dependency_trace`
++2. `cascade_native_partition`
++3. `cascade_native_order`
++
++Validation rejects an unregistered source, unsupported schema/context version,
++or any capability tuple different from its trusted descriptor. These
++capabilities are evidence only in A.1; Cascade repair does not consume them and
++ordinary destroy contexts are not adapted into Cascade bundles.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/05_destroy_equivalence.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/05_destroy_equivalence.md
+new file mode 100644
+index 0000000..ddc8ad2
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/05_destroy_equivalence.md
+@@ -0,0 +1,16 @@
++# Destroy strict equivalence
++
++Fixture and golden values are recorded in `00_preimplementation_baseline.md`.
++Focused test result: **28 passed** after correcting a test-only timing-digest
++mistake; the final deterministic assertions exclude timing diagnostics.
++
++| Destroy | Selection preserved | Business output preserved | RNG preserved | Context-only delta |
++| --- | --- | --- | --- | --- |
++| Random | `[12]` | fingerprint `994ee6...0978` | one identical choice call/state | Yes |
++| Greedy | winner `[7]`, identical trial trace/ranking | `ade2fc...46eb` | consumes none | Yes |
++| Related | seed `12`, order `[12,9,5,6,11,8,10,7]` | `994ee6...0978` | one identical choice call/state | Yes |
++| Cascade | initial/R* `[12]`, native `[[12]]` | `994ee6...0978` | one identical choice call/state | Yes |
++
++Random sampling, Greedy objective delta/trial order, Related distance sorting,
++Cascade closure/partition/order, deletion iteration and business State mutation
++were not rewritten.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/06_context_lifecycle_and_ownership.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/06_context_lifecycle_and_ownership.md
+new file mode 100644
+index 0000000..e8d90a0
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/06_context_lifecycle_and_ownership.md
+@@ -0,0 +1,24 @@
++# Context lifecycle and ownership
++
++Storage key: `_active_removal_structural_context` in ephemeral State metadata.
++
++Lifecycle:
++
++1. A target destroy copies its input and explicitly discards any stale raw
++   context only on that new disposable working copy.
++2. It captures pre structure, runs the existing destroy, captures post
++   structure, validates and attaches exactly one context.
++3. A common decorator consumes the context at every registered public repair
++   boundary before the repair body executes.
++4. Every normal return is explicitly cleared; exception paths clear the input.
++5. Solver guards assert current, best and repair-returned candidates are
++   context-free before persistence/acceptance.
++
++The old Cascade metadata is independent and remains available to Cascade
++repair. Nested `greedy_drone_repair -> greedy_van_repair` consumes at the outer
++boundary and the inner boundary safely sees no context.
++
++Tests cover Global, Local, Regret, Cascade, the extra registered drone repair,
++controlled exceptions, ordinary+Cascade controlled failure, current/best
++ownership, stale-context replacement on a working copy and a two-iteration
++solver run. No failed candidate is persisted.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/07_structural_fingerprint_isolation.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/07_structural_fingerprint_isolation.md
+new file mode 100644
+index 0000000..f2b7633
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/07_structural_fingerprint_isolation.md
+@@ -0,0 +1,24 @@
++# Structural fingerprint isolation
++
++The new dedicated function is
++`structural_business_fingerprint(StructuralProjection)`, implemented as SHA-256
++of canonical UTF-8 JSON.
++
++`context_id` is SHA-256 of version/source, pre/post fingerprints, selected and
++actual IDs, and the three ordered removal observations. It does not call any
++RNG and excludes itself.
++
++Isolation evidence:
++
++- adding/removing the active context leaves the dedicated projection digest
++  unchanged;
++- `TVDState.cache_signature()` is unchanged;
++- existing `operators._state_business_fingerprint()` / Stage 2D stale contract
++  fingerprint is unchanged;
++- objective/checker/candidate business identity do not read the active key;
++- three independent runs per destroy produce identical context, ID, footprint,
++  business result and RNG state;
++- different removed/post structures produce different IDs.
++
++The existing canonical State fingerprint and Stage 2D source fingerprint were
++not redefined.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/08_state_copy_isolation.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/08_state_copy_isolation.md
+new file mode 100644
+index 0000000..0f88ea9
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/08_state_copy_isolation.md
+@@ -0,0 +1,15 @@
++# State.copy isolation
++
++`TVDState.copy()` continues to deep-copy all ordinary metadata, including the
++existing mutable Cascade contract/diagnostic structures. It recognizes only
++the active raw-context key and safely shares that instance because the entire
++`RemovalStructuralContext` descendant graph is immutable.
++
++Evidence:
++
++- copied State and source State share the immutable context identity;
++- assignment to a context field raises `FrozenInstanceError`;
++- route/sortie/business mutations on the copied State do not affect source;
++- no live State/route/sortie object reference is stored;
++- all pre/post maps and sequences are immutable canonical records;
++- the existing Stage 2D metadata-copy/replacement tests remain passing.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/09_cascade_strict_regression.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/09_cascade_strict_regression.md
+new file mode 100644
+index 0000000..4cfa5d8
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/09_cascade_strict_regression.md
+@@ -0,0 +1,23 @@
++# Cascade + Cascade strict regression
++
++Baseline and post-change seed 29 evidence are identical:
++
++- removed set / `R*`: `[12]`;
++- native partition and dependency order: `[[12]]` / `[[12]]`;
++- destroy call ID:
++  `85e5862611154e12ca70c77ed253dd4c4e0b0ee5d825033781752b690e2e7176`;
++- bundle fingerprint:
++  `8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c`;
++- raw/feasible/unique strategy counts: `6/5/4`;
++- stable strategy-generation and selected-identity digest:
++  `5723032f866258bfdca59723af105deca19f9880202acd8d20e8886e1b2ea010`;
++- selected objective: `927.880274816`;
++- final business fingerprint:
++  `56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e`;
++- final checker: feasible, zero violations;
++- RNG state: unchanged by Cascade repair.
++
++Timing diagnostics are excluded from the candidate digest. The old
++`CascadeBundleSnapshot`, contract validator, candidate enumeration, Ω(B),
++validation and selection code are unchanged. The raw context is a parallel
++fact layer and is consumed before the existing Cascade repair body.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/10_existing_13_pair_regression.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/10_existing_13_pair_regression.md
+new file mode 100644
+index 0000000..609c596
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/10_existing_13_pair_regression.md
+@@ -0,0 +1,26 @@
++# Existing 13-pair strict regression
++
++Fixture: coordinated Stage 2D fixture, removal count 1, fresh seed 29 per pair.
++All 13 contract-compatible pairs match the committed preimplementation
++baseline exactly.
++
++| Pair | Removed IDs equal | RNG equal | Candidate sequence equal | Selected result equal | Objective equal | Fingerprint equal |
++|---|---|---|---|---|---|---|
++| Random + Global | PASS | PASS | N/A (not exposed) | PASS | PASS | PASS |
++| Random + Local | PASS | PASS | PASS | PASS | PASS | PASS |
++| Random + Regret | PASS | PASS | PASS | PASS | PASS | PASS |
++| Greedy + Global | PASS | PASS | N/A (not exposed) | PASS | PASS | PASS |
++| Greedy + Local | PASS | PASS | PASS | PASS | PASS | PASS |
++| Greedy + Regret | PASS | PASS | PASS | PASS | PASS | PASS |
++| Related + Global | PASS | PASS | N/A (not exposed) | PASS | PASS | PASS |
++| Related + Local | PASS | PASS | PASS | PASS | PASS | PASS |
++| Related + Regret | PASS | PASS | PASS | PASS | PASS | PASS |
++| Cascade + Global | PASS | PASS | N/A (not exposed) | PASS | PASS | PASS |
++| Cascade + Local | PASS | PASS | PASS | PASS | PASS | PASS |
++| Cascade + Regret | PASS | PASS | PASS | PASS | PASS | PASS |
++| Cascade + Cascade | PASS | PASS | PASS | PASS | PASS | PASS |
++
++Local/Regret stable trace digests and Cascade stable strategy digest are frozen
++in `tests/test_stage2ea1_structural_context.py`; wall-clock fields are excluded.
++Exact objective/fingerprint values are listed in
++`00_preimplementation_baseline.md` and asserted in the focused matrix test.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/11_three_pairs_still_blocked.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/11_three_pairs_still_blocked.md
+new file mode 100644
+index 0000000..9760447
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/11_three_pairs_still_blocked.md
+@@ -0,0 +1,22 @@
++# Three pairs remain blocked
++
++Stage 2E-A.1 deliberately does not adapt ordinary destroy contexts to Cascade
++repair bundles.
++
++| Planned label (not current ID) | Pair | Result |
++| ---: | --- | --- |
++| 3 | Random + Cascade | explicit failure: missing Cascade contract/bundles |
++| 7 | Greedy + Cascade | explicit failure: missing Cascade contract/bundles |
++| 11 | Related + Cascade | explicit failure: missing Cascade contract/bundles |
++
++Each ordinary destroy now has a valid repair-agnostic raw context, but the
++existing Cascade validator still accepts only source
++`cascade_aware_removal` with the unchanged Stage 2D contract. The lifecycle
++wrapper consumes the raw context and does not synthesize metadata.
++
++Post-change target matrix: **13 contract-compatible, 3 contract-incompatible,
++crashed/polluted 0**. No planned label is treated as a current production
++registry action ID.
++
++`DEFER TO STAGE 2E-A.2`: ordinary bundle grouping, dependency order, adapter
++validation and the three unlocks.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/12_determinism_runs.csv b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/12_determinism_runs.csv
+new file mode 100644
+index 0000000..81dde79
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/12_determinism_runs.csv
+@@ -0,0 +1,13 @@
++destroy,run,context_id,pre_structural_fingerprint,post_structural_fingerprint,raw_context_digest,mutation_footprint_digest,business_result_fingerprint,rng_after_digest
++random_customer_removal,1,ed4643286cd2b5da651b3d9c4b86ae56530b8aa582f900bac58d19224d8476dd,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,34d92052e75b8a835cab5894a7b2f1175c3e538891ad5111de9e58556d100d50,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++random_customer_removal,2,ed4643286cd2b5da651b3d9c4b86ae56530b8aa582f900bac58d19224d8476dd,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,34d92052e75b8a835cab5894a7b2f1175c3e538891ad5111de9e58556d100d50,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++random_customer_removal,3,ed4643286cd2b5da651b3d9c4b86ae56530b8aa582f900bac58d19224d8476dd,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,34d92052e75b8a835cab5894a7b2f1175c3e538891ad5111de9e58556d100d50,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++greedy_removal,1,d9b7cb4ea50f854b935423f780e3701a81ed26c8689f42eb39fbab97b8f851e6,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,f53b34d6e9fac75282c79812c26855a31799275d7ed46e99fcc371bcd20141ab,708426ee7e6c76e95b94e062a6d3ef8cd9def5083e3fcf339728316b828f63ea,d97a7502a24a722bf009bf2f28f35a992374f5956b1d32654efd1388bdee7db2,ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb,6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292
++greedy_removal,2,d9b7cb4ea50f854b935423f780e3701a81ed26c8689f42eb39fbab97b8f851e6,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,f53b34d6e9fac75282c79812c26855a31799275d7ed46e99fcc371bcd20141ab,708426ee7e6c76e95b94e062a6d3ef8cd9def5083e3fcf339728316b828f63ea,d97a7502a24a722bf009bf2f28f35a992374f5956b1d32654efd1388bdee7db2,ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb,6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292
++greedy_removal,3,d9b7cb4ea50f854b935423f780e3701a81ed26c8689f42eb39fbab97b8f851e6,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,f53b34d6e9fac75282c79812c26855a31799275d7ed46e99fcc371bcd20141ab,708426ee7e6c76e95b94e062a6d3ef8cd9def5083e3fcf339728316b828f63ea,d97a7502a24a722bf009bf2f28f35a992374f5956b1d32654efd1388bdee7db2,ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb,6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292
++related_customer_removal,1,9e23bfadb39f13d752d52d781de3280b05e62987e33bade14646cf8cea4cd328,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,6a62cf50cc2458a957388ba8a042a8f5e23e509f18025dd54b188e7115950687,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++related_customer_removal,2,9e23bfadb39f13d752d52d781de3280b05e62987e33bade14646cf8cea4cd328,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,6a62cf50cc2458a957388ba8a042a8f5e23e509f18025dd54b188e7115950687,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++related_customer_removal,3,9e23bfadb39f13d752d52d781de3280b05e62987e33bade14646cf8cea4cd328,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,6a62cf50cc2458a957388ba8a042a8f5e23e509f18025dd54b188e7115950687,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++cascade_aware_removal,1,6598e5eeeb6e569e18ca3fede1ca211956350bf017df462d489141087b7ddbe7,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,27ac6063ea7912041f2326ecae870d379174ec6713a38dbf8fc0d1785c47182e,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++cascade_aware_removal,2,6598e5eeeb6e569e18ca3fede1ca211956350bf017df462d489141087b7ddbe7,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,27ac6063ea7912041f2326ecae870d379174ec6713a38dbf8fc0d1785c47182e,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
++cascade_aware_removal,3,6598e5eeeb6e569e18ca3fede1ca211956350bf017df462d489141087b7ddbe7,ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af,edc7277932b302fd4d4c569d3fb46418e383621dd7dd12e1343d00ab64a173a2,27ac6063ea7912041f2326ecae870d379174ec6713a38dbf8fc0d1785c47182e,2fb9217ccc8ec3ba36bdc6de174733379e65191f475f0192e01c53e295b438ea,994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978,6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/13_focused_test_results.txt b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/13_focused_test_results.txt
+new file mode 100644
+index 0000000..261a43b
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/13_focused_test_results.txt
+@@ -0,0 +1,28 @@
++Stage 2E-A.1 focused test results
++=================================
++
++Runtime:
++  C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
++  Python 3.12.13, pytest 9.1.1
++
++Commands and results:
++
++1. python -m pytest -q tests/test_stage2ea1_structural_context.py
++   28 passed in 13.62s
++
++2. python -m pytest -q tests/test_stage2d0_cascade_contract.py tests/test_stage2d1_cascade_repair.py
++   51 passed in 21.28s
++
++3. python -m py_compile removal_structural_context.py state.py operators.py alns_solver.py tests/test_stage2ea1_structural_context.py
++   PASS
++
++4. python -m pytest --collect-only -q
++   188 test nodes collected; 0 collection errors
++
++Focused coverage includes all 23 requested categories: four destroy shadow
++equivalence paths, selected versus actually-unassigned facts, authoritative
++footprints, exact external boundaries, context determinism/distinction,
++fingerprint/cache/Stage-2D isolation, State.copy isolation, lifecycle and
++failure cleanup, stale-context handling, objective/checker isolation, the
++13+3 pair matrix, Cascade+Cascade exact regression, and persistent-state
++guards.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/14_full_test_coverage.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/14_full_test_coverage.md
+new file mode 100644
+index 0000000..0913fb9
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/14_full_test_coverage.md
+@@ -0,0 +1,46 @@
++# Full test coverage
++
++## Collection
++
++- Starting baseline `e5d6ca16beb2dea928cbf2717352edf408d141c6`: 160 nodes, 9 files, 0 collection errors.
++- Stage 2E-A.1 worktree: 188 nodes, 10 files, 0 collection errors.
++- Difference: exactly 28 new Stage 2E-A.1 focused nodes.
++
++## Full-suite attempt
++
++`python -m pytest -q` did not complete within the 900-second tool limit. It
++printed 22 passing dots and then timed out after 901.6 seconds. This is **not**
++reported as `FULL SUITE PASS`.
++
++The starting baseline full run stopped at the same location: after the first
++22 passing nodes, the runner entered
++`tests/test_regression_rules.py::test_regression_model_rules_across_scales[medium]`
++and timed out after 901.5 seconds without a failure traceback.
++
++## Mutually exclusive grouped coverage
++
++| Group | Selection | Covered nodes | Result | Time |
++| --- | --- | ---: | --- | ---: |
++| A | `python -m pytest -q -k "not medium" --durations=30` | 187 | 187 passed, 1 deselected, 5 warnings | 300.87s |
++| B | exact `test_regression_model_rules_across_scales[medium]` node | 1 | timed out; no assertion traceback | 901.4s |
++
++The groups have zero overlap and their union is all 188 collected nodes.
++Group B is not called a pass. Its observed behavior is, however, identical to
++the repeatable preimplementation environment baseline: the same single node
++remained active past the same 900-second limit, while every other baseline
++node and every new node completed successfully.
++
++## Decision
++
++**GROUPED COMPLETE COVERAGE PASS** against the established Step 0 baseline-B
++procedure. This classification means complete node coverage and no regression
++relative to the reproducible environment baseline; it does not mean that the
++hanging `medium` node itself passed or that the one-shot full suite completed.
++
++- Full collected: 188.
++- Passed outside the known hanging node: 187.
++- Failed: 0 observed.
++- Known baseline-hanging nodes: 1.
++- Warnings: 5, unchanged from baseline.
++- Full regression proven relative to the established current-environment
++  baseline: **YES**.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/15_scope_diff_review.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/15_scope_diff_review.md
+new file mode 100644
+index 0000000..3208d12
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/15_scope_diff_review.md
+@@ -0,0 +1,51 @@
++# Scope diff review
++
++| File | Function | Change | Why allowed in A.1 |
++| --- | --- | --- | --- |
++| `removal_structural_context.py` | immutable context records, projection/diff/fingerprint, validation and lifecycle helpers | New repair-agnostic context implementation | Explicit A.1 raw-context scope |
++| `state.py` | `TVDState.copy` | Share only the frozen context instance while deep-copying all other metadata | Minimal State.copy isolation plumbing |
++| `operators.py` | `_remove_customers`, four destroy entry points | Append-only observation of existing deletion effects and pre/post context finalization | Minimal producer capture wiring; selection and mutation calls preserved |
++| `operators.py` | five public repair entry points | Uniform consume/cleanup decorator | Required ephemeral lifecycle boundary |
++| `alns_solver.py` | `run_c_alns` | Assert persistent/current/best and returned candidates are context-free | Required ownership guard |
++| `tests/test_stage2ea1_structural_context.py` | Stage 2E-A.1 regression suite | 28 focused tests covering the 23 required categories | Required A.1 verification |
++| `outputs/stage2ea1_structural_context_producers/` | audit artifacts | Baselines, design evidence, test results, scope and gate decisions | Required reports |
++
++## Protected-scope answers
++
++| Question | Answer |
++| --- | --- |
++| Random selection changed | NO |
++| Greedy trial/ranking changed | NO |
++| Related ranking changed | NO |
++| Cascade closure changed | NO |
++| Cascade partition changed | NO |
++| Cascade dependency order changed | NO |
++| Old Cascade contract changed | NO |
++| Cascade repair validation changed | NO |
++| Equation (B) changed | NO |
++| Global repair algorithm changed | NO |
++| Global repair lifecycle boundary changed | YES — cleanup only |
++| Local repair algorithm changed | NO |
++| Local repair lifecycle boundary changed | YES — cleanup only |
++| Regret repair algorithm changed | NO |
++| Regret repair lifecycle boundary changed | YES — cleanup only |
++| Cascade repair algorithm changed | NO |
++| Cascade repair lifecycle boundary changed | YES — cleanup only |
++| Extra registered greedy-drone repair algorithm changed | NO |
++| Extra registered greedy-drone lifecycle boundary changed | YES — cleanup only |
++| Objective changed | NO |
++| Checker semantics changed | NO |
++| SA changed | NO |
++| Adaptive weights changed | NO |
++| Operator selection changed | NO |
++| Registry changed | NO |
++| Canonical State fingerprint redefined | NO |
++| Stage 2D source fingerprint changed | NO |
++| `paper_mode` implemented | NO |
++| Action registry implemented | NO |
++| Stage 2E-A.2 work performed | NO |
++| Performance optimization performed | NO |
++
++The three ordinary-destroy/Cascade-repair combinations remain explicitly
++blocked. No bundle adapter or ordinary dependency-order interpretation was
++introduced.
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/16_gate_decision.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/16_gate_decision.md
+new file mode 100644
+index 0000000..2a7e4b0
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/16_gate_decision.md
+@@ -0,0 +1,48 @@
++# Stage 2E-A.1 gate decision
++
++| Gate | Result | Evidence |
++| --- | --- | --- |
++| Audit baseline committed separately | PASS | `e5d6ca16beb2dea928cbf2717352edf408d141c6` contains only the two audit directories |
++| Starting tracked worktree clean | PASS | Recorded after the audit commit; tracked PDF restored to HEAD |
++| Current environment test baseline established | PASS | 160-node baseline; 159 passed and one repeatable isolated 900s hang |
++| RemovalStructuralContext repair-agnostic | PASS | Schema/capability validation excludes repair candidates, strategy and ordinary bundles |
++| Context has no shared mutable descendants | PASS | Frozen dataclasses, tuples, frozensets and recursively frozen values |
++| Pre-state projection immutable | PASS | Captured as frozen value records before business mutation |
++| Mutation footprint authoritative | PASS | Computed from pre/post structural projection diff |
++| External boundaries factual | PASS | Derived only from changed structural facts; counterexamples tested |
++| Structural fingerprint dedicated to raw context | PASS | New projection-only SHA-256 helper |
++| Canonical fingerprint unchanged | PASS | No canonical implementation change; isolation regression passes |
++| Stage 2D fingerprint unchanged | PASS | No Stage 2D fingerprint change; 51 legacy tests pass |
++| Context ID deterministic | PASS | Canonical serialization plus SHA-256; three independent runs per destroy |
++| Algorithm RNG unaffected | PASS | Shadow equivalence and RNG-before/after assertions pass |
++| Cache/business signature isolated | PASS | Active key absent from existing signature behavior; tests pass |
++| State.copy safely isolated | PASS | Frozen context may share identity; all other metadata remains deep-copied |
++| Random strict equivalence | PASS | Fixed-fixture shadow comparison |
++| Greedy strict equivalence | PASS | Trial/ranking/output/RNG comparison |
++| Related strict equivalence | PASS | Seed/ranking/output/RNG comparison |
++| Cascade strict equivalence | PASS | R*, partition, dependency order, scope and contract comparison |
++| Old Cascade contract unchanged | PASS | Strict Stage 2D and Cascade+Cascade regressions pass |
++| Repair algorithm bodies unchanged | PASS | Only public lifecycle decorators added |
++| Repair lifecycle cleanup correct | PASS | All public repair paths plus exception path tested |
++| Context ownership correct | PASS | Current/best remain clean; only disposable destroyed candidate carries context |
++| Persistent State context-free | PASS | Solver entry/loop/return guards and tests |
++| Objective/checker unchanged | PASS | No source changes; with/without-context equivalence passes |
++| Existing13 pairs unchanged | PASS | Exact removal/RNG/candidate/result/objective/fingerprint matrix |
++| New3 pairs still blocked | PASS | All three fail under the unchanged old contract without pollution |
++| No production action registry added | PASS | Registry/action mapping untouched |
++| Deterministic | PASS | Context, footprint, destroy and repair fingerprints repeat exactly |
++| Full test node collection covered | PASS | Disjoint groups cover all 188 collected nodes exactly once |
++| Full regression proven | PASS | 187 nodes pass; sole baseline hang reproduced individually and not called pass |
++| Scope clean | PASS | `15_scope_diff_review.md`; no A.2/paper/registry work |
++| Worktree valid | PASS | `git diff --check`; exact-path staging required before commit |
++
++The full-suite process did not finish, so this report does not claim
++`FULL SUITE PASS`. The valid regression classification is
++`GROUPED COMPLETE COVERAGE PASS` relative to the established baseline-B
++procedure documented in `14_full_test_coverage.md`.
++
++## Final decision
++
++STAGE 2E-A.1 COMPLETE
++
++STAGE 2E-A.2 READY
+diff --git a/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/README.md b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/README.md
+new file mode 100644
+index 0000000..97add13
+--- /dev/null
++++ b/tvdctp_c_alns/outputs/stage2ea1_structural_context_producers/README.md
+@@ -0,0 +1,24 @@
++# Stage 2E-A.1 Universal RemovalStructuralContext Producers
++
++This directory records the behavioral baseline, design, implementation
++evidence, regression results, scope audit and final gate decision for Stage
++2E-A.1.
++
++## Index
++
++- `00_preimplementation_baseline.md`: four-destroy and 16-pair business baseline.
++- `00a_current_environment_test_baseline.md`: reproducible Step 0 test baseline.
++- `01_context_schema.md` through `04_producer_capabilities.md`: immutable schema, projection, authoritative footprint and producer contract.
++- `05_destroy_equivalence.md` through `11_three_pairs_still_blocked.md`: strict behavioral, lifecycle, isolation, Cascade and pair evidence.
++- `12_determinism_runs.csv`: three independent fixed-seed runs per destroy.
++- `13_focused_test_results.txt`: focused commands and results.
++- `14_full_test_coverage.md`: 188-node full/grouped coverage and known baseline hang.
++- `15_scope_diff_review.md`: file-by-file and protected-scope audit.
++- `16_gate_decision.md`: complete gate table and final decision.
++
++The context is repair-agnostic and ephemeral. It is present only on the
++disposable destroyed candidate and is consumed/cleared at every public repair
++boundary. Existing 13 compatible pairs are unchanged; the three ordinary
++destroy plus Cascade repair pairs remain blocked for Stage 2E-A.2.
++
++Final status: **STAGE 2E-A.1 COMPLETE — STAGE 2E-A.2 READY**.
+diff --git a/tvdctp_c_alns/removal_structural_context.py b/tvdctp_c_alns/removal_structural_context.py
+new file mode 100644
+index 0000000..93ff9cb
+--- /dev/null
++++ b/tvdctp_c_alns/removal_structural_context.py
+@@ -0,0 +1,1026 @@
++from __future__ import annotations
++
++import copy
++import hashlib
++import json
++from dataclasses import asdict, dataclass
++from functools import wraps
++from typing import Callable, Dict, Iterable, Optional, Tuple, TYPE_CHECKING
++
++if TYPE_CHECKING:
++    from state import TVDState
++
++
++ACTIVE_REMOVAL_CONTEXT_KEY = "_active_removal_structural_context"
++REMOVAL_CONTEXT_SCHEMA_VERSION = 1
++STRUCTURAL_CONTEXT_VERSION = 1
++
++COMMON_PRODUCER_CAPABILITIES = (
++    "structural_context_v1",
++    "immutable_pre_projection",
++    "authoritative_post_diff",
++    "selection_order",
++    "deletion_order",
++    "mutation_footprint",
++    "external_boundary_facts",
++)
++CASCADE_PRODUCER_CAPABILITIES = (
++    "cascade_dependency_trace",
++    "cascade_native_partition",
++    "cascade_native_order",
++)
++
++
++class RemovalContextContractError(ValueError):
++    pass
++
++
++class RemovalContextLifecycleError(RuntimeError):
++    pass
++
++
++def _canonical_json(value: object) -> str:
++    if hasattr(value, "__dataclass_fields__"):
++        value = asdict(value)  # type: ignore[arg-type]
++    return json.dumps(
++        value,
++        ensure_ascii=False,
++        sort_keys=True,
++        separators=(",", ":"),
++        allow_nan=False,
++    )
++
++
++def _digest(value: object) -> str:
++    return hashlib.sha256(_canonical_json(value).encode("utf-8")).hexdigest()
++
++
++def _freeze(value: object) -> object:
++    """Return a stable, recursively immutable representation."""
++
++    if value is None or isinstance(value, (bool, int, float, str)):
++        return value
++    if isinstance(value, dict):
++        rows = [
++            (type(key).__name__, str(key), _freeze(item))
++            for key, item in value.items()
++        ]
++        return ("map", tuple(sorted(rows, key=lambda row: (row[0], row[1]))))
++    if isinstance(value, (list, tuple)):
++        return ("sequence", tuple(_freeze(item) for item in value))
++    if isinstance(value, (set, frozenset)):
++        items = [_freeze(item) for item in value]
++        return ("set", tuple(sorted(items, key=_canonical_json)))
++    raise RemovalContextContractError(
++        f"unsupported structural projection value: {type(value).__name__}"
++    )
++
++
++@dataclass(frozen=True)
++class VanRouteFact:
++    van_id: str
++    warehouse_id: Optional[int]
++    nodes: Tuple[int, ...]
++
++
++@dataclass(frozen=True)
++class RoutePositionFact:
++    van_id: str
++    route_position: int
++    node_id: int
++    predecessor_node: Optional[int]
++    successor_node: Optional[int]
++
++
++@dataclass(frozen=True)
++class RouteSegmentFact:
++    segment_id: str
++    van_id: str
++    start_position: int
++    end_position: int
++    start_node: int
++    end_node: int
++
++
++@dataclass(frozen=True)
++class DroneSortieFact:
++    sortie_id: str
++    source_occurrence: int
++    drone_id: Optional[str]
++    customer_ids: Tuple[int, ...]
++    launch_node: int
++    recovery_node: int
++    launch_van_id: Optional[str]
++    recovery_van_id: Optional[str]
++    launch_position: Optional[int]
++    recovery_position: Optional[int]
++
++
++@dataclass(frozen=True)
++class LaunchRecoveryFact:
++    sortie_id: str
++    launch_link_id: str
++    recovery_link_id: str
++    launch_node: int
++    recovery_node: int
++    launch_van_id: Optional[str]
++    recovery_van_id: Optional[str]
++    launch_position: Optional[int]
++    recovery_position: Optional[int]
++
++
++@dataclass(frozen=True)
++class CarrierRelationFact:
++    relation_id: str
++    drone_id: str
++    initial_carrier_van_id: Optional[str]
++    current_carrier_van_id: Optional[str]
++
++
++@dataclass(frozen=True)
++class CarrierTransferFact:
++    transfer_id: str
++    sortie_id: str
++    drone_id: Optional[str]
++    launch_carrier_van_id: Optional[str]
++    recovery_carrier_van_id: Optional[str]
++    transferred: Optional[bool]
++
++
++@dataclass(frozen=True)
++class CoordinationEdgeFact:
++    edge_id: str
++    edge_kind: str
++    source_entity_id: str
++    target_entity_id: str
++
++
++@dataclass(frozen=True)
++class CustomerServiceFact:
++    customer_id: int
++    service_mode: Optional[str]
++    unassigned: bool
++    van_route_positions: Tuple[Tuple[str, int], ...]
++    drone_sortie_ids: Tuple[str, ...]
++    container_id: Optional[int]
++    assigned_transshipment: Optional[int]
++
++
++@dataclass(frozen=True)
++class StructuralProjection:
++    schema_version: int
++    port_node: int
++    truck_depot_node: int
++    transshipment_nodes: Tuple[int, ...]
++    selected_transshipment: int
++    container_origin: int
++    truck_route: Tuple[int, ...]
++    tractor_routes: object
++    tractor_home: object
++    trailer_home: object
++    container_routes: object
++    van_routes: Tuple[VanRouteFact, ...]
++    route_position_facts: Tuple[RoutePositionFact, ...]
++    route_segment_facts: Tuple[RouteSegmentFact, ...]
++    drone_sortie_facts: Tuple[DroneSortieFact, ...]
++    launch_recovery_facts: Tuple[LaunchRecoveryFact, ...]
++    carrier_relation_facts: Tuple[CarrierRelationFact, ...]
++    carrier_transfer_facts: Tuple[CarrierTransferFact, ...]
++    coordination_edge_facts: Tuple[CoordinationEdgeFact, ...]
++    customer_service_facts: Tuple[CustomerServiceFact, ...]
++    order_assignment: object
++    container_assignment: object
++    van_home: object
++    drone_initial_carrier: object
++    drone_home_warehouse: object
++    service_mode: Tuple[Tuple[int, str], ...]
++    unassigned: Tuple[int, ...]
++    business_metadata: object
++
++    def canonical_json(self) -> str:
++        return _canonical_json(self)
++
++
++@dataclass(frozen=True)
++class RouteMutationFact:
++    van_id: str
++    pre_start_position: int
++    pre_end_position: int
++    pre_nodes: Tuple[int, ...]
++    post_start_position: int
++    post_end_position: int
++    post_nodes: Tuple[int, ...]
++    predecessor_boundary_node: Optional[int]
++    successor_boundary_node: Optional[int]
++
++
++@dataclass(frozen=True)
++class SortieSequenceMutation:
++    sortie_id: str
++    pre_customer_ids: Tuple[int, ...]
++    post_customer_ids: Tuple[int, ...]
++
++
++@dataclass(frozen=True)
++class ServiceTransitionFact:
++    customer_id: int
++    pre_service_mode: Optional[str]
++    post_service_mode: Optional[str]
++    pre_unassigned: bool
++    post_unassigned: bool
++
++
++@dataclass(frozen=True)
++class MutationFootprint:
++    mutated_van_route_ids: Tuple[str, ...]
++    mutated_contiguous_route_intervals: Tuple[RouteMutationFact, ...]
++    removed_or_replaced_sortie_ids: Tuple[str, ...]
++    added_or_replaced_sortie_ids: Tuple[str, ...]
++    mutated_sortie_customer_sequences: Tuple[SortieSequenceMutation, ...]
++    mutated_launch_recovery_link_ids: Tuple[str, ...]
++    mutated_carrier_relation_ids: Tuple[str, ...]
++    mutated_coordination_edge_ids: Tuple[str, ...]
++    service_mode_transitions: Tuple[ServiceTransitionFact, ...]
++    unassigned_transitions: Tuple[ServiceTransitionFact, ...]
++    external_customers_touched: Tuple[int, ...]
++    external_resources_touched: Tuple[str, ...]
++
++
++@dataclass(frozen=True)
++class ExternalBoundaryEntities:
++    customer_ids: Tuple[int, ...]
++    resource_ids: Tuple[str, ...]
++    structural_entity_ids: Tuple[str, ...]
++
++
++@dataclass(frozen=True)
++class ProducerDescriptor:
++    source_destroy_operator: str
++    schema_versions: Tuple[int, ...]
++    structural_context_version: int
++    capabilities: Tuple[str, ...]
++
++
++PRODUCER_DESCRIPTORS: Dict[str, ProducerDescriptor] = {
++    name: ProducerDescriptor(
++        source_destroy_operator=name,
++        schema_versions=(REMOVAL_CONTEXT_SCHEMA_VERSION,),
++        structural_context_version=STRUCTURAL_CONTEXT_VERSION,
++        capabilities=COMMON_PRODUCER_CAPABILITIES
++        + (CASCADE_PRODUCER_CAPABILITIES if name == "cascade_aware_removal" else ()),
++    )
++    for name in (
++        "random_customer_removal",
++        "greedy_removal",
++        "related_customer_removal",
++        "cascade_aware_removal",
++    )
++}
++
++
++@dataclass(frozen=True)
++class RemovalStructuralContext:
++    schema_version: int
++    structural_context_version: int
++    context_id: str
++    source_destroy_operator: str
++    producer_capabilities: Tuple[str, ...]
++    pre_destroy_structural_fingerprint: str
++    post_destroy_structural_fingerprint: str
++    selected_removed_customer_ids: Tuple[int, ...]
++    actually_unassigned_customer_ids: Tuple[int, ...]
++    removal_order: Tuple[int, ...]
++    customer_selection_order: Tuple[int, ...]
++    deletion_attempt_order: Tuple[int, ...]
++    actual_unassignment_order: Tuple[int, ...]
++    pre_destroy_projection: StructuralProjection
++    post_destroy_projection: StructuralProjection
++    customer_service_facts: Tuple[CustomerServiceFact, ...]
++    route_position_facts: Tuple[RoutePositionFact, ...]
++    route_segment_facts: Tuple[RouteSegmentFact, ...]
++    drone_sortie_facts: Tuple[DroneSortieFact, ...]
++    launch_recovery_facts: Tuple[LaunchRecoveryFact, ...]
++    carrier_transfer_facts: Tuple[CarrierTransferFact, ...]
++    coordination_edge_facts: Tuple[CoordinationEdgeFact, ...]
++    mutation_footprint: MutationFootprint
++    external_boundary_entities: ExternalBoundaryEntities
++    external_boundary_projection: Tuple[CustomerServiceFact, ...]
++    cascade_dependency_trace: Tuple[Tuple[int, int], ...] = ()
++    cascade_native_partition_evidence: Tuple[Tuple[int, ...], ...] = ()
++    cascade_native_dependency_order: Tuple[Tuple[int, ...], ...] = ()
++
++    @property
++    def pre_destroy_business_fingerprint(self) -> str:
++        return self.pre_destroy_structural_fingerprint
++
++    @property
++    def post_destroy_business_fingerprint(self) -> str:
++        return self.post_destroy_structural_fingerprint
++
++    def canonical_json(self) -> str:
++        return _canonical_json(self)
++
++
++def _optional_int(value: object) -> Optional[int]:
++    return None if value is None else int(value)
++
++
++def _optional_str(value: object) -> Optional[str]:
++    return None if value is None else str(value)
++
++
++def _sortie_values(sortie: object) -> Tuple[int, Tuple[int, ...], int, dict]:
++    if isinstance(sortie, dict):
++        return (
++            int(sortie.get("launch", -1)),
++            tuple(int(customer) for customer in sortie.get("customers", [])),
++            int(sortie.get("recovery", -1)),
++            sortie,
++        )
++    launch, customer, recovery = sortie  # type: ignore[misc]
++    return int(launch), (int(customer),), int(recovery), {}
++
++
++def capture_structural_projection(state: "TVDState") -> StructuralProjection:
++    """Capture only stable business structure; never calls RNG/objective/checker."""
++
++    van_routes = tuple(
++        VanRouteFact(
++            van_id=str(van_id),
++            warehouse_id=_optional_int(state.van_home.get(str(van_id))),
++            nodes=tuple(int(node) for node in route),
++        )
++        for van_id, route in sorted(state.van_routes.items())
++    )
++    route_positions = []
++    route_segments = []
++    for route in van_routes:
++        for position, node in enumerate(route.nodes):
++            route_positions.append(
++                RoutePositionFact(
++                    van_id=route.van_id,
++                    route_position=position,
++                    node_id=node,
++                    predecessor_node=route.nodes[position - 1] if position else None,
++                    successor_node=(
++                        route.nodes[position + 1]
++                        if position + 1 < len(route.nodes)
++                        else None
++                    ),
++                )
++            )
++        for position, (start, end) in enumerate(zip(route.nodes, route.nodes[1:])):
++            route_segments.append(
++                RouteSegmentFact(
++                    segment_id=f"van:{route.van_id}:segment:{position}-{position + 1}",
++                    van_id=route.van_id,
++                    start_position=position,
++                    end_position=position + 1,
++                    start_node=start,
++                    end_node=end,
++                )
++            )
++
++    sortie_facts = []
++    occurrence_counts: Dict[str, int] = {}
++    for sortie in state.drone_sorties:
++        launch, customers, recovery, raw = _sortie_values(sortie)
++        base = (
++            _optional_str(raw.get("drone_id")),
++            customers,
++            launch,
++            recovery,
++            _optional_str(raw.get("launch_van_id")),
++            _optional_str(raw.get("recovery_van_id")),
++            _optional_int(raw.get("launch_position")),
++            _optional_int(raw.get("recovery_position")),
++        )
++        base_digest = _digest(base)[:24]
++        occurrence = occurrence_counts.get(base_digest, 0)
++        occurrence_counts[base_digest] = occurrence + 1
++        sortie_facts.append(
++            DroneSortieFact(
++                sortie_id=f"sortie:{base_digest}:{occurrence}",
++                source_occurrence=occurrence,
++                drone_id=base[0],
++                customer_ids=customers,
++                launch_node=launch,
++                recovery_node=recovery,
++                launch_van_id=base[4],
++                recovery_van_id=base[5],
++                launch_position=base[6],
++                recovery_position=base[7],
++            )
++        )
++
++    launch_recovery = tuple(
++        LaunchRecoveryFact(
++            sortie_id=sortie.sortie_id,
++            launch_link_id=f"{sortie.sortie_id}:launch",
++            recovery_link_id=f"{sortie.sortie_id}:recovery",
++            launch_node=sortie.launch_node,
++            recovery_node=sortie.recovery_node,
++            launch_van_id=sortie.launch_van_id,
++            recovery_van_id=sortie.recovery_van_id,
++            launch_position=sortie.launch_position,
++            recovery_position=sortie.recovery_position,
++        )
++        for sortie in sortie_facts
++    )
++    carrier_transfers = tuple(
++        CarrierTransferFact(
++            transfer_id=f"{sortie.sortie_id}:carrier",
++            sortie_id=sortie.sortie_id,
++            drone_id=sortie.drone_id,
++            launch_carrier_van_id=sortie.launch_van_id,
++            recovery_carrier_van_id=sortie.recovery_van_id,
++            transferred=(
++                sortie.launch_van_id != sortie.recovery_van_id
++                if sortie.launch_van_id is not None
++                and sortie.recovery_van_id is not None
++                else None
++            ),
++        )
++        for sortie in sortie_facts
++    )
++
++    current_carrier = {
++        str(drone_id): str(van_id)
++        for drone_id, van_id in state.drone_initial_carrier.items()
++    }
++    warehouses = {int(node) for node in state.transshipment_nodes}
++    for sortie in sortie_facts:
++        if sortie.drone_id is None:
++            continue
++        current_carrier[sortie.drone_id] = (
++            None
++            if sortie.recovery_node in warehouses
++            else sortie.recovery_van_id
++        )
++    carrier_relations = tuple(
++        CarrierRelationFact(
++            relation_id=f"carrier:{drone_id}",
++            drone_id=str(drone_id),
++            initial_carrier_van_id=_optional_str(initial),
++            current_carrier_van_id=_optional_str(current_carrier.get(str(drone_id))),
++        )
++        for drone_id, initial in sorted(state.drone_initial_carrier.items())
++    )
++    coordination_edges = tuple(
++        edge
++        for sortie in sortie_facts
++        for edge in (
++            CoordinationEdgeFact(
++                edge_id=f"{sortie.sortie_id}:van-drone-launch",
++                edge_kind="van-drone-launch",
++                source_entity_id=f"van:{sortie.launch_van_id}",
++                target_entity_id=f"drone:{sortie.drone_id}",
++            ),
++            CoordinationEdgeFact(
++                edge_id=f"{sortie.sortie_id}:van-drone-recovery",
++                edge_kind="van-drone-recovery",
++                source_entity_id=f"drone:{sortie.drone_id}",
++                target_entity_id=f"van:{sortie.recovery_van_id}",
++            ),
++            CoordinationEdgeFact(
++                edge_id=f"{sortie.sortie_id}:launch-recovery-order",
++                edge_kind="launch-recovery-order",
++                source_entity_id=f"node:{sortie.launch_node}",
++                target_entity_id=f"node:{sortie.recovery_node}",
++            ),
++        )
++    )
++
++    customer_ids = set(int(customer) for customer in state.service_mode)
++    customer_ids.update(int(customer) for customer in state.unassigned)
++    customer_ids.update(int(customer) for customer in state.order_assignment)
++    customer_ids.update(
++        position.node_id
++        for position in route_positions
++        if position.node_id not in warehouses
++    )
++    customer_ids.update(
++        customer for sortie in sortie_facts for customer in sortie.customer_ids
++    )
++    service_facts = []
++    for customer in sorted(customer_ids):
++        assignment = state.order_assignment.get(customer, {})
++        service_facts.append(
++            CustomerServiceFact(
++                customer_id=customer,
++                service_mode=_optional_str(state.service_mode.get(customer)),
++                unassigned=customer in state.unassigned,
++                van_route_positions=tuple(
++                    (position.van_id, position.route_position)
++                    for position in route_positions
++                    if position.node_id == customer
++                ),
++                drone_sortie_ids=tuple(
++                    sortie.sortie_id
++                    for sortie in sortie_facts
++                    if customer in sortie.customer_ids
++                ),
++                container_id=_optional_int(assignment.get("container_id")),
++                assigned_transshipment=_optional_int(
++                    assignment.get("assigned_transshipment")
++                ),
++            )
++        )
++
++    business_metadata = {
++        "route_endpoints": state.metadata.get("route_endpoints", ()),
++        "warehouse_ready_time": state.metadata.get("warehouse_ready_time", {}),
++    }
++    return StructuralProjection(
++        schema_version=STRUCTURAL_CONTEXT_VERSION,
++        port_node=int(state.port_node),
++        truck_depot_node=int(state.truck_depot_node),
++        transshipment_nodes=tuple(int(node) for node in state.transshipment_nodes),
++        selected_transshipment=int(state.selected_transshipment),
++        container_origin=int(state.container_origin),
++        truck_route=tuple(int(node) for node in state.truck_route),
++        tractor_routes=_freeze(state.tractor_routes),
++        tractor_home=_freeze(state.tractor_home),
++        trailer_home=_freeze(state.trailer_home),
++        container_routes=_freeze(state.container_routes),
++        van_routes=van_routes,
++        route_position_facts=tuple(route_positions),
++        route_segment_facts=tuple(route_segments),
++        drone_sortie_facts=tuple(sortie_facts),
++        launch_recovery_facts=launch_recovery,
++        carrier_relation_facts=carrier_relations,
++        carrier_transfer_facts=carrier_transfers,
++        coordination_edge_facts=coordination_edges,
++        customer_service_facts=tuple(service_facts),
++        order_assignment=_freeze(state.order_assignment),
++        container_assignment=_freeze(state.container_assignment),
++        van_home=_freeze(state.van_home),
++        drone_initial_carrier=_freeze(state.drone_initial_carrier),
++        drone_home_warehouse=_freeze(state.drone_home_warehouse),
++        service_mode=tuple(
++            (int(customer), str(mode))
++            for customer, mode in sorted(state.service_mode.items())
++        ),
++        unassigned=tuple(int(customer) for customer in state.unassigned),
++        business_metadata=_freeze(business_metadata),
++    )
++
++
++def structural_business_fingerprint(projection: StructuralProjection) -> str:
++    return _digest(projection)
++
++
++def _route_mutation(before: VanRouteFact, after: VanRouteFact) -> RouteMutationFact:
++    pre = before.nodes
++    post = after.nodes
++    prefix = 0
++    while prefix < min(len(pre), len(post)) and pre[prefix] == post[prefix]:
++        prefix += 1
++    suffix = 0
++    while (
++        suffix < len(pre) - prefix
++        and suffix < len(post) - prefix
++        and pre[len(pre) - 1 - suffix] == post[len(post) - 1 - suffix]
++    ):
++        suffix += 1
++    pre_end = len(pre) - suffix
++    post_end = len(post) - suffix
++    return RouteMutationFact(
++        van_id=before.van_id,
++        pre_start_position=prefix,
++        pre_end_position=pre_end,
++        pre_nodes=pre[prefix:pre_end],
++        post_start_position=prefix,
++        post_end_position=post_end,
++        post_nodes=post[prefix:post_end],
++        predecessor_boundary_node=pre[prefix - 1] if prefix else None,
++        successor_boundary_node=pre[pre_end] if pre_end < len(pre) else None,
++    )
++
++
++def diff_structural_projection(
++    pre: StructuralProjection,
++    post: StructuralProjection,
++    actually_unassigned_customer_ids: Iterable[int],
++) -> Tuple[MutationFootprint, ExternalBoundaryEntities]:
++    actual = {int(customer) for customer in actually_unassigned_customer_ids}
++    pre_routes = {route.van_id: route for route in pre.van_routes}
++    post_routes = {route.van_id: route for route in post.van_routes}
++    route_mutations = []
++    for van_id in sorted(set(pre_routes) | set(post_routes)):
++        before = pre_routes.get(van_id, VanRouteFact(van_id, None, ()))
++        after = post_routes.get(van_id, VanRouteFact(van_id, None, ()))
++        if before.nodes != after.nodes:
++            route_mutations.append(_route_mutation(before, after))
++
++    pre_sorties = {sortie.sortie_id: sortie for sortie in pre.drone_sortie_facts}
++    post_sorties = {sortie.sortie_id: sortie for sortie in post.drone_sortie_facts}
++    removed_sorties = tuple(sorted(set(pre_sorties) - set(post_sorties)))
++    added_sorties = tuple(sorted(set(post_sorties) - set(pre_sorties)))
++    sortie_sequence_mutations = tuple(
++        [
++            SortieSequenceMutation(sortie_id, pre_sorties[sortie_id].customer_ids, ())
++            for sortie_id in removed_sorties
++        ]
++        + [
++            SortieSequenceMutation(sortie_id, (), post_sorties[sortie_id].customer_ids)
++            for sortie_id in added_sorties
++        ]
++    )
++
++    pre_service = {fact.customer_id: fact for fact in pre.customer_service_facts}
++    post_service = {fact.customer_id: fact for fact in post.customer_service_facts}
++    service_transitions = []
++    unassigned_transitions = []
++    for customer in sorted(set(pre_service) | set(post_service)):
++        before = pre_service.get(customer)
++        after = post_service.get(customer)
++        transition = ServiceTransitionFact(
++            customer_id=customer,
++            pre_service_mode=before.service_mode if before else None,
++            post_service_mode=after.service_mode if after else None,
++            pre_unassigned=before.unassigned if before else False,
++            post_unassigned=after.unassigned if after else False,
++        )
++        if transition.pre_service_mode != transition.post_service_mode:
++            service_transitions.append(transition)
++        if transition.pre_unassigned != transition.post_unassigned:
++            unassigned_transitions.append(transition)
++
++    pre_links = {
++        item
++        for fact in pre.launch_recovery_facts
++        for item in (fact.launch_link_id, fact.recovery_link_id)
++    }
++    post_links = {
++        item
++        for fact in post.launch_recovery_facts
++        for item in (fact.launch_link_id, fact.recovery_link_id)
++    }
++    pre_carriers = {fact.relation_id: fact for fact in pre.carrier_relation_facts}
++    post_carriers = {fact.relation_id: fact for fact in post.carrier_relation_facts}
++    mutated_carriers = {
++        relation_id
++        for relation_id in set(pre_carriers) | set(post_carriers)
++        if pre_carriers.get(relation_id) != post_carriers.get(relation_id)
++    }
++    pre_transfers = {fact.transfer_id for fact in pre.carrier_transfer_facts}
++    post_transfers = {fact.transfer_id for fact in post.carrier_transfer_facts}
++    mutated_carriers.update(pre_transfers ^ post_transfers)
++    pre_edges = {fact.edge_id for fact in pre.coordination_edge_facts}
++    post_edges = {fact.edge_id for fact in post.coordination_edge_facts}
++
++    known_customers = set(pre_service) | set(post_service)
++    external_customers = set()
++    external_resources = set()
++    structural_entities = set()
++    for mutation in route_mutations:
++        external_resources.add(f"van:{mutation.van_id}")
++        structural_entities.add(
++            f"van:{mutation.van_id}:{mutation.pre_start_position}-{mutation.pre_end_position}"
++        )
++        for node in (
++            mutation.predecessor_boundary_node,
++            mutation.successor_boundary_node,
++        ):
++            if node in known_customers and node not in actual:
++                external_customers.add(int(node))
++    for sortie_id in removed_sorties:
++        sortie = pre_sorties[sortie_id]
++        structural_entities.add(sortie_id)
++        if sortie.drone_id is not None:
++            external_resources.add(f"drone:{sortie.drone_id}")
++        for van_id in (sortie.launch_van_id, sortie.recovery_van_id):
++            if van_id is not None:
++                external_resources.add(f"van:{van_id}")
++        for customer in (
++            *sortie.customer_ids,
++            sortie.launch_node,
++            sortie.recovery_node,
++        ):
++            if customer in known_customers and customer not in actual:
++                external_customers.add(customer)
++    for transition in service_transitions:
++        if transition.customer_id not in actual:
++            external_customers.add(transition.customer_id)
++    for customer in actual | external_customers:
++        fact = pre_service.get(customer)
++        if fact is None:
++            continue
++        if fact.container_id is not None:
++            external_resources.add(f"container:{fact.container_id}")
++        if fact.assigned_transshipment is not None:
++            external_resources.add(f"warehouse:{fact.assigned_transshipment}")
++
++    mutated_links = tuple(sorted(pre_links ^ post_links))
++    mutated_edges = tuple(sorted(pre_edges ^ post_edges))
++    structural_entities.update(mutated_links)
++    structural_entities.update(mutated_edges)
++    boundary = ExternalBoundaryEntities(
++        customer_ids=tuple(sorted(external_customers)),
++        resource_ids=tuple(sorted(external_resources)),
++        structural_entity_ids=tuple(sorted(structural_entities)),
++    )
++    footprint = MutationFootprint(
++        mutated_van_route_ids=tuple(mutation.van_id for mutation in route_mutations),
++        mutated_contiguous_route_intervals=tuple(route_mutations),
++        removed_or_replaced_sortie_ids=removed_sorties,
++        added_or_replaced_sortie_ids=added_sorties,
++        mutated_sortie_customer_sequences=sortie_sequence_mutations,
++        mutated_launch_recovery_link_ids=mutated_links,
++        mutated_carrier_relation_ids=tuple(sorted(mutated_carriers)),
++        mutated_coordination_edge_ids=mutated_edges,
++        service_mode_transitions=tuple(service_transitions),
++        unassigned_transitions=tuple(unassigned_transitions),
++        external_customers_touched=boundary.customer_ids,
++        external_resources_touched=boundary.resource_ids,
++    )
++    return footprint, boundary
++
++
++def producer_capabilities_for(source_destroy_operator: str) -> Tuple[str, ...]:
++    descriptor = PRODUCER_DESCRIPTORS.get(source_destroy_operator)
++    if descriptor is None:
++        raise RemovalContextContractError(
++            f"unregistered removal context producer: {source_destroy_operator}"
++        )
++    return descriptor.capabilities
++
++
++def _context_id_payload(
++    *,
++    source_destroy_operator: str,
++    pre_fingerprint: str,
++    post_fingerprint: str,
++    selected: Tuple[int, ...],
++    actual: Tuple[int, ...],
++    selection_order: Tuple[int, ...],
++    deletion_order: Tuple[int, ...],
++    actual_order: Tuple[int, ...],
++) -> object:
++    return {
++        "schema_version": REMOVAL_CONTEXT_SCHEMA_VERSION,
++        "structural_context_version": STRUCTURAL_CONTEXT_VERSION,
++        "source_destroy_operator": source_destroy_operator,
++        "pre_destroy_structural_fingerprint": pre_fingerprint,
++        "post_destroy_structural_fingerprint": post_fingerprint,
++        "selected_removed_customer_ids": selected,
++        "actually_unassigned_customer_ids": actual,
++        "customer_selection_order": selection_order,
++        "deletion_attempt_order": deletion_order,
++        "actual_unassignment_order": actual_order,
++    }
++
++
++def finalize_removal_structural_context(
++    *,
++    pre_projection: StructuralProjection,
++    post_projection: StructuralProjection,
++    source_destroy_operator: str,
++    selected_removed_customer_ids: Iterable[int],
++    customer_selection_order: Iterable[int],
++    deletion_attempt_order: Iterable[int],
++    actual_unassignment_order: Iterable[int],
++    cascade_dependency_trace: Iterable[Tuple[int, int]] = (),
++    cascade_native_partition_evidence: Iterable[Iterable[int]] = (),
++    cascade_native_dependency_order: Iterable[Iterable[int]] = (),
++) -> RemovalStructuralContext:
++    capabilities = producer_capabilities_for(source_destroy_operator)
++    selected = tuple(sorted({int(customer) for customer in selected_removed_customer_ids}))
++    selection_order = tuple(int(customer) for customer in customer_selection_order)
++    deletion_order = tuple(int(customer) for customer in deletion_attempt_order)
++    actual_order = tuple(int(customer) for customer in actual_unassignment_order)
++    actual = tuple(
++        sorted(set(post_projection.unassigned) - set(pre_projection.unassigned))
++    )
++    if set(actual_order) != set(actual) or len(actual_order) != len(set(actual_order)):
++        raise RemovalContextContractError(
++            "actual unassignment order does not match authoritative pre/post transition"
++        )
++    if set(deletion_order) != set(selected):
++        raise RemovalContextContractError(
++            "deletion attempt order does not match selected removal set"
++        )
++
++    pre_fingerprint = structural_business_fingerprint(pre_projection)
++    post_fingerprint = structural_business_fingerprint(post_projection)
++    footprint, boundary = diff_structural_projection(pre_projection, post_projection, actual)
++    context_id = _digest(
++        _context_id_payload(
++            source_destroy_operator=source_destroy_operator,
++            pre_fingerprint=pre_fingerprint,
++            post_fingerprint=post_fingerprint,
++            selected=selected,
++            actual=actual,
++            selection_order=selection_order,
++            deletion_order=deletion_order,
++            actual_order=actual_order,
++        )
++    )
++    relevant_customers = set(actual) | set(boundary.customer_ids)
++    mutated_vans = set(footprint.mutated_van_route_ids)
++    removed_sorties = set(footprint.removed_or_replaced_sortie_ids)
++    customer_facts = tuple(
++        fact
++        for fact in pre_projection.customer_service_facts
++        if fact.customer_id in relevant_customers
++    )
++    route_positions = tuple(
++        fact
++        for fact in pre_projection.route_position_facts
++        if fact.node_id in relevant_customers and fact.van_id in mutated_vans
++    )
++    route_segments = tuple(
++        fact
++        for fact in pre_projection.route_segment_facts
++        if fact.van_id in mutated_vans
++        and ({fact.start_node, fact.end_node} & relevant_customers)
++    )
++    drone_sorties = tuple(
++        fact
++        for fact in pre_projection.drone_sortie_facts
++        if fact.sortie_id in removed_sorties
++    )
++    launch_recovery = tuple(
++        fact
++        for fact in pre_projection.launch_recovery_facts
++        if fact.sortie_id in removed_sorties
++    )
++    carrier_transfers = tuple(
++        fact
++        for fact in pre_projection.carrier_transfer_facts
++        if fact.sortie_id in removed_sorties
++    )
++    coordination_edges = tuple(
++        fact
++        for fact in pre_projection.coordination_edge_facts
++        if any(fact.edge_id.startswith(f"{sortie_id}:") for sortie_id in removed_sorties)
++    )
++    external_projection = tuple(
++        fact
++        for fact in pre_projection.customer_service_facts
++        if fact.customer_id in boundary.customer_ids
++    )
++    context = RemovalStructuralContext(
++        schema_version=REMOVAL_CONTEXT_SCHEMA_VERSION,
++        structural_context_version=STRUCTURAL_CONTEXT_VERSION,
++        context_id=context_id,
++        source_destroy_operator=source_destroy_operator,
++        producer_capabilities=capabilities,
++        pre_destroy_structural_fingerprint=pre_fingerprint,
++        post_destroy_structural_fingerprint=post_fingerprint,
++        selected_removed_customer_ids=selected,
++        actually_unassigned_customer_ids=actual,
++        removal_order=deletion_order,
++        customer_selection_order=selection_order,
++        deletion_attempt_order=deletion_order,
++        actual_unassignment_order=actual_order,
++        pre_destroy_projection=pre_projection,
++        post_destroy_projection=post_projection,
++        customer_service_facts=customer_facts,
++        route_position_facts=route_positions,
++        route_segment_facts=route_segments,
++        drone_sortie_facts=drone_sorties,
++        launch_recovery_facts=launch_recovery,
++        carrier_transfer_facts=carrier_transfers,
++        coordination_edge_facts=coordination_edges,
++        mutation_footprint=footprint,
++        external_boundary_entities=boundary,
++        external_boundary_projection=external_projection,
++        cascade_dependency_trace=tuple(
++            (int(source), int(dependency))
++            for source, dependency in cascade_dependency_trace
++        ),
++        cascade_native_partition_evidence=tuple(
++            tuple(int(customer) for customer in bundle)
++            for bundle in cascade_native_partition_evidence
++        ),
++        cascade_native_dependency_order=tuple(
++            tuple(int(customer) for customer in bundle)
++            for bundle in cascade_native_dependency_order
++        ),
++    )
++    validate_removal_structural_context(context)
++    return context
++
++
++def validate_removal_structural_context(context: RemovalStructuralContext) -> None:
++    descriptor = PRODUCER_DESCRIPTORS.get(context.source_destroy_operator)
++    if descriptor is None:
++        raise RemovalContextContractError("context source is not a trusted producer")
++    if context.schema_version not in descriptor.schema_versions:
++        raise RemovalContextContractError("unsupported removal context schema")
++    if context.structural_context_version != descriptor.structural_context_version:
++        raise RemovalContextContractError("unsupported structural context version")
++    if context.producer_capabilities != descriptor.capabilities:
++        raise RemovalContextContractError("producer capability declaration mismatch")
++    if structural_business_fingerprint(context.pre_destroy_projection) != (
++        context.pre_destroy_structural_fingerprint
++    ):
++        raise RemovalContextContractError("pre projection fingerprint mismatch")
++    if structural_business_fingerprint(context.post_destroy_projection) != (
++        context.post_destroy_structural_fingerprint
++    ):
++        raise RemovalContextContractError("post projection fingerprint mismatch")
++    actual = tuple(
++        sorted(
++            set(context.post_destroy_projection.unassigned)
++            - set(context.pre_destroy_projection.unassigned)
++        )
++    )
++    if actual != context.actually_unassigned_customer_ids:
++        raise RemovalContextContractError("actual unassigned set mismatch")
++    footprint, boundary = diff_structural_projection(
++        context.pre_destroy_projection,
++        context.post_destroy_projection,
++        actual,
++    )
++    if footprint != context.mutation_footprint or boundary != context.external_boundary_entities:
++        raise RemovalContextContractError("authoritative mutation diff mismatch")
++    expected_id = _digest(
++        _context_id_payload(
++            source_destroy_operator=context.source_destroy_operator,
++            pre_fingerprint=context.pre_destroy_structural_fingerprint,
++            post_fingerprint=context.post_destroy_structural_fingerprint,
++            selected=context.selected_removed_customer_ids,
++            actual=context.actually_unassigned_customer_ids,
++            selection_order=context.customer_selection_order,
++            deletion_order=context.deletion_attempt_order,
++            actual_order=context.actual_unassignment_order,
++        )
++    )
++    if expected_id != context.context_id:
++        raise RemovalContextContractError("context ID mismatch")
++
++
++def active_removal_context(state: "TVDState") -> Optional[RemovalStructuralContext]:
++    value = state.metadata.get(ACTIVE_REMOVAL_CONTEXT_KEY)
++    if value is None:
++        return None
++    if not isinstance(value, RemovalStructuralContext):
++        raise RemovalContextContractError("active removal context has an invalid type")
++    return value
++
++
++def attach_active_removal_context(
++    state: "TVDState", context: RemovalStructuralContext
++) -> "TVDState":
++    if ACTIVE_REMOVAL_CONTEXT_KEY in state.metadata:
++        raise RemovalContextLifecycleError("candidate already carries an active removal context")
++    validate_removal_structural_context(context)
++    state.metadata[ACTIVE_REMOVAL_CONTEXT_KEY] = context
++    return state
++
++
++def detach_active_removal_context(
++    state: "TVDState",
++) -> Optional[RemovalStructuralContext]:
++    value = state.metadata.pop(ACTIVE_REMOVAL_CONTEXT_KEY, None)
++    if value is None:
++        return None
++    if not isinstance(value, RemovalStructuralContext):
++        raise RemovalContextContractError("active removal context has an invalid type")
++    validate_removal_structural_context(value)
++    return value
++
++
++def discard_active_removal_context(state: "TVDState") -> bool:
++    """Explicit safe discard for a new disposable destroy working copy."""
++
++    return state.metadata.pop(ACTIVE_REMOVAL_CONTEXT_KEY, None) is not None
++
++
++def assert_no_active_removal_context(state: "TVDState", *, owner: str) -> None:
++    if ACTIVE_REMOVAL_CONTEXT_KEY in state.metadata:
++        raise RemovalContextLifecycleError(
++            f"persistent {owner} State carries an active removal structural context"
++        )
++
++
++def copy_metadata_with_immutable_context(metadata: Dict[str, object]) -> Dict[str, object]:
++    context = metadata.get(ACTIVE_REMOVAL_CONTEXT_KEY)
++    if context is not None and not isinstance(context, RemovalStructuralContext):
++        raise RemovalContextContractError("active removal context has an invalid type")
++    copied = copy.deepcopy(
++        {key: value for key, value in metadata.items() if key != ACTIVE_REMOVAL_CONTEXT_KEY}
++    )
++    if context is not None:
++        copied[ACTIVE_REMOVAL_CONTEXT_KEY] = context
++    return copied
++
++
++def removal_context_boundary(function: Callable) -> Callable:
++    """Consume raw context at a public repair boundary and never return it."""
++
++    @wraps(function)
++    def wrapped(state: "TVDState", *args, **kwargs):
++        detach_active_removal_context(state)
++        try:
++            result = function(state, *args, **kwargs)
++        except BaseException:
++            discard_active_removal_context(state)
++            raise
++        discard_active_removal_context(result)
++        return result
++
++    return wrapped
+diff --git a/tvdctp_c_alns/state.py b/tvdctp_c_alns/state.py
+index 7a78981..40bad0e 100644
+--- a/tvdctp_c_alns/state.py
++++ b/tvdctp_c_alns/state.py
+@@ -8,6 +8,7 @@ from dataclasses import asdict, dataclass, field
+ from typing import Dict, Iterator, List, Optional, Tuple
+ 
+ from alns_profile import add_value, increment
++from removal_structural_context import copy_metadata_with_immutable_context
+ 
+ 
+ DroneSortie = Dict[str, object]
+@@ -321,7 +322,7 @@ class TVDState:
+             container_assignment=copy.deepcopy(self.container_assignment),
+             service_mode=self.service_mode.copy(),
+             unassigned=self.unassigned.copy(),
+-            metadata=copy.deepcopy(self.metadata),
++            metadata=copy_metadata_with_immutable_context(self.metadata),
+             timing=copy.deepcopy(self.timing),
+         )
+ 
+diff --git a/tvdctp_c_alns/tests/test_stage2ea1_structural_context.py b/tvdctp_c_alns/tests/test_stage2ea1_structural_context.py
+new file mode 100644
+index 0000000..613a5c2
+--- /dev/null
++++ b/tvdctp_c_alns/tests/test_stage2ea1_structural_context.py
+@@ -0,0 +1,646 @@
++from __future__ import annotations
++
++import hashlib
++import json
++from dataclasses import FrozenInstanceError, replace
++
++import numpy as np
++import pytest
++
++import operators
++from alns_solver import run_c_alns
++from config import build_config
++from dataset_loader import generate_toy_data
++from feasibility import check_solution_feasible
++from initial_solution import initial_solution
++from objective import objective
++from removal_structural_context import (
++    ACTIVE_REMOVAL_CONTEXT_KEY,
++    CASCADE_PRODUCER_CAPABILITIES,
++    COMMON_PRODUCER_CAPABILITIES,
++    RemovalContextContractError,
++    active_removal_context,
++    capture_structural_projection,
++    discard_active_removal_context,
++    removal_context_boundary,
++    structural_business_fingerprint,
++    validate_removal_structural_context,
++)
++from tests.test_stage2d0_cascade_contract import (
++    FixedChoiceRng,
++    _coordinated_fixture,
++    _set_destroy_count,
++)
++
++
++PAPER_DESTROYS = (
++    operators.random_customer_removal,
++    operators.greedy_removal,
++    operators.related_customer_removal,
++    operators.cascade_aware_removal,
++)
++
++
++def _business_fingerprint(state) -> str:
++    return hashlib.sha256(repr(state.cache_signature()).encode("utf-8")).hexdigest()
++
++
++def _rng_digest(rng: np.random.Generator) -> str:
++    payload = json.dumps(
++        rng.bit_generator.state,
++        sort_keys=True,
++        separators=(",", ":"),
++    )
++    return hashlib.sha256(payload.encode("utf-8")).hexdigest()
++
++
++def _stable_diagnostic(value):
++    if isinstance(value, dict):
++        return tuple(
++            (key, _stable_diagnostic(item))
++            for key, item in sorted(value.items())
++            if "seconds" not in key
++        )
++    if isinstance(value, list):
++        return tuple(_stable_diagnostic(item) for item in value)
++    if isinstance(value, tuple):
++        return tuple(_stable_diagnostic(item) for item in value)
++    if isinstance(value, set):
++        return tuple(sorted(_stable_diagnostic(item) for item in value))
++    return value
++
++
++class ScalarChoiceRng:
++    def __init__(self, selected: int) -> None:
++        self.selected = int(selected)
++        self.calls = []
++
++    def choice(self, values, size=None, replace=True):
++        self.calls.append((tuple(int(value) for value in values), size, bool(replace)))
++        if size is None:
++            return self.selected
++        return np.asarray([self.selected], dtype=int)
++
++
++def _legacy_random(state, rng, data, config):
++    destroyed = state.copy()
++    operators._clear_stale_cascade_metadata(destroyed)
++    served = operators._served_customers(destroyed)
++    count = min(operators._removal_count(data, config), len(served))
++    selected = rng.choice(served, size=count, replace=False).tolist() if served else []
++    operators._record_destroy_diagnostics(destroyed, selected, data)
++    return operators._remove_customers(destroyed, selected)
++
++
++def _legacy_greedy(state, rng, data, config):
++    destroyed = state.copy()
++    operators._clear_stale_cascade_metadata(destroyed)
++    base_cost, _ = operators.objective(destroyed.copy(), data, config)
++    scores = []
++    for customer in operators._served_customers(destroyed):
++        trial = destroyed.copy()
++        operators._remove_customer(trial, customer)
++        trial.clean_unassigned(customer)
++        trial_cost, _ = operators.objective(trial, data, config)
++        scores.append((base_cost - trial_cost, customer))
++    count = min(operators._removal_count(data, config), len(scores))
++    selected = [customer for _, customer in sorted(scores, reverse=True)[:count]]
++    operators._record_destroy_diagnostics(destroyed, selected, data)
++    return operators._remove_customers(destroyed, selected)
++
++
++def _legacy_related(state, rng, data, config):
++    destroyed = state.copy()
++    operators._clear_stale_cascade_metadata(destroyed)
++    served = operators._served_customers(destroyed)
++    if not served:
++        return destroyed
++    seed = int(rng.choice(served))
++    count = min(operators._removal_count(data, config), len(served))
++    selected = sorted(
++        served, key=lambda customer: data.ground_distance_matrix[seed, customer]
++    )[:count]
++    operators._record_destroy_diagnostics(destroyed, selected, data)
++    return operators._remove_customers(destroyed, selected)
++
++
++@pytest.mark.parametrize(
++    ("current", "legacy", "expected_selected", "expected_output"),
++    (
++        (
++            operators.random_customer_removal,
++            _legacy_random,
++            (12,),
++            "994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978",
++        ),
++        (
++            operators.greedy_removal,
++            _legacy_greedy,
++            (7,),
++            "ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb",
++        ),
++        (
++            operators.related_customer_removal,
++            _legacy_related,
++            (12,),
++            "994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978",
++        ),
++    ),
++)
++def test_ordinary_destroy_strict_equivalence(
++    current, legacy, expected_selected, expected_output
++) -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    source_before = source.cache_signature()
++    legacy_rng = np.random.default_rng(29)
++    current_rng = np.random.default_rng(29)
++
++    expected = legacy(source, legacy_rng, data, config)
++    actual = current(source, current_rng, data, config)
++    context = active_removal_context(actual)
++
++    assert source.cache_signature() == source_before
++    assert expected.cache_signature() == actual.cache_signature()
++    assert _rng_digest(legacy_rng) == _rng_digest(current_rng)
++    assert _business_fingerprint(actual) == expected_output
++    assert context is not None
++    assert context.selected_removed_customer_ids == expected_selected
++    assert context.actually_unassigned_customer_ids == tuple(sorted(actual.unassigned))
++    assert context.deletion_attempt_order == tuple(actual.unassigned)
++
++
++def test_greedy_trial_sequence_and_ranking_are_unchanged(monkeypatch) -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    original_objective = operators.objective
++    trace = []
++
++    def recording_objective(state, data, config):
++        value = original_objective(state, data, config)
++        trace.append((state.cache_signature(), value[0]))
++        return value
++
++    monkeypatch.setattr(operators, "objective", recording_objective)
++    _legacy_greedy(source, np.random.default_rng(29), data, config)
++    legacy_trace = tuple(trace)
++    trace.clear()
++    actual = operators.greedy_removal(source, np.random.default_rng(29), data, config)
++
++    assert tuple(trace) == legacy_trace
++    assert active_removal_context(actual).selected_removed_customer_ids == (7,)
++
++
++def test_related_seed_and_static_order_are_unchanged() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    rng = np.random.default_rng(29)
++    destroyed = operators.related_customer_removal(source, rng, data, config)
++    context = active_removal_context(destroyed)
++    ranking = sorted(
++        operators._served_customers(source),
++        key=lambda customer: data.ground_distance_matrix[12, customer],
++    )
++
++    assert ranking == [12, 9, 5, 6, 11, 8, 10, 7]
++    assert context.customer_selection_order == (12,)
++    assert context.selected_removed_customer_ids == (12,)
++
++
++def test_cascade_destroy_and_old_contract_strict_equivalence() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    rng = np.random.default_rng(29)
++    destroyed = operators.cascade_aware_removal(source, rng, data, config)
++    context = active_removal_context(destroyed)
++    contract = destroyed.metadata["cascade_contract"]
++    bundles = destroyed.metadata["cascade_bundles"]
++
++    assert _business_fingerprint(destroyed) == (
++        "994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978"
++    )
++    assert context.customer_selection_order == (12,)
++    assert context.selected_removed_customer_ids == (12,)
++    assert context.cascade_dependency_trace == ()
++    assert context.cascade_native_partition_evidence == ((12,),)
++    assert context.cascade_native_dependency_order == ((12,),)
++    assert contract["destroy_call_id"] == (
++        "85e5862611154e12ca70c77ed253dd4c4e0b0ee5d825033781752b690e2e7176"
++    )
++    assert bundles[0].contract_fingerprint() == (
++        "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c"
++    )
++    assert operators.cascade_metadata_is_current(destroyed)
++
++
++def test_selected_ids_and_actual_unassigned_are_distinct_facts() -> None:
++    config, data, source, ids = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    anchor = ids["same_anchor"]
++
++    random_result = operators.random_customer_removal(
++        source, FixedChoiceRng([anchor]), data, config
++    )
++    related_result = operators.related_customer_removal(
++        source, ScalarChoiceRng(anchor), data, config
++    )
++    cascade_result = operators.cascade_aware_removal(
++        source, FixedChoiceRng([anchor]), data, config
++    )
++    greedy_result = operators.greedy_removal(
++        source, np.random.default_rng(29), data, config
++    )
++
++    assert active_removal_context(random_result).selected_removed_customer_ids == (5,)
++    assert active_removal_context(random_result).actually_unassigned_customer_ids == (5, 7)
++    assert active_removal_context(related_result).selected_removed_customer_ids == (5,)
++    assert active_removal_context(related_result).actually_unassigned_customer_ids == (5, 7)
++    assert active_removal_context(cascade_result).customer_selection_order == (5,)
++    assert active_removal_context(cascade_result).selected_removed_customer_ids == (5, 7)
++    assert active_removal_context(cascade_result).actually_unassigned_customer_ids == (5, 7)
++    assert active_removal_context(greedy_result).selected_removed_customer_ids == (7,)
++    assert active_removal_context(greedy_result).actually_unassigned_customer_ids == (7,)
++
++
++def test_mutation_footprint_covers_route_sortie_links_and_carrier_transfer() -> None:
++    config, data, source, ids = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++
++    route_result = operators.random_customer_removal(
++        source, FixedChoiceRng([ids["plain_van_customer"]]), data, config
++    )
++    route_context = active_removal_context(route_result)
++    assert route_context.mutation_footprint.mutated_van_route_ids == ("van_0",)
++    assert route_context.mutation_footprint.mutated_contiguous_route_intervals
++
++    cross_result = operators.random_customer_removal(
++        source, FixedChoiceRng([ids["cross_drone_customer"]]), data, config
++    )
++    cross_footprint = active_removal_context(cross_result).mutation_footprint
++    assert cross_footprint.removed_or_replaced_sortie_ids
++    assert len(cross_footprint.mutated_launch_recovery_link_ids) == 2
++    assert cross_footprint.mutated_coordination_edge_ids
++    assert any("carrier" in relation for relation in cross_footprint.mutated_carrier_relation_ids)
++
++
++def test_multi_customer_sortie_uses_authoritative_collateral_diff() -> None:
++    config, data, source, ids = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    first = source.drone_sorties[0]
++    first["customers"] = [ids["same_drone_customer"], ids["plain_van_customer"]]
++    source.van_routes[ids["launch_van"]] = [
++        node
++        for node in source.van_routes[ids["launch_van"]]
++        if node != ids["plain_van_customer"]
++    ]
++    source.sync_primary_van_route()
++    source.service_mode[ids["plain_van_customer"]] = "drone"
++
++    destroyed = operators.random_customer_removal(
++        source, FixedChoiceRng([ids["same_drone_customer"]]), data, config
++    )
++    context = active_removal_context(destroyed)
++
++    assert context.selected_removed_customer_ids == (ids["same_drone_customer"],)
++    assert context.actually_unassigned_customer_ids == tuple(
++        sorted((ids["same_drone_customer"], ids["plain_van_customer"]))
++    )
++    assert context.mutation_footprint.mutated_sortie_customer_sequences[0].pre_customer_ids == (
++        ids["same_drone_customer"],
++        ids["plain_van_customer"],
++    )
++
++
++def test_external_boundary_is_direct_and_not_whole_route() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    destroyed = operators.random_customer_removal(
++        source, FixedChoiceRng([10]), data, config
++    )
++    context = active_removal_context(destroyed)
++
++    assert context.actually_unassigned_customer_ids == (10,)
++    assert context.external_boundary_entities.customer_ids == (9, 11)
++    assert 5 not in context.external_boundary_entities.customer_ids
++    assert 12 not in context.external_boundary_entities.customer_ids
++
++
++@pytest.mark.parametrize("destroy", PAPER_DESTROYS)
++def test_context_and_algorithm_rng_are_deterministic_across_three_runs(destroy) -> None:
++    rows = []
++    for _ in range(3):
++        config, data, source, _ = _coordinated_fixture()
++        _set_destroy_count(config, data, 1)
++        rng = np.random.default_rng(29)
++        result = destroy(source, rng, data, config)
++        context = active_removal_context(result)
++        rows.append(
++            (
++                context,
++                context.context_id,
++                context.mutation_footprint,
++                result.cache_signature(),
++                _rng_digest(rng),
++            )
++        )
++    assert rows[0] == rows[1] == rows[2]
++
++
++def test_context_id_distinguishes_different_destroy_result() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    first = operators.random_customer_removal(source, FixedChoiceRng([10]), data, config)
++    second = operators.random_customer_removal(source, FixedChoiceRng([12]), data, config)
++    assert active_removal_context(first).context_id != active_removal_context(second).context_id
++
++
++def test_structural_fingerprint_cache_and_stage2d_fingerprint_ignore_context() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    destroyed = operators.random_customer_removal(
++        source, np.random.default_rng(29), data, config
++    )
++    without = destroyed.copy()
++    discard_active_removal_context(without)
++
++    assert structural_business_fingerprint(capture_structural_projection(destroyed)) == (
++        structural_business_fingerprint(capture_structural_projection(without))
++    )
++    assert destroyed.cache_signature() == without.cache_signature()
++    assert operators._state_business_fingerprint(destroyed) == (
++        operators._state_business_fingerprint(without)
++    )
++
++
++def test_state_copy_shares_only_fully_immutable_context() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    destroyed = operators.random_customer_removal(
++        source, np.random.default_rng(29), data, config
++    )
++    copied = destroyed.copy()
++    original_context = active_removal_context(destroyed)
++    copied_context = active_removal_context(copied)
++
++    assert original_context is copied_context
++    with pytest.raises(FrozenInstanceError):
++        copied_context.context_id = "changed"
++    copied.van_routes["van_0"].append(999)
++    assert 999 not in destroyed.van_routes["van_0"]
++    assert not hasattr(original_context, "state")
++    assert not hasattr(original_context, "live_route")
++
++
++def test_context_schema_is_repair_agnostic_and_capabilities_are_trusted() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    ordinary = active_removal_context(
++        operators.random_customer_removal(source, np.random.default_rng(29), data, config)
++    )
++    cascade = active_removal_context(
++        operators.cascade_aware_removal(source, np.random.default_rng(29), data, config)
++    )
++
++    assert ordinary.producer_capabilities == COMMON_PRODUCER_CAPABILITIES
++    assert cascade.producer_capabilities == (
++        COMMON_PRODUCER_CAPABILITIES + CASCADE_PRODUCER_CAPABILITIES
++    )
++    for forbidden in (
++        "repair_bundles",
++        "dependency_order",
++        "repair_strategy",
++        "objective_value",
++        "repair_candidate",
++        "selected_repair",
++        "top_k",
++        "beam",
++    ):
++        assert not hasattr(ordinary, forbidden)
++    with pytest.raises(RemovalContextContractError):
++        validate_removal_structural_context(
++            replace(ordinary, producer_capabilities=("invented",))
++        )
++
++
++@pytest.mark.parametrize(
++    ("destroy", "repair"),
++    (
++        (operators.random_customer_removal, operators.best_mode_repair),
++        (operators.random_customer_removal, operators.greedy_van_repair),
++        (operators.random_customer_removal, operators.regret_repair),
++        (operators.cascade_aware_removal, operators.cascade_repair),
++    ),
++)
++def test_public_repair_lifecycle_consumes_context(destroy, repair) -> None:
++    config, data, current, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    best = current.copy()
++    rng = np.random.default_rng(29)
++    destroyed = destroy(current, rng, data, config)
++    assert active_removal_context(destroyed) is not None
++
++    repaired = repair(destroyed, rng, data, config)
++
++    assert active_removal_context(destroyed) is None
++    assert active_removal_context(repaired) is None
++    assert active_removal_context(current) is None
++    assert active_removal_context(best) is None
++
++
++def test_nested_registered_repair_and_failure_paths_do_not_leak_context() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    destroyed = operators.random_customer_removal(
++        source, np.random.default_rng(29), data, config
++    )
++    repaired = operators.greedy_drone_repair(
++        destroyed, np.random.default_rng(29), data, config
++    )
++    assert active_removal_context(repaired) is None
++
++    failing_input = operators.random_customer_removal(
++        source, np.random.default_rng(29), data, config
++    )
++
++    @removal_context_boundary
++    def controlled_failure(state):
++        raise RuntimeError("controlled")
++
++    with pytest.raises(RuntimeError, match="controlled"):
++        controlled_failure(failing_input)
++    assert active_removal_context(failing_input) is None
++
++
++def test_stale_raw_context_is_explicitly_discarded_on_new_working_copy() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    first = operators.random_customer_removal(
++        source, FixedChoiceRng([12]), data, config
++    )
++    first_context = active_removal_context(first)
++    second = operators.related_customer_removal(first, ScalarChoiceRng(10), data, config)
++    second_context = active_removal_context(second)
++
++    assert active_removal_context(first) is first_context
++    assert second_context is not first_context
++    assert second_context.context_id != first_context.context_id
++
++
++def test_objective_checker_and_violations_are_context_isolated() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    with_context = operators.random_customer_removal(
++        source, np.random.default_rng(29), data, config
++    )
++    without_context = with_context.copy()
++    discard_active_removal_context(without_context)
++
++    with_cost, with_breakdown = objective(with_context, data, config)
++    without_cost, without_breakdown = objective(without_context, data, config)
++    with_feasible, with_violations = check_solution_feasible(with_context, data, config)
++    without_feasible, without_violations = check_solution_feasible(
++        without_context, data, config
++    )
++
++    assert with_cost == without_cost
++    assert with_breakdown == without_breakdown
++    assert with_feasible == without_feasible
++    assert with_violations == without_violations
++
++
++PAIR_BASELINE = {
++    "Random+Global": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Random+Local": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Random+Regret": (926.373751792, "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc", True, "returned"),
++    "Random+Cascade": (10926.095429883, "994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978", False, "failure"),
++    "Greedy+Global": (765.252317540, "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76", True, "returned"),
++    "Greedy+Local": (773.150287337, "95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933", True, "returned"),
++    "Greedy+Regret": (765.252317540, "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76", True, "returned"),
++    "Greedy+Cascade": (10762.799812194, "ade2fc27ba74b9753cd49b4f68f1ff6e08d9773140ae99c000c7d11a82f846eb", False, "failure"),
++    "Related+Global": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Related+Local": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Related+Regret": (926.373751792, "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc", True, "returned"),
++    "Related+Cascade": (10926.095429883, "994ee663d6eab6c29ae1fe15c05c872811903b8c57b8de5826a3cfe3437c0978", False, "failure"),
++    "Cascade+Global": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Cascade+Local": (40927.316361140, "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76", False, "returned"),
++    "Cascade+Regret": (926.373751792, "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc", True, "returned"),
++    "Cascade+Cascade": (927.880274816, "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e", True, "success"),
++}
++
++CANDIDATE_TRACE_BASELINE = {
++    "Random+Local": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
++    "Random+Regret": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
++    "Greedy+Local": "d023cf038d2c5cfcebb09f30a18ee16a7f5188478bbae33833368832761ea74f",
++    "Greedy+Regret": "1b8736acc5cf5a18cc4290b707a063626fa914f861eeeaabe12baba84e68626d",
++    "Related+Local": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
++    "Related+Regret": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
++    "Cascade+Local": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
++    "Cascade+Regret": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
++}
++
++
++def test_existing_13_pairs_and_three_blocked_pairs_are_exactly_unchanged() -> None:
++    destroys = (
++        ("Random", operators.random_customer_removal),
++        ("Greedy", operators.greedy_removal),
++        ("Related", operators.related_customer_removal),
++        ("Cascade", operators.cascade_aware_removal),
++    )
++    repairs = (
++        ("Global", operators.best_mode_repair),
++        ("Local", operators.greedy_van_repair),
++        ("Regret", operators.regret_repair),
++        ("Cascade", operators.cascade_repair),
++    )
++    compatible = 0
++    incompatible = 0
++    for destroy_name, destroy in destroys:
++        for repair_name, repair in repairs:
++            config, data, source, _ = _coordinated_fixture()
++            _set_destroy_count(config, data, 1)
++            rng = np.random.default_rng(29)
++            destroyed = destroy(source, rng, data, config)
++            pair_name = f"{destroy_name}+{repair_name}"
++            trace = []
++            if repair_name in {"Local", "Regret"}:
++                repaired = repair(
++                    destroyed,
++                    rng,
++                    data,
++                    config,
++                    trace_collector=trace.append,
++                )
++                assert hashlib.sha256(
++                    repr(_stable_diagnostic(trace)).encode()
++                ).hexdigest() == CANDIDATE_TRACE_BASELINE[pair_name]
++            else:
++                repaired = repair(destroyed, rng, data, config)
++            cost, _ = objective(repaired, data, config)
++            feasible, _ = check_solution_feasible(repaired, data, config)
++            status = repaired.metadata.get("cascade_repair_diagnostics", {}).get(
++                "status", "returned"
++            )
++            expected = PAIR_BASELINE[pair_name]
++            assert cost == pytest.approx(expected[0])
++            assert _business_fingerprint(repaired) == expected[1]
++            assert feasible is expected[2]
++            assert status == expected[3]
++            if repair_name == "Cascade" and destroy_name != "Cascade":
++                incompatible += 1
++                assert "missing cascade contract" in repaired.metadata[
++                    "cascade_repair_diagnostics"
++                ]["reason"]
++            else:
++                compatible += 1
++            assert active_removal_context(repaired) is None
++    assert (compatible, incompatible) == (13, 3)
++
++
++def test_cascade_plus_cascade_candidate_sequence_and_contract_are_exact() -> None:
++    config, data, source, _ = _coordinated_fixture()
++    _set_destroy_count(config, data, 1)
++    rng = np.random.default_rng(29)
++    destroyed = operators.cascade_aware_removal(source, rng, data, config)
++    contract = dict(destroyed.metadata["cascade_contract"])
++    bundles = tuple(bundle.canonical_json() for bundle in destroyed.metadata["cascade_bundles"])
++    repaired = operators.cascade_repair(destroyed, rng, data, config)
++    diagnostics = repaired.metadata["cascade_repair_diagnostics"]
++
++    assert contract["source_operator"] == operators.CASCADE_SOURCE_OPERATOR
++    assert bundles
++    assert diagnostics["status"] == "success"
++    row = diagnostics["bundles"][0]
++    stable_sequence = (
++        row["bundle_id"],
++        row["raw_bundle_strategy_count"],
++        row["feasible_bundle_strategy_count"],
++        row["unique_bundle_strategy_count"],
++        row["strategy_generation_sequence"],
++        row["selected_strategy_identity"],
++        round(row["selected_objective"], 9),
++    )
++    assert hashlib.sha256(repr(stable_sequence).encode()).hexdigest() == (
++        "5723032f866258bfdca59723af105deca19f9880202acd8d20e8886e1b2ea010"
++    )
++    assert _business_fingerprint(repaired) == PAIR_BASELINE["Cascade+Cascade"][1]
++
++
++def test_solver_persistent_states_are_context_free() -> None:
++    config = build_config(
++        num_customers=4,
++        num_orders=4,
++        num_transshipments=2,
++        num_containers=1,
++        iterations=2,
++        seed=42,
++        drone_enabled=False,
++    )
++    config.data.high_floor_ratio = 0.0
++    data = generate_toy_data(config)
++    data.is_high_floor = {customer: False for customer in data.customers}
++    result = run_c_alns(data, config)
++
++    assert active_removal_context(result.initial_state) is None
++    assert active_removal_context(result.current_state) is None
++    assert active_removal_context(result.best_state) is None
++    assert ACTIVE_REMOVAL_CONTEXT_KEY not in result.history[-1]
