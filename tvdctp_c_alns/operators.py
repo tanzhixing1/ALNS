@@ -31,12 +31,23 @@ from feasibility import (
     sortie_nodes,
 )
 from objective import objective
+from ordinary_cascade_adapter import (
+    ADAPTED_DEPENDENCY_ORDER_SEMANTICS,
+    ORDINARY_CASCADE_ADAPTER_VERSION,
+    ORDINARY_CASCADE_SOURCES,
+    OrdinaryCascadeAdapterError,
+    adapt_removal_context_to_cascade_bundles,
+    install_adapted_cascade_contract,
+)
 from removal_structural_context import (
+    RemovalContextContractError,
     attach_active_removal_context,
     capture_structural_projection,
+    detach_active_removal_context,
     discard_active_removal_context,
     finalize_removal_structural_context,
     removal_context_boundary,
+    structural_business_fingerprint,
 )
 from state import (
     AffectedStructureScope,
@@ -157,7 +168,15 @@ def cascade_metadata_is_current(state: TVDState) -> bool:
         return False
     if contract.get("schema_version") != CASCADE_CONTRACT_SCHEMA_VERSION:
         return False
-    if contract.get("source_operator") != CASCADE_SOURCE_OPERATOR:
+    source_operator = contract.get("source_operator")
+    is_native = source_operator == CASCADE_SOURCE_OPERATOR
+    is_adapted = (
+        source_operator in ORDINARY_CASCADE_SOURCES
+        and contract.get("ordinary_adapter_version")
+        == ORDINARY_CASCADE_ADAPTER_VERSION
+        and isinstance(contract.get("source_context_id"), str)
+    )
+    if not (is_native or is_adapted):
         return False
     if contract.get("destroyed_state_fingerprint") != _state_business_fingerprint(state):
         return False
@@ -171,6 +190,7 @@ def cascade_metadata_is_current(state: TVDState) -> bool:
         and all(
             bundle.source_destroy_call_id == contract.get("destroy_call_id")
             and bundle.source_state_fingerprint == contract.get("source_state_fingerprint")
+            and bundle.source_operator == source_operator
             for bundle in bundles
         )
     )
@@ -3092,7 +3112,13 @@ def _validate_bundle_snapshot(
     customer_set = set(customers)
     if bundle.schema_version != CASCADE_CONTRACT_SCHEMA_VERSION:
         errors.append(f"{bundle.bundle_id}: schema mismatch")
-    if bundle.source_operator != CASCADE_SOURCE_OPERATOR:
+    contract_source = contract.get("source_operator")
+    is_adapted = (
+        contract_source in ORDINARY_CASCADE_SOURCES
+        and contract.get("ordinary_adapter_version")
+        == ORDINARY_CASCADE_ADAPTER_VERSION
+    )
+    if bundle.source_operator != contract_source:
         errors.append(f"{bundle.bundle_id}: source operator mismatch")
     if bundle.source_destroy_call_id != contract.get("destroy_call_id"):
         errors.append(f"{bundle.bundle_id}: destroy revision mismatch")
@@ -3106,9 +3132,12 @@ def _validate_bundle_snapshot(
         customers
     ):
         errors.append(f"{bundle.bundle_id}: dependency_order is not the bundle membership")
-    if bundle.dependency_order_semantics != (
-        "current implementation order; Paper unspecified"
-    ):
+    expected_order_semantics = (
+        ADAPTED_DEPENDENCY_ORDER_SEMANTICS
+        if is_adapted
+        else "current implementation order; Paper unspecified"
+    )
+    if bundle.dependency_order_semantics != expected_order_semantics:
         errors.append(f"{bundle.bundle_id}: dependency_order semantics mismatch")
 
     services = bundle.customer_service_snapshots
@@ -3198,7 +3227,25 @@ def _validate_bundle_snapshot(
         errors.append(f"{bundle.bundle_id}: affected launch/recovery scope mismatch")
     if scope.carrier_link_ids != expected_carrier_ids:
         errors.append(f"{bundle.bundle_id}: affected carrier scope mismatch")
-    if scope.coordination_edge_ids != expected_coordination_ids:
+    if is_adapted:
+        boundary_ids = {
+            f"ordinary-adapter:v{ORDINARY_CASCADE_ADAPTER_VERSION}:"
+            f"external-boundary:customer:{customer}"
+            for customer in contract.get("external_boundary_customer_ids", ())
+        }
+        actual_coordination = set(scope.coordination_edge_ids)
+        required_coordination = set(expected_coordination_ids) | boundary_ids
+        allowed_prefix = (
+            f"ordinary-adapter:v{ORDINARY_CASCADE_ADAPTER_VERSION}:edge:"
+        )
+        unexpected = actual_coordination - required_coordination
+        if (
+            len(actual_coordination) != len(scope.coordination_edge_ids)
+            or not required_coordination.issubset(actual_coordination)
+            or any(not edge.startswith(allowed_prefix) for edge in unexpected)
+        ):
+            errors.append(f"{bundle.bundle_id}: adapted coordination scope mismatch")
+    elif scope.coordination_edge_ids != expected_coordination_ids:
         errors.append(f"{bundle.bundle_id}: affected coordination scope mismatch")
     expected_truck_context = f"selected_transshipment:{state.selected_transshipment}"
     if expected_truck_context not in scope.truck_context_ids:
@@ -3236,6 +3283,29 @@ def _validated_cascade_bundles(
         errors.append("cascade_removed does not equal the bundle membership union")
     if not seen.issubset(set(int(customer) for customer in state.unassigned)):
         errors.append("a bundle customer is not unassigned in the destroyed State")
+    if contract.get("source_operator") in ORDINARY_CASCADE_SOURCES:
+        try:
+            actual = tuple(
+                int(customer)
+                for customer in contract.get("actual_unassigned_customer_ids", ())
+            )
+            external = {
+                int(customer)
+                for customer in contract.get("external_boundary_customer_ids", ())
+            }
+        except (TypeError, ValueError):
+            actual = ()
+            external = set()
+            errors.append("adapted actual-R or external boundary is malformed")
+        if set(actual) != seen:
+            errors.append("adapted actual-R does not equal the bundle membership union")
+        if seen.intersection(external):
+            errors.append("adapted bundle membership overlaps external boundary")
+        current_post_fingerprint = structural_business_fingerprint(
+            capture_structural_projection(state)
+        )
+        if current_post_fingerprint != contract.get("post_structural_fingerprint"):
+            errors.append("adapted destroyed State post fingerprint mismatch")
     for bundle in bundles:
         errors.extend(_validate_bundle_snapshot(bundle, contract, state))
     return (None, errors) if errors else (bundles, [])
@@ -3283,6 +3353,15 @@ def _external_structure_projection(
     )
 
 
+def external_boundary_business_projection(
+    state: TVDState,
+    excluded_customers: Set[int],
+) -> Tuple[object, ...]:
+    """Normalized business projection protecting every customer outside R."""
+
+    return _external_structure_projection(state, excluded_customers)
+
+
 def _candidate_changes_only_affected_scope(
     before: TVDState,
     candidate: TVDState,
@@ -3307,8 +3386,8 @@ def _candidate_changes_only_affected_scope(
             recovery_van = str(sortie.get("recovery_van_id", launch_van))
             if launch_van not in affected_vans or recovery_van not in affected_vans:
                 return False
-    return _external_structure_projection(before, bundle_customers) == (
-        _external_structure_projection(candidate, bundle_customers)
+    return external_boundary_business_projection(before, bundle_customers) == (
+        external_boundary_business_projection(candidate, bundle_customers)
     )
 
 
@@ -3682,10 +3761,16 @@ def _finish_cascade_result(
     return state
 
 
-@removal_context_boundary
 def cascade_repair(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
+    removal_context = None
+    context_error: Optional[str] = None
+    try:
+        removal_context = detach_active_removal_context(state)
+    except (RemovalContextContractError, OrdinaryCascadeAdapterError) as exc:
+        context_error = str(exc)
+        discard_active_removal_context(state)
     enter_repair("cascade_repair")
     started = time.perf_counter()
     metrics: Dict[str, object] = {
@@ -3701,6 +3786,65 @@ def cascade_repair(
         # rng is intentionally unused: bundle order and exact ties are stable.
         _ = rng
         repair_base = _cascade_state_copy(state, metrics)
+        if context_error is not None:
+            return _finish_cascade_result(
+                repair_base,
+                status="failure",
+                reason=f"invalid removal context: {context_error}",
+                metrics=metrics,
+                bundle_rows=bundle_rows,
+                started=started,
+            )
+        if (
+            removal_context is not None
+            and removal_context.source_destroy_operator in ORDINARY_CASCADE_SOURCES
+        ):
+            if any(key in repair_base.metadata for key in CASCADE_METADATA_KEYS):
+                return _finish_cascade_result(
+                    repair_base,
+                    status="failure",
+                    reason="ordinary removal retained stale Cascade metadata",
+                    metrics=metrics,
+                    bundle_rows=bundle_rows,
+                    started=started,
+                )
+            adapter_metrics: Dict[str, object] = {}
+            try:
+                adapted_bundles = adapt_removal_context_to_cascade_bundles(
+                    removal_context,
+                    repair_base,
+                    diagnostics=adapter_metrics,
+                )
+                install_adapted_cascade_contract(
+                    repair_base,
+                    removal_context,
+                    adapted_bundles,
+                )
+            except (RemovalContextContractError, OrdinaryCascadeAdapterError) as exc:
+                metrics.update(adapter_metrics)
+                return _finish_cascade_result(
+                    repair_base,
+                    status="failure",
+                    reason=f"ordinary adapter rejected context: {exc}",
+                    metrics=metrics,
+                    bundle_rows=bundle_rows,
+                    started=started,
+                )
+            metrics.update(adapter_metrics)
+        elif (
+            removal_context is None
+            and isinstance(repair_base.metadata.get("cascade_contract"), dict)
+            and repair_base.metadata["cascade_contract"].get("source_operator")
+            in ORDINARY_CASCADE_SOURCES
+        ):
+            return _finish_cascade_result(
+                repair_base,
+                status="failure",
+                reason="adapted Cascade contract is missing its active source context",
+                metrics=metrics,
+                bundle_rows=bundle_rows,
+                started=started,
+            )
         bundles, contract_errors = _validated_cascade_bundles(repair_base)
         if bundles is None:
             return _finish_cascade_result(
@@ -3802,6 +3946,7 @@ def cascade_repair(
             started=started,
         )
     finally:
+        discard_active_removal_context(state)
         exit_repair("cascade_repair")
 
 

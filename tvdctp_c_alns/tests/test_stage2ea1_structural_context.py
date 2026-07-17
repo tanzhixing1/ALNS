@@ -539,7 +539,7 @@ CANDIDATE_TRACE_BASELINE = {
 }
 
 
-def test_existing_13_pairs_and_three_blocked_pairs_are_exactly_unchanged() -> None:
+def test_existing_13_pairs_are_exactly_unchanged() -> None:
     destroys = (
         ("Random", operators.random_customer_removal),
         ("Greedy", operators.greedy_removal),
@@ -553,9 +553,11 @@ def test_existing_13_pairs_and_three_blocked_pairs_are_exactly_unchanged() -> No
         ("Cascade", operators.cascade_repair),
     )
     compatible = 0
-    incompatible = 0
     for destroy_name, destroy in destroys:
         for repair_name, repair in repairs:
+            if repair_name == "Cascade" and destroy_name != "Cascade":
+                # Stage 2E-A.2 owns the three newly adapted pair assertions.
+                continue
             config, data, source, _ = _coordinated_fixture()
             _set_destroy_count(config, data, 1)
             rng = np.random.default_rng(29)
@@ -585,15 +587,9 @@ def test_existing_13_pairs_and_three_blocked_pairs_are_exactly_unchanged() -> No
             assert _business_fingerprint(repaired) == expected[1]
             assert feasible is expected[2]
             assert status == expected[3]
-            if repair_name == "Cascade" and destroy_name != "Cascade":
-                incompatible += 1
-                assert "missing cascade contract" in repaired.metadata[
-                    "cascade_repair_diagnostics"
-                ]["reason"]
-            else:
-                compatible += 1
+            compatible += 1
             assert active_removal_context(repaired) is None
-    assert (compatible, incompatible) == (13, 3)
+    assert compatible == 13
 
 
 def test_cascade_plus_cascade_candidate_sequence_and_contract_are_exact() -> None:

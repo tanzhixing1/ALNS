@@ -1,0 +1,26 @@
+Stage 2E-A.2 focused test results
+=================================
+
+Runtime:
+  C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\python.exe
+  Python 3.12.13 / pytest 9.1.1
+
+1. python -m py_compile ordinary_cascade_adapter.py operators.py
+   tests/test_stage2ea2_ordinary_cascade_adapter.py
+   tests/test_stage2ea1_structural_context.py
+   PASS
+
+2. python -m pytest -q tests/test_stage2ea2_ordinary_cascade_adapter.py
+   33 passed
+
+3. Combined A.2 + A.1 + complete Stage 2D group:
+   119 passed in 49.88s
+
+4. python -m pytest --collect-only -q
+   221 tests collected in 3.53s; 0 collection errors
+
+The 33 A.2 nodes cover all 36 requested categories through parametrization,
+including actual-R semantics, factual/forbidden edges, structural ordering,
+cycle/stale/malformed failure, native bypass, three real Ω(B) entries, no
+fallback, empty/second-bundle atomic rollback, 13+3 matrix, lazy execution,
+work-count isolation and three-run determinism.
