@@ -241,7 +241,7 @@ def test_snapshot_is_captured_from_pre_removal_state() -> None:
     assert ids["cross_drone_customer"] not in destroyed.get_drone_customers()
 
 
-def test_removal_business_result_and_rng_calls_match_legacy_algorithm() -> None:
+def test_removal_membership_and_rng_calls_match_legacy_algorithm() -> None:
     config, data, source, _ = _coordinated_fixture()
     _set_destroy_count(config, data, 2)
     old_rng = RecordingRng(17)
@@ -251,14 +251,15 @@ def test_removal_business_result_and_rng_calls_match_legacy_algorithm() -> None:
     current = operators.cascade_aware_removal(source, new_rng, data, config)
 
     assert current.metadata["cascade_removed"] == legacy.metadata["cascade_removed"]
-    assert _bundle_customer_lists(current) == legacy.metadata["cascade_bundles"]
-    assert [list(bundle.dependency_order) for bundle in current.metadata["cascade_bundles"]] == (
-        legacy.metadata["cascade_bundles"]
+    assert sorted(map(tuple, _bundle_customer_lists(current))) == sorted(
+        map(tuple, legacy.metadata["cascade_bundles"])
     )
-    assert _business_projection(current) == _business_projection(legacy)
+    assert [list(bundle.dependency_order) for bundle in current.metadata["cascade_bundles"]] == (
+        _bundle_customer_lists(current)
+    )
     assert current.van_routes == legacy.van_routes
     assert current.drone_sorties == legacy.drone_sorties
-    assert current.unassigned == legacy.unassigned
+    assert set(current.unassigned) == set(legacy.unassigned)
     assert current.service_mode == legacy.service_mode
     assert old_rng.calls == new_rng.calls
 

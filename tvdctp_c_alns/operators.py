@@ -41,6 +41,7 @@ from ordinary_cascade_adapter import (
 )
 from removal_structural_context import (
     RemovalContextContractError,
+    StructuralProjection,
     attach_active_removal_context,
     capture_structural_projection,
     detach_active_removal_context,
@@ -133,6 +134,38 @@ class BundleReconstructionStrategy:
             self.launch_recovery_reconstruction,
             self.carrier_transfer_reconstruction,
             self.coordination_links,
+        )
+
+
+@dataclass(frozen=True)
+class NativeCascadeDependencyEdge:
+    """One approved customer-only dependency occurrence after rank collapse."""
+
+    predicate_id: str
+    source_customer: int
+    target_customer: int
+    structural_rank: Tuple[int, int, int, int]
+    provenance: str
+
+    def stable_identity(self) -> Tuple[object, ...]:
+        return (
+            self.structural_rank,
+            self.target_customer,
+            self.predicate_id,
+            self.provenance,
+        )
+
+
+@dataclass(frozen=True)
+class NativeCascadeDependencyGraph:
+    """Read-only pre-destroy customer dependency graph for Native removal."""
+
+    customer_ids: Tuple[int, ...]
+    edges: Tuple[NativeCascadeDependencyEdge, ...]
+
+    def outgoing(self, customer: int) -> Tuple[NativeCascadeDependencyEdge, ...]:
+        return tuple(
+            edge for edge in self.edges if edge.source_customer == int(customer)
         )
 
 
@@ -445,17 +478,256 @@ def drone_task_removal(
     return _remove_customers(destroyed, selected)
 
 
+def _native_cascade_customer_from_entity(
+    entity_id: str, customer_ids: Set[int]
+) -> Optional[int]:
+    prefix = "node:"
+    if not str(entity_id).startswith(prefix):
+        return None
+    try:
+        node_id = int(str(entity_id)[len(prefix) :])
+    except ValueError:
+        return None
+    return node_id if node_id in customer_ids else None
+
+
+def _build_native_cascade_customer_dependency_graph(
+    projection: StructuralProjection,
+    customer_ids: Iterable[int],
+) -> NativeCascadeDependencyGraph:
+    """Build only the closed MED-2 predicate inventory from pre-destroy facts."""
+
+    known_customers = {int(customer) for customer in customer_ids}
+    candidates: Dict[
+        Tuple[str, int, int], NativeCascadeDependencyEdge
+    ] = {}
+
+    def retain(edge: NativeCascadeDependencyEdge) -> None:
+        if (
+            edge.source_customer not in known_customers
+            or edge.target_customer not in known_customers
+        ):
+            raise RemovalContextContractError(
+                "Native Cascade dependency graph admitted a non-customer endpoint"
+            )
+        key = (edge.predicate_id, edge.source_customer, edge.target_customer)
+        incumbent = candidates.get(key)
+        if incumbent is None or (
+            edge.structural_rank,
+            edge.provenance,
+        ) < (
+            incumbent.structural_rank,
+            incumbent.provenance,
+        ):
+            candidates[key] = edge
+
+    sortie_rank = {
+        sortie.sortie_id: index
+        for index, sortie in enumerate(projection.drone_sortie_facts)
+    }
+    sortie_positions: Dict[str, Dict[int, int]] = {}
+    for index, sortie in enumerate(projection.drone_sortie_facts):
+        sequence = (
+            int(sortie.launch_node),
+            *(int(customer) for customer in sortie.customer_ids),
+            int(sortie.recovery_node),
+        )
+        positions: Dict[int, int] = {}
+        for position, node in enumerate(sequence):
+            if node in known_customers:
+                positions[node] = min(position, positions.get(node, position))
+        sortie_positions[sortie.sortie_id] = positions
+
+        # NCD-A-SAME-SUBROUTE: PAPER PARTIAL; approved MED-2 symmetric rule.
+        for source in sorted(positions, key=lambda node: (positions[node], node)):
+            for target in sorted(positions, key=lambda node: (positions[node], node)):
+                if source == target:
+                    continue
+                source_position = positions[source]
+                target_position = positions[target]
+                retain(
+                    NativeCascadeDependencyEdge(
+                        predicate_id="NCD-A-SAME-SUBROUTE",
+                        source_customer=source,
+                        target_customer=target,
+                        structural_rank=(
+                            index,
+                            target_position,
+                            source_position,
+                            0,
+                        ),
+                        provenance=(
+                            f"{sortie.sortie_id}:same-subroute:"
+                            f"{source_position}->{target_position}"
+                        ),
+                    )
+                )
+
+    # NCD-B-LAUNCH-RECOVERY: exact represented customer-to-customer direction.
+    for fact in projection.coordination_edge_facts:
+        if fact.edge_kind != "launch-recovery-order":
+            continue
+        source = _native_cascade_customer_from_entity(
+            fact.source_entity_id, known_customers
+        )
+        target = _native_cascade_customer_from_entity(
+            fact.target_entity_id, known_customers
+        )
+        if source is None or target is None:
+            continue
+        matching_sortie_id = next(
+            (
+                sortie_id
+                for sortie_id in sortie_rank
+                if fact.edge_id == f"{sortie_id}:launch-recovery-order"
+            ),
+            None,
+        )
+        if matching_sortie_id is None:
+            raise RemovalContextContractError(
+                "launch-recovery coordination edge has no authoritative sortie rank"
+            )
+        positions = sortie_positions[matching_sortie_id]
+        if source not in positions or target not in positions:
+            raise RemovalContextContractError(
+                "launch-recovery customer endpoints disagree with sortie projection"
+            )
+        retain(
+            NativeCascadeDependencyEdge(
+                predicate_id="NCD-B-LAUNCH-RECOVERY",
+                source_customer=source,
+                target_customer=target,
+                structural_rank=(
+                    sortie_rank[matching_sortie_id],
+                    positions[target],
+                    positions[source],
+                    1,
+                ),
+                provenance=fact.edge_id,
+            )
+        )
+
+    edges = tuple(
+        sorted(
+            candidates.values(),
+            key=lambda edge: (
+                edge.source_customer,
+                *edge.stable_identity(),
+            ),
+        )
+    )
+    return NativeCascadeDependencyGraph(
+        customer_ids=tuple(sorted(known_customers)),
+        edges=edges,
+    )
+
+
+def _native_cascade_fixed_point_closure(
+    graph: NativeCascadeDependencyGraph,
+    seed_customer_ids: Iterable[int],
+) -> Tuple[Set[int], List[int], List[Tuple[int, int]]]:
+    """Ordered formula-(93) fixed point; the set is membership-only."""
+
+    graph_customers = set(graph.customer_ids)
+    discovered_set: Set[int] = set()
+    discovery_order: List[int] = []
+    for seed in seed_customer_ids:
+        customer = int(seed)
+        if customer not in graph_customers:
+            raise RemovalContextContractError(
+                f"Native Cascade seed {customer} is not a customer graph node"
+            )
+        if customer not in discovered_set:
+            discovered_set.add(customer)
+            discovery_order.append(customer)
+
+    dependency_trace: List[Tuple[int, int]] = []
+    worklist_index = 0
+    while worklist_index < len(discovery_order):
+        source = discovery_order[worklist_index]
+        worklist_index += 1
+        for edge in graph.outgoing(source):
+            target = edge.target_customer
+            if target in discovered_set:
+                continue
+            discovered_set.add(target)
+            discovery_order.append(target)
+            dependency_trace.append((source, target))
+
+    return discovered_set, discovery_order, dependency_trace
+
+
+def _native_cascade_weak_components(
+    graph: NativeCascadeDependencyGraph,
+    removal_membership: Set[int],
+    discovery_order: Iterable[int],
+) -> List[List[int]]:
+    """MED-4 weak components with exact, disjoint R* partition checks."""
+
+    order = [int(customer) for customer in discovery_order]
+    if set(order) != set(removal_membership) or len(order) != len(removal_membership):
+        raise RemovalContextContractError(
+            "Native Cascade discovery order is not an exact ordering of R*"
+        )
+    order_rank = {customer: index for index, customer in enumerate(order)}
+    adjacency = {customer: set() for customer in removal_membership}
+    for edge in graph.edges:
+        source = edge.source_customer
+        target = edge.target_customer
+        if source in removal_membership and target in removal_membership:
+            adjacency[source].add(target)
+            adjacency[target].add(source)
+
+    components: List[List[int]] = []
+    assigned: Set[int] = set()
+    for root in order:
+        if root in assigned:
+            continue
+        component = {root}
+        assigned.add(root)
+        worklist = [root]
+        while worklist:
+            source = worklist.pop(0)
+            neighbors = sorted(
+                adjacency[source], key=lambda customer: (order_rank[customer], customer)
+            )
+            for target in neighbors:
+                if target in assigned:
+                    continue
+                assigned.add(target)
+                component.add(target)
+                worklist.append(target)
+        components.append(sorted(component))
+
+    bundle_union = {customer for component in components for customer in component}
+    if bundle_union != removal_membership:
+        raise RemovalContextContractError("Native Cascade bundle union does not equal R*")
+    if sum(len(component) for component in components) != len(removal_membership):
+        raise RemovalContextContractError("Native Cascade bundles overlap")
+    for index, component in enumerate(components):
+        if not component:
+            raise RemovalContextContractError("Native Cascade emitted an empty bundle")
+        for later in components[index + 1 :]:
+            if set(component).intersection(later):
+                raise RemovalContextContractError("Native Cascade bundles overlap")
+    return components
+
+
 def _cascade_dependencies(state: TVDState, customer: int) -> set[int]:
-    deps = {customer}
-    for sortie in state.drone_sorties:
-        launch, drone_customers, recovery = sortie_nodes(sortie)
-        if customer in [launch, recovery] + drone_customers:
-            deps.update(drone_customers)
-            if launch not in state.metadata.get("route_endpoints", []):
-                deps.add(launch)
-            if recovery not in state.metadata.get("route_endpoints", []):
-                deps.add(recovery)
-    return deps
+    """Compatibility query backed by the approved pre-destroy dependency graph."""
+
+    known_customers = {
+        *(int(item) for item in state.order_assignment),
+        *(int(item) for item in state.service_mode),
+        *(int(item) for item in state.unassigned),
+    }
+    graph = _build_native_cascade_customer_dependency_graph(
+        capture_structural_projection(state), known_customers
+    )
+    return {
+        int(customer),
+        *(edge.target_customer for edge in graph.outgoing(int(customer))),
+    }
 
 
 def _optional_int(value: object) -> Optional[int]:
@@ -695,6 +967,7 @@ def _capture_cascade_bundle_snapshot(
         source_destroy_call_id=destroy_call_id,
         source_state_fingerprint=source_state_fingerprint,
         customer_ids=customer_ids,
+        # PAPER UNSPECIFIED; DETERMINISTIC ENGINEERING ORDER: ascending customer ID.
         dependency_order=customer_ids,
         dependency_order_semantics="current implementation order; Paper unspecified",
         customer_service_snapshots=tuple(service_snapshots),
@@ -713,44 +986,24 @@ def _capture_cascade_bundle_snapshot(
 def cascade_aware_removal(
     state: TVDState, rng: np.random.Generator, data: InstanceData, config: TVDConfig
 ) -> TVDState:
+    # Path B: every destructive mutation is isolated on this disposable copy.
     destroyed = state.copy()
     _clear_stale_cascade_metadata(destroyed)
+    pre_existing_unassigned = {int(customer) for customer in destroyed.unassigned}
     pre_projection = capture_structural_projection(destroyed)
     source_state_fingerprint = _state_business_fingerprint(destroyed)
     served = _served_customers(destroyed)
     count = min(_removal_count(data, config), len(served))
     initial = rng.choice(served, size=count, replace=False).tolist() if served else []
-    removal = set(initial)
-    dependency_trace: List[Tuple[int, int]] = []
-
-    changed = True
-    while changed:
-        changed = False
-        for customer in list(removal):
-            deps = _cascade_dependencies(destroyed, customer)
-            dependency_trace.extend(
-                (int(customer), int(dependency))
-                for dependency in sorted(deps - removal)
-            )
-            if not deps.issubset(removal):
-                removal |= deps
-                changed = True
-
-    bundles = []
-    assigned = set()
-    for sortie in destroyed.drone_sorties:
-        launch, drone_customers, recovery = sortie_nodes(sortie)
-        related = set(drone_customers)
-        if launch in data.customers:
-            related.add(launch)
-        if recovery in data.customers:
-            related.add(recovery)
-        bundle = sorted(related & removal)
-        if bundle:
-            bundles.append(bundle)
-            assigned.update(bundle)
-    for customer in sorted(removal - assigned):
-        bundles.append([customer])
+    graph = _build_native_cascade_customer_dependency_graph(
+        pre_projection, data.customers
+    )
+    removal, discovery_order, dependency_trace = (
+        _native_cascade_fixed_point_closure(graph, initial)
+    )
+    bundles = _native_cascade_weak_components(
+        graph, removal, discovery_order
+    )
 
     destroy_call_id = _cascade_destroy_call_id(
         source_state_fingerprint,
@@ -770,21 +1023,32 @@ def cascade_aware_removal(
         for bundle_index, bundle in enumerate(bundles)
     ]
 
+    deletion_order: List[int] = []
+    actual_order: List[int] = []
+    destroyed = _remove_customers(
+        destroyed,
+        discovery_order,
+        deletion_attempt_order=deletion_order,
+        actual_unassignment_order=actual_order,
+    )
+    _remove_duplicate_unassigned(destroyed)
+    newly_unassigned = {
+        int(customer) for customer in destroyed.unassigned
+    } - pre_existing_unassigned
+    if newly_unassigned != removal:
+        missing = sorted(removal - newly_unassigned)
+        unexpected = sorted(newly_unassigned - removal)
+        raise RemovalContextContractError(
+            "ATOMIC CO-REMOVAL CONTRACT VIOLATION: "
+            f"missing={missing}, out_of_R_star={unexpected}"
+        )
+
     _record_destroy_diagnostics(
         destroyed,
         removal,
         data,
         cascade_expansion_count=max(0, len(removal) - len(initial)),
     )
-    deletion_order: List[int] = []
-    actual_order: List[int] = []
-    destroyed = _remove_customers(
-        destroyed,
-        removal,
-        deletion_attempt_order=deletion_order,
-        actual_unassignment_order=actual_order,
-    )
-    _remove_duplicate_unassigned(destroyed)
     destroyed_state_fingerprint = _state_business_fingerprint(destroyed)
     destroyed.metadata["cascade_removed"] = sorted(removal)
     destroyed.metadata["cascade_bundles"] = bundle_snapshots
