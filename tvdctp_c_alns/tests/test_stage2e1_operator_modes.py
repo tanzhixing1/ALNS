@@ -90,7 +90,10 @@ BASELINE_P_FINAL_FINGERPRINT = (
     "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583"
 )
 BASELINE_P_OBJECTIVE_CALLS = 653
-BASELINE_P_CHECKER_CALLS = 909
+# Stage 2F.1 corrected Native bundle reachability causes action 15 to reach
+# one existing Cascade snapshot validation. This is an approved semantic
+# control-flow delta, not tolerance: the exact paper checker baseline is 910.
+BASELINE_P_CHECKER_CALLS = 910
 BASELINE_P_RNG_DIGEST = "0ef1b46c0559070d2546d0261ec49177635ed842cdeb4b5fb8820c671da5bf3b"
 
 BASELINE_E_DESTROY = (
@@ -126,7 +129,9 @@ BASELINE_E_FINAL_FINGERPRINT = (
     "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f"
 )
 BASELINE_E_OBJECTIVE_CALLS = 608
-BASELINE_E_CHECKER_CALLS = 884
+# The same approved action-15 boundary is reached once in extended mode; the
+# strict exact checker baseline is 885 (no range or +/-1 allowance).
+BASELINE_E_CHECKER_CALLS = 885
 BASELINE_E_RNG_DIGEST = "57273a01c37b67814e439fbf7d5f4617e124eda6c3020aefd905f3e09f4525d5"
 
 

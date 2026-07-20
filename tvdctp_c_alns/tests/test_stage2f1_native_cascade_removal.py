@@ -1,11 +1,17 @@
 from __future__ import annotations
 
 from collections import Counter
+import hashlib
+import json
 
 import pytest
 
+import alns_solver
 import operators
+from config import build_config
+from dataset_loader import generate_toy_data
 from feasibility import check_solution_feasible
+from operator_modes import OperatorMode
 from removal_structural_context import (
     RemovalContextContractError,
     active_removal_context,
@@ -409,3 +415,229 @@ def test_cascade_dependency_compatibility_query_uses_customer_only_graph() -> No
     assert operators._cascade_dependencies(source, ids["plain_van_customer"]) == {
         ids["plain_van_customer"]
     }
+
+
+@pytest.mark.parametrize(
+    (
+        "mode",
+        "expected_iteration",
+        "expected_first_bundle",
+        "expected_allowed_unassigned",
+        "expected_violations",
+        "expected_checker_calls",
+        "expected_objective_calls",
+        "expected_final_fingerprint",
+    ),
+    (
+        (
+            OperatorMode.PAPER,
+            7,
+            (7, 9, 10),
+            (5, 6, 8, 11, 14),
+            (
+                "high-floor customer 8 must be served by drone.",
+                "high-floor customer 11 must be served by drone.",
+                "high-floor customer 14 must be served by drone.",
+            ),
+            910,
+            653,
+            "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583",
+        ),
+        (
+            OperatorMode.EXTENDED,
+            8,
+            (5, 6, 8, 11, 14),
+            (7, 9, 10),
+            ("high-floor customer 10 must be served by drone.",),
+            885,
+            608,
+            "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        ),
+    ),
+)
+def test_action15_approved_snapshot_validation_contract(
+    monkeypatch,
+    mode,
+    expected_iteration,
+    expected_first_bundle,
+    expected_allowed_unassigned,
+    expected_violations,
+    expected_checker_calls,
+    expected_objective_calls,
+    expected_final_fingerprint,
+) -> None:
+    """Freeze the approved Stage 2F.1 Native-to-Cascade control-flow delta."""
+
+    runtime = {"iteration": 0, "action15": False}
+    observed = {
+        "destroy": None,
+        "raw_snapshot_count": 0,
+        "validations": [],
+        "score_input_sizes": [],
+        "repair": None,
+    }
+    original_enter = alns_solver.enter_operator_pair
+    original_exit = alns_solver.exit_operator_pair
+    original_destroy = operators.cascade_aware_removal
+    original_repair = operators.cascade_repair
+    original_restore = operators._restore_snapshot_strategy_state
+    original_validate = operators._validate_cascade_candidate
+    original_score = operators._score_bundle_strategies
+
+    def state_fingerprint(state):
+        return hashlib.sha256(
+            repr(state.cache_signature()).encode("utf-8")
+        ).hexdigest()
+
+    def rng_fingerprint(rng):
+        payload = json.dumps(
+            rng.bit_generator.state, sort_keys=True, separators=(",", ":")
+        )
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    def traced_enter(destroy_name, repair_name):
+        runtime["iteration"] += 1
+        runtime["action15"] = (
+            destroy_name == "cascade_aware_removal"
+            and repair_name == "cascade_repair"
+        )
+        return original_enter(destroy_name, repair_name)
+
+    def traced_exit(*args, **kwargs):
+        try:
+            return original_exit(*args, **kwargs)
+        finally:
+            runtime["action15"] = False
+
+    def traced_destroy(state, rng, data, config):
+        result = original_destroy(state, rng, data, config)
+        if runtime["action15"]:
+            bundles = result.metadata["cascade_bundles"]
+            memberships = [tuple(bundle.customer_ids) for bundle in bundles]
+            union = {
+                customer for membership in memberships for customer in membership
+            }
+            observed["destroy"] = {
+                "iteration": runtime["iteration"],
+                "memberships": memberships,
+                "union": union,
+                "total_members": sum(map(len, memberships)),
+                "removed": set(result.metadata["cascade_removed"]),
+                "snapshots_pre_removal": all(
+                    bundle.captured_before_removal for bundle in bundles
+                ),
+                "dependency_orders_match": all(
+                    bundle.dependency_order == bundle.customer_ids
+                    for bundle in bundles
+                ),
+                "source_is_native": all(
+                    bundle.source_operator == operators.CASCADE_SOURCE_OPERATOR
+                    for bundle in bundles
+                ),
+            }
+        return result
+
+    def traced_restore(state, bundle, metrics):
+        result = original_restore(state, bundle, metrics)
+        if runtime["action15"] and result is not None:
+            observed["raw_snapshot_count"] += 1
+        return result
+
+    def traced_validate(state, **kwargs):
+        result = original_validate(state, **kwargs)
+        if runtime["action15"]:
+            observed["validations"].append(
+                {
+                    "bundle": tuple(sorted(kwargs["bundle_customers"])),
+                    "allowed": tuple(sorted(kwargs["allowed_unassigned"])),
+                    "unassigned": tuple(sorted(state.unassigned)),
+                    "valid": result[0],
+                    "violations": tuple(result[1]),
+                }
+            )
+        return result
+
+    def traced_score(strategies, data, config, metrics):
+        if runtime["action15"]:
+            observed["score_input_sizes"].append(len(strategies))
+        return original_score(strategies, data, config, metrics)
+
+    def traced_repair(state, rng, data, config):
+        before_state = state_fingerprint(state)
+        before_rng = rng_fingerprint(rng)
+        result = original_repair(state, rng, data, config)
+        if runtime["action15"]:
+            observed["repair"] = {
+                "before_state": before_state,
+                "after_state": state_fingerprint(result),
+                "before_rng": before_rng,
+                "after_rng": rng_fingerprint(rng),
+                "diagnostics": result.metadata["cascade_repair_diagnostics"],
+                "context_after": active_removal_context(result),
+            }
+        return result
+
+    monkeypatch.setattr(alns_solver, "enter_operator_pair", traced_enter)
+    monkeypatch.setattr(alns_solver, "exit_operator_pair", traced_exit)
+    monkeypatch.setattr(operators, "_restore_snapshot_strategy_state", traced_restore)
+    monkeypatch.setattr(operators, "_validate_cascade_candidate", traced_validate)
+    monkeypatch.setattr(operators, "_score_bundle_strategies", traced_score)
+    monkeypatch.setitem(
+        operators.DESTROY_OPERATORS, "cascade_aware_removal", traced_destroy
+    )
+    monkeypatch.setitem(operators.REPAIR_OPERATORS, "cascade_repair", traced_repair)
+
+    config = build_config(
+        num_customers=10,
+        num_orders=10,
+        num_transshipments=2,
+        num_containers=1,
+        iterations=12,
+        seed=42,
+        max_no_improve=100,
+        early_stop_enabled=False,
+        collect_full_candidate_diagnostics=True,
+        operator_mode=mode,
+    )
+    data = generate_toy_data(config)
+    config.alns.random_seed = 29
+    result = alns_solver.run_c_alns(data, config)
+
+    destroy = observed["destroy"]
+    repair = observed["repair"]
+    assert destroy is not None
+    assert repair is not None
+    assert destroy["iteration"] == expected_iteration
+    assert destroy["memberships"][0] == expected_first_bundle
+    assert destroy["union"] == destroy["removed"]
+    assert destroy["total_members"] == len(destroy["removed"])
+    assert destroy["snapshots_pre_removal"] is True
+    assert destroy["dependency_orders_match"] is True
+    assert destroy["source_is_native"] is True
+
+    assert observed["raw_snapshot_count"] == 1
+    assert observed["score_input_sizes"] == [0]
+    assert len(observed["validations"]) == 1
+    validation = observed["validations"][0]
+    assert validation == {
+        "bundle": expected_first_bundle,
+        "allowed": expected_allowed_unassigned,
+        "unassigned": expected_allowed_unassigned,
+        "valid": False,
+        "violations": expected_violations,
+    }
+
+    diagnostics = repair["diagnostics"]
+    assert diagnostics["status"] == "failure"
+    assert diagnostics["bundles"][0]["raw_bundle_strategy_count"] == 1
+    assert diagnostics["bundles"][0]["feasible_bundle_strategy_count"] == 0
+    assert diagnostics["checker_call_count"] == 1
+    assert diagnostics["objective_call_count"] == 0
+    assert repair["before_rng"] == repair["after_rng"]
+    assert repair["before_state"] == repair["after_state"]
+    assert repair["context_after"] is None
+
+    assert result.profile["check_solution_feasible_calls"] == expected_checker_calls
+    assert result.profile["objective_calls"] == expected_objective_calls
+    assert state_fingerprint(result.best_state) == expected_final_fingerprint
+    assert active_removal_context(result.best_state) is None
