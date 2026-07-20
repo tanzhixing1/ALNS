@@ -1,0 +1,17 @@
+action_id,destroy,repair,display,classification,status
+0,random_customer_removal,best_mode_repair,Random + Global,APPROVED ENGINEERING DECISION,FROZEN
+1,random_customer_removal,greedy_van_repair,Random + Local,APPROVED ENGINEERING DECISION,FROZEN
+2,random_customer_removal,regret_repair,Random + Regret,APPROVED ENGINEERING DECISION,FROZEN
+3,random_customer_removal,cascade_repair,Random + Cascade,APPROVED ENGINEERING DECISION,FROZEN
+4,greedy_removal,best_mode_repair,Greedy + Global,APPROVED ENGINEERING DECISION,FROZEN
+5,greedy_removal,greedy_van_repair,Greedy + Local,APPROVED ENGINEERING DECISION,FROZEN
+6,greedy_removal,regret_repair,Greedy + Regret,APPROVED ENGINEERING DECISION,FROZEN
+7,greedy_removal,cascade_repair,Greedy + Cascade,APPROVED ENGINEERING DECISION,FROZEN
+8,related_customer_removal,best_mode_repair,Related + Global,APPROVED ENGINEERING DECISION,FROZEN
+9,related_customer_removal,greedy_van_repair,Related + Local,APPROVED ENGINEERING DECISION,FROZEN
+10,related_customer_removal,regret_repair,Related + Regret,APPROVED ENGINEERING DECISION,FROZEN
+11,related_customer_removal,cascade_repair,Related + Cascade,APPROVED ENGINEERING DECISION,FROZEN
+12,cascade_aware_removal,best_mode_repair,Cascade + Global,APPROVED ENGINEERING DECISION,FROZEN
+13,cascade_aware_removal,greedy_van_repair,Cascade + Local,APPROVED ENGINEERING DECISION,FROZEN
+14,cascade_aware_removal,regret_repair,Cascade + Regret,APPROVED ENGINEERING DECISION,FROZEN
+15,cascade_aware_removal,cascade_repair,Cascade + Cascade,APPROVED ENGINEERING DECISION,FROZEN

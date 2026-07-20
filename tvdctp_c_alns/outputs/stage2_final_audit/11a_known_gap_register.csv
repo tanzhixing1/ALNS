@@ -1,0 +1,12 @@
+gap_id,description,classification,impact,accepted_for_freeze,future_stage
+KG-CAS-01,potential truck/warehouse downstream dependency unrepresented,KNOWN CONSERVATIVE REPRESENTATION GAP,conservative Native R*,YES,future evidence stage
+KG-CAS-02,broad same-van route container carrier relations not auto-edges,KNOWN CONSERVATIVE REPRESENTATION GAP,may omit unformalized dependency while avoiding invention,YES,future contract stage
+KG-CAS-03,customer-only graph,KNOWN CONSERVATIVE REPRESENTATION GAP,non-customer facts cannot be graph endpoints,YES,future representation stage
+KU-NAT-01,Native seed and exact RNG policy not paper-specified,"PAPER UNSPECIFIED; APPROVED ENGINEERING DECISION",trajectory contract,YES,Stage 2G preserve
+KU-NAT-02,weak-component partition/order not paper-specified,"PAPER UNSPECIFIED; APPROVED ENGINEERING DECISION",deterministic partition choice,YES,Stage 2G preserve
+KU-NAT-03,dependency_order not paper-specified,"PAPER UNSPECIFIED; APPROVED ENGINEERING DECISION",deterministic strategy order,YES,Stage 2G preserve
+KU-REP-01,Omega/ties/Path B/empty-set details not paper-explicit,"PAPER PARTIAL/UNSPECIFIED; APPROVED ENGINEERING DECISION",defines reproducible atomic repair,YES,Stage 2G preserve
+KP-REG-01,True Regret-2 performance bottleneck,performance gap,long drone-heavy calls,YES,Stage 2G
+KP-MED-01,medium test runtime 397.85 seconds,performance/validation gap,CI budget,YES,Stage 2G/CI
+KS-PPO-01,PPO/RL not started,OUT OF STAGE 2 SCOPE,no learned policy,YES,Stage 3
+KE-EXT-01,extended 35 actions outside paper baseline,EXTENDED-MODE ONLY,different explicit search catalog,YES,explicit-only

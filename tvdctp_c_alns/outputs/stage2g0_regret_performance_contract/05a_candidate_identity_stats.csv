@@ -1,0 +1,6 @@
+identity_level,count,unique,duplicates,duplicate_rate
+raw prefilter attempts,32718,n/a,n/a,n/a
+hard-feasible move records,17743,17743,0,0.0
+move identities across all rounds,17743,8198,9545,0.5379586315730147
+candidate business State,17743,17743,0,0.0
+evaluation identity after normalization,17743,16557,1186,0.06684326213154479

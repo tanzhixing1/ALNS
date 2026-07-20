@@ -1,0 +1,26 @@
+component,basis,current_implementation,classification,tests,frozen
+Initial solution,feasible construction,multi-container drayage and canonical-final-checked heuristic,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",regression rules and Stage 2A,YES
+Random removal,random destroy,sorted served domain and one no-replacement draw plus context,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",EA1/F2,YES
+Greedy removal,cost destroy,objective-delta deterministic ranking plus context,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",EA1/F2,YES
+Related removal,related destroy,frozen relatedness expansion plus context,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",EA1/F2,YES
+Cascade-aware removal,recursive R* closure,customer graph ordered fixed point weak components Path B,"PAPER EXPLICIT/PARTIAL; APPROVED ENGINEERING DECISION; KNOWN CONSERVATIVE REPRESENTATION GAP",F0/F1/F2,YES
+Global repair,best reconstruction,full hard-feasible van/drone candidate scope,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",B/C/F2,YES
+Local repair,local reconstruction,single target route with cross-van recovery,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",B/F2/targeted,YES
+True Regret-2,regret formula,all unique concrete candidates exact deltas,"PAPER EXPLICIT/PARTIAL; APPROVED ENGINEERING DECISION",C/F2/targeted,YES
+Cascade repair,joint bundle reconstruction,bundle Ω snapshot strategies canonical validation atomic failure,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",D/EA2/F2,YES
+paper_mode,paper 4x4 catalog,strict 16-action registry,APPROVED ENGINEERING DECISION,E1/F2/targeted,YES
+extended_mode,engineering catalog,explicit 35-action registry,EXTENDED-MODE ONLY,E1/F2,YES OUTSIDE PAPER
+Action IDs,none,immutable contiguous 0-15,APPROVED ENGINEERING DECISION,E1/F2,YES
+Ordinary adapter,none,lazy actual-R adapter for three pairs,APPROVED ENGINEERING DECISION,EA2/F2,YES
+Native bypass,none,native bundles bypass ordinary adapter,APPROVED ENGINEERING DECISION,F1/F2,YES
+Objective,model cost,transport fixed and hard-infeasible penalty,APPROVED ENGINEERING DECISION,A/F2,YES
+Canonical checker,hard constraints,production feasibility boundary,APPROVED ENGINEERING DECISION,A/D/E/F,YES
+compute_timing,synchronization,authoritative timing propagation,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",A/F2,YES
+State fields,solution representation,routes carriers assignments service timing,APPROVED ENGINEERING DECISION,D/EA1/F2,YES
+State.copy,none,isolated mutable state,APPROVED ENGINEERING DECISION,D/EA1/F2,YES
+Context,none,ephemeral repair-agnostic structure,APPROVED ENGINEERING DECISION,EA1/F2,YES
+SA acceptance,SA,improve-or-Boltzmann draw,"PAPER EXPLICIT/PARTIAL; APPROVED ENGINEERING DECISION",solver/F2,YES
+Adaptive weights,adaptive ALNS,independent roulettes and reaction update,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",E1/F2,YES
+Iteration loop,C-ALNS,current/candidate/best workflow,"PAPER PARTIAL; APPROVED ENGINEERING DECISION",A/E/F,YES
+Termination,finite run,max iterations plus no-improvement early stop,APPROVED ENGINEERING DECISION,solver/smoke,YES
+RNG,stochastic search,single solver-owned Generator and frozen call order,"PAPER UNSPECIFIED; APPROVED ENGINEERING DECISION",determinism/F2,YES

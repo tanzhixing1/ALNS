@@ -1,0 +1,8 @@
+relation,classification,reason
+same target van route or insertion positions,DEFINITELY AFFECTED,route geometry/capacity/timing changed
+shared launch/recovery anchors,DEFINITELY AFFECTED,anchor set/timing changed
+shared physical drone/carrier chain,DEFINITELY AFFECTED,availability/continuity changed
+same warehouse but different current route,POTENTIALLY AFFECTED,may use modified route/van/drone and global checker
+different warehouse/container,UNKNOWN,additivity and global checker independence not proved
+different customer/current best/mode/distance,POTENTIALLY AFFECTED,none is an approved independence proof
+formally disjoint dependency closure plus additive exact objective,PROVABLY UNAFFECTED (theoretical only),no current production certificate/oracle emits this class

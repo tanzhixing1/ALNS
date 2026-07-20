@@ -1,0 +1,19 @@
+stage,commit,kind,production_files,tests_or_evidence,status
+2A,854f557d097f8dfe3874af5b3871f449a7f5cec0,approved,"feasibility.py; alns_solver.py; diagnostics",72 passed,COMPLETE
+2B,0feb748dc96104c4ca8d47f900ff904fe303d655,approved,operators.py,82 passed,COMPLETE
+2C,74891482523fa8a0ef15b5f3871f449a7f5cec0,approved,operators.py,focused and full PASS,COMPLETE
+2D.0,1b3400ff329f46cc03a85b030614964553c2467c,approved,"operators.py; state.py",focused and full PASS,COMPLETE
+2D.1,999ba977f6ea36d7bcf02a665accc56f312e11c4,approved,operators.py,153 passed,COMPLETE
+2D coverage,b886431084f1e2b8cc1db59d13f03f5798d8fa30,approved,operators.py,focused and full PASS,COMPLETE
+2E design,e5d6ca16beb2dea928cbf2717352edf408d141c6,evidence-only,none,contract audits PASS,COMPLETE
+2E-A.1,901ee48da0e1d83fb05dcfb9903c91566e3c69fc,approved,"removal_structural_context.py; operators.py; alns_solver.py; state.py",grouped evidence PASS,COMPLETE
+2E-A.2,ddcfd0cc53bba2d65a695710fd2c805f21f7cd99,approved,"ordinary_cascade_adapter.py; operators.py",16-pair contract PASS,COMPLETE
+2E evidence bridge,c5eec0f73a1f237524a8423aa37becaa0f0a66b6,evidence-only,none,Git-show artifacts,RECORDED
+2E.1,760e3bc445b04fd2673c81774c90d30422f890df,approved,"operator_modes.py; config.py; main.py; alns_solver.py",strict mode gate PASS,COMPLETE
+2E.1-P,NONE,diagnostic,none,80-iteration runtime diagnosis complete,COMPLETE
+2E.2,NONE,rejected-and-reverted,none,performance target not met,NO PRODUCTION ADMISSION
+2F.0,NONE,audit,none,paper contract partial,COMPLETE
+2F.1,9488139b8920640b47a8a901e32129df0076200f,approved,operators.py,81 focused initially,COMPLETE
+2F.2A,NONE,audit,none,checker delta root cause confirmed,COMPLETE
+2F.1.1,172166eea9e34ae5551302d4bfa1cdb62ebc479b,approved-test-contract,none,"83 focused; 910/885",COMPLETE
+2F.2,172166eea9e34ae5551302d4bfa1cdb62ebc479b,output-only,"none","294/294; smoke PASS",COMPLETE

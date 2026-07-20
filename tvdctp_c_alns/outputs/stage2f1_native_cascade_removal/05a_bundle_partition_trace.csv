@@ -1,0 +1,9 @@
+fixture,run,r_star,discovery_order,bundle_order,dependency_order,exact_union,pairwise_disjoint,snapshot_pre_removal
+single_cross_van_chain,1,"6;8","8;6","6;8","6;8",true,true,true
+single_cross_van_chain,2,"6;8","8;6","6;8","6;8",true,true,true
+same_sortie_duplicate_membership,1,"5;7","5;7","5;7","5;7",true,true,true
+same_sortie_duplicate_membership,2,"5;7","5;7","5;7","5;7",true,true,true
+two_dependency_chains_two_bundles,1,"5;6;7;8","8;7;6;5","6;8|5;7","6;8|5;7",true,true,true
+two_dependency_chains_two_bundles,2,"5;6;7;8","8;7;6;5","6;8|5;7","6;8|5;7",true,true,true
+two_seed_two_chain_order,1,"5;6;7;8","8;5;6;7","6;8|5;7","6;8|5;7",true,true,true
+two_seed_two_chain_order,2,"5;6;7;8","8;5;6;7","6;8|5;7","6;8|5;7",true,true,true

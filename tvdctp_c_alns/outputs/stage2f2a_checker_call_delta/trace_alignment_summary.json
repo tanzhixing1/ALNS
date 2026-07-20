@@ -1,0 +1,2849 @@
+{
+  "paper": {
+    "baseline_count": 909,
+    "current_count": 910,
+    "delta": 1,
+    "baseline_trace_deterministic": true,
+    "current_trace_deterministic": true,
+    "matching_blocks": [
+      [
+        0,
+        0,
+        483
+      ],
+      [
+        484,
+        485,
+        425
+      ],
+      [
+        909,
+        910,
+        0
+      ]
+    ],
+    "non_equal_opcodes": [
+      [
+        "replace",
+        483,
+        484,
+        483,
+        485
+      ]
+    ],
+    "inserted_count": 0,
+    "deleted_count": 0,
+    "replacement_count": 1,
+    "first_divergence": {
+      "tag": "replace",
+      "baseline_range": [
+        484,
+        484
+      ],
+      "current_range": [
+        484,
+        485
+      ],
+      "baseline_before": {
+        "version": "baseline",
+        "mode": "paper_mode",
+        "call_index": 483,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+        "iteration": 6,
+        "action_id": 13,
+        "destroy_name": "cascade_aware_removal",
+        "repair_name": "greedy_van_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+        "state_business_fingerprint_before": "1c1e15bebd0922bbe888c1b964f2c580573c7e6b8a6e01e14345f2cbfc4ecfda",
+        "state_business_fingerprint_after": "1c1e15bebd0922bbe888c1b964f2c580573c7e6b8a6e01e14345f2cbfc4ecfda",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            7,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 217.7782903071769,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 204.82645819641303,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 217.7782903071769,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 217.7782903071769,
+            "van_waiting_time": 12.95183211076386
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_arrival_time": 146.01158777175357,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 58.81487042465946,
+            "launch": 3,
+            "launch_position": 0,
+            "launch_time": 106.34906368895787,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 204.82645819641303,
+            "recovery_van_id": "van_0",
+            "same_node": false,
+            "synchronized_recovery_time": 204.82645819641303,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              14
+            ],
+            "drone_arrival_time": 241.24918715018376,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 204.82645819641303,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 241.24918715018376,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 241.24918715018376,
+            "van_waiting_time": 36.42272895377073
+          },
+          {
+            "customers": [
+              5
+            ],
+            "drone_arrival_time": 243.2665512748866,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 217.7782903071769,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 243.2665512748866,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 243.2665512748866,
+            "van_waiting_time": 38.44009307847358
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_arrival_time": 285.46007088155386,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 243.2665512748866,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 285.46007088155386,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 285.46007088155386,
+            "van_waiting_time": 80.63361268514083
+          },
+          {
+            "customers": [
+              9
+            ],
+            "drone_arrival_time": 310.56972200476605,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 285.46007088155386,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 310.56972200476605,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 310.56972200476605,
+            "van_waiting_time": 105.74326380835302
+          },
+          {
+            "customers": [
+              11
+            ],
+            "drone_arrival_time": 351.94611377811816,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 310.56972200476605,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 351.94611377811816,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 351.94611377811816,
+            "van_waiting_time": 147.11965558170513
+          },
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 398.3518183367876,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 351.94611377811816,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 398.3518183367876,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 398.3518183367876,
+            "van_waiting_time": 193.52536014037454
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": false,
+        "normalized_violation_signature": "16e3e5c32aa884b1b65d6b28c28441869844957e901469a6ee4c3deb4390d665",
+        "violations": [
+          "customer 10 service_start 375.149 exceeds latest 360.000."
+        ],
+        "rng_state_fingerprint_before": "b615071587194b593294ca88baabf5b8b51502f9ad05365665b613406b55499e",
+        "rng_state_fingerprint_after": "b615071587194b593294ca88baabf5b8b51502f9ad05365665b613406b55499e",
+        "objective_call_index": 234,
+        "relative_order": 483,
+        "relative_time_ns": 9031832700
+      },
+      "current_before": {
+        "version": "current",
+        "mode": "paper_mode",
+        "call_index": 483,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+        "iteration": 6,
+        "action_id": 13,
+        "destroy_name": "cascade_aware_removal",
+        "repair_name": "greedy_van_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+        "state_business_fingerprint_before": "1c1e15bebd0922bbe888c1b964f2c580573c7e6b8a6e01e14345f2cbfc4ecfda",
+        "state_business_fingerprint_after": "1c1e15bebd0922bbe888c1b964f2c580573c7e6b8a6e01e14345f2cbfc4ecfda",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            7,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 217.7782903071769,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 204.82645819641303,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 217.7782903071769,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 217.7782903071769,
+            "van_waiting_time": 12.95183211076386
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_arrival_time": 146.01158777175357,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 58.81487042465946,
+            "launch": 3,
+            "launch_position": 0,
+            "launch_time": 106.34906368895787,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 204.82645819641303,
+            "recovery_van_id": "van_0",
+            "same_node": false,
+            "synchronized_recovery_time": 204.82645819641303,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              14
+            ],
+            "drone_arrival_time": 241.24918715018376,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 204.82645819641303,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 241.24918715018376,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 241.24918715018376,
+            "van_waiting_time": 36.42272895377073
+          },
+          {
+            "customers": [
+              5
+            ],
+            "drone_arrival_time": 243.2665512748866,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 217.7782903071769,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 243.2665512748866,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 243.2665512748866,
+            "van_waiting_time": 38.44009307847358
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_arrival_time": 285.46007088155386,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 243.2665512748866,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 285.46007088155386,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 285.46007088155386,
+            "van_waiting_time": 80.63361268514083
+          },
+          {
+            "customers": [
+              9
+            ],
+            "drone_arrival_time": 310.56972200476605,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 285.46007088155386,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 310.56972200476605,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 310.56972200476605,
+            "van_waiting_time": 105.74326380835302
+          },
+          {
+            "customers": [
+              11
+            ],
+            "drone_arrival_time": 351.94611377811816,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 310.56972200476605,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 351.94611377811816,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 351.94611377811816,
+            "van_waiting_time": 147.11965558170513
+          },
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 398.3518183367876,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 2,
+            "launch_time": 351.94611377811816,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 2,
+            "recovery_time": 398.3518183367876,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 398.3518183367876,
+            "van_waiting_time": 193.52536014037454
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": false,
+        "normalized_violation_signature": "16e3e5c32aa884b1b65d6b28c28441869844957e901469a6ee4c3deb4390d665",
+        "violations": [
+          "customer 10 service_start 375.149 exceeds latest 360.000."
+        ],
+        "rng_state_fingerprint_before": "b615071587194b593294ca88baabf5b8b51502f9ad05365665b613406b55499e",
+        "rng_state_fingerprint_after": "b615071587194b593294ca88baabf5b8b51502f9ad05365665b613406b55499e",
+        "objective_call_index": 234,
+        "relative_order": 483,
+        "relative_time_ns": 8827290200
+      },
+      "baseline_after": {
+        "version": "baseline",
+        "mode": "paper_mode",
+        "call_index": 485,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+        "iteration": 8,
+        "action_id": 8,
+        "destroy_name": "related_customer_removal",
+        "repair_name": "best_mode_repair",
+        "execution_phase": "repair",
+        "direct_caller_file": "operators.py",
+        "direct_caller_function": "consolidate_drone_sorties",
+        "direct_caller_line": 2420,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > removal_structural_context.py:wrapped > operators.py:best_mode_repair > operators.py:_finalize_repair > operators.py:consolidate_drone_sorties",
+        "state_business_fingerprint_before": "136f80cab2acc60fc54656e1bd3ff51e10226e50cfbb814264f1b752558d9894",
+        "state_business_fingerprint_after": "9ce13a0f02e4f69da5a8ebe1904e4ccf45a7f2619b28a87baa5e196c85e0f442",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            9,
+            5,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 268.6891379516066,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 3,
+            "launch_time": 255.7373058408428,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 3,
+            "recovery_time": 268.6891379516066,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 268.6891379516066,
+            "van_waiting_time": 12.951832110763803
+          },
+          {
+            "customers": [
+              7
+            ],
+            "drone_arrival_time": 157.82956498230655,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 157.82956498230655,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 157.82956498230655,
+            "van_waiting_time": 34.734641119196056
+          },
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 158.21697486514014,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 158.21697486514014,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 158.21697486514014,
+            "van_waiting_time": 35.12205100202965
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              11
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              14
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "repair candidate/working copy",
+        "checker_result": true,
+        "normalized_violation_signature": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "violations": [],
+        "rng_state_fingerprint_before": "e9a33dd2eb019a0ea0d190240a7b78c1b0d0f1f45f73a5f2b2cd5c1a35572ad4",
+        "rng_state_fingerprint_after": "e9a33dd2eb019a0ea0d190240a7b78c1b0d0f1f45f73a5f2b2cd5c1a35572ad4",
+        "objective_call_index": 235,
+        "relative_order": 485,
+        "relative_time_ns": 9165005300
+      },
+      "current_after": {
+        "version": "current",
+        "mode": "paper_mode",
+        "call_index": 486,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+        "iteration": 8,
+        "action_id": 8,
+        "destroy_name": "related_customer_removal",
+        "repair_name": "best_mode_repair",
+        "execution_phase": "repair",
+        "direct_caller_file": "operators.py",
+        "direct_caller_function": "consolidate_drone_sorties",
+        "direct_caller_line": 2684,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > removal_structural_context.py:wrapped > operators.py:best_mode_repair > operators.py:_finalize_repair > operators.py:consolidate_drone_sorties",
+        "state_business_fingerprint_before": "136f80cab2acc60fc54656e1bd3ff51e10226e50cfbb814264f1b752558d9894",
+        "state_business_fingerprint_after": "9ce13a0f02e4f69da5a8ebe1904e4ccf45a7f2619b28a87baa5e196c85e0f442",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            9,
+            5,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 268.6891379516066,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 3,
+            "launch_time": 255.7373058408428,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 3,
+            "recovery_time": 268.6891379516066,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 268.6891379516066,
+            "van_waiting_time": 12.951832110763803
+          },
+          {
+            "customers": [
+              7
+            ],
+            "drone_arrival_time": 157.82956498230655,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 157.82956498230655,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 157.82956498230655,
+            "van_waiting_time": 34.734641119196056
+          },
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 158.21697486514014,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 158.21697486514014,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 158.21697486514014,
+            "van_waiting_time": 35.12205100202965
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              11
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          },
+          {
+            "customers": [
+              14
+            ],
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 0.0,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 0.0,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "van_waiting_time": 0.0
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "repair candidate/working copy",
+        "checker_result": true,
+        "normalized_violation_signature": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "violations": [],
+        "rng_state_fingerprint_before": "e9a33dd2eb019a0ea0d190240a7b78c1b0d0f1f45f73a5f2b2cd5c1a35572ad4",
+        "rng_state_fingerprint_after": "e9a33dd2eb019a0ea0d190240a7b78c1b0d0f1f45f73a5f2b2cd5c1a35572ad4",
+        "objective_call_index": 235,
+        "relative_order": 486,
+        "relative_time_ns": 8997581100
+      }
+    },
+    "extra_call": {
+      "version": "current",
+      "mode": "paper_mode",
+      "call_index": 484,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+      "iteration": 7,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "repair",
+      "direct_caller_file": "operators.py",
+      "direct_caller_function": "_validate_cascade_candidate",
+      "direct_caller_line": 3670,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > operators.py:cascade_repair > operators.py:_enumerate_bundle_reconstruction_strategies > operators.py:_validate_cascade_candidate",
+      "state_business_fingerprint_before": "16f567077233b628e82d324c1c1cf27de5bc2a910aeddad54ad6c5b14c616a68",
+      "state_business_fingerprint_after": "14690d8b873af7f09916081518cde065c13f160627870f37610e172ed7509f3b",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        5,
+        6,
+        8,
+        11,
+        14
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          9,
+          12,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 268.6891379516066,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 3,
+          "launch_time": 255.7373058408428,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 3,
+          "recovery_time": 268.6891379516066,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 268.6891379516066,
+          "van_waiting_time": 12.951832110763803
+        },
+        {
+          "customers": [
+            7
+          ],
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 9,
+          "launch_position": 1,
+          "launch_time": 0.0,
+          "launch_van_id": "van_0",
+          "recovery": 9,
+          "recovery_position": 1,
+          "recovery_time": 0.0,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "van_waiting_time": 0.0
+        },
+        {
+          "customers": [
+            10
+          ],
+          "drone_id": "drone_1",
+          "drone_waiting_time": 0.0,
+          "launch": 9,
+          "launch_position": 1,
+          "launch_time": 0.0,
+          "launch_van_id": "van_0",
+          "recovery": 9,
+          "recovery_position": 1,
+          "recovery_time": 0.0,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "van_waiting_time": 0.0
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "repair candidate/working copy",
+      "checker_result": false,
+      "normalized_violation_signature": "8fb28f3779fc8269b0fbb11f9f4ab3e4834422dcc6ac1e5c2e6e0051a9e7da9b",
+      "violations": [
+        "high-floor customer 11 must be served by drone.",
+        "high-floor customer 14 must be served by drone.",
+        "high-floor customer 8 must be served by drone.",
+        "unassigned customers remain: [5, 6, 8, 11, 14]"
+      ],
+      "rng_state_fingerprint_before": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "rng_state_fingerprint_after": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "objective_call_index": 234,
+      "relative_order": 484,
+      "relative_time_ns": 8861210400
+    },
+    "corresponding_baseline_call": {
+      "version": "baseline",
+      "mode": "paper_mode",
+      "call_index": 484,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+      "iteration": 7,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "candidate_objective",
+      "direct_caller_file": "objective.py",
+      "direct_caller_function": "objective",
+      "direct_caller_line": 139,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+      "state_business_fingerprint_before": "e58f14efc75138e4c6ffdbdd5a21e52032cc63a36140fb4774cb5a060380ac28",
+      "state_business_fingerprint_after": "e58f14efc75138e4c6ffdbdd5a21e52032cc63a36140fb4774cb5a060380ac28",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          12,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 129.41041553052818,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 1,
+          "launch_time": 116.45858341976434,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 1,
+          "recovery_time": 129.41041553052818,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 129.41041553052818,
+          "van_waiting_time": 12.951832110763846
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "iteration candidate",
+      "checker_result": false,
+      "normalized_violation_signature": "01cddefd12dc9cdc299306a4a8b85ddfa790e8c72c6b3d94935009b3220e14af",
+      "violations": [
+        "high-floor customer 10 must be served by drone.",
+        "high-floor customer 11 must be served by drone.",
+        "high-floor customer 14 must be served by drone.",
+        "high-floor customer 8 must be served by drone.",
+        "unassigned customers remain: [5, 6, 7, 8, 9, 10, 11, 14]"
+      ],
+      "rng_state_fingerprint_before": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "rng_state_fingerprint_after": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "objective_call_index": 235,
+      "relative_order": 484,
+      "relative_time_ns": 9057807000
+    },
+    "corresponding_current_call": {
+      "version": "current",
+      "mode": "paper_mode",
+      "call_index": 485,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_paper_search_work_matches_preimplementation_baseline",
+      "iteration": 7,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "candidate_objective",
+      "direct_caller_file": "objective.py",
+      "direct_caller_function": "objective",
+      "direct_caller_line": 139,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+      "state_business_fingerprint_before": "f7f74d11344df6c79d84bc738f65a538cb6ee8e59d4062e0b6ac3bc7c51ad8a0",
+      "state_business_fingerprint_after": "f7f74d11344df6c79d84bc738f65a538cb6ee8e59d4062e0b6ac3bc7c51ad8a0",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          12,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 129.41041553052818,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 1,
+          "launch_time": 116.45858341976434,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 1,
+          "recovery_time": 129.41041553052818,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 129.41041553052818,
+          "van_waiting_time": 12.951832110763846
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "iteration candidate",
+      "checker_result": false,
+      "normalized_violation_signature": "01cddefd12dc9cdc299306a4a8b85ddfa790e8c72c6b3d94935009b3220e14af",
+      "violations": [
+        "high-floor customer 10 must be served by drone.",
+        "high-floor customer 11 must be served by drone.",
+        "high-floor customer 14 must be served by drone.",
+        "high-floor customer 8 must be served by drone.",
+        "unassigned customers remain: [5, 6, 7, 8, 9, 10, 11, 14]"
+      ],
+      "rng_state_fingerprint_before": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "rng_state_fingerprint_after": "318c45a0f34e7b80eb2578b7b56c9051c340ec271a9ffe1bd54c65147c6d7f95",
+      "objective_call_index": 235,
+      "relative_order": 485,
+      "relative_time_ns": 8869015100
+    },
+    "previous_equivalent_check": null,
+    "sequence_realigns_after_extra": true,
+    "pure_insertion_under_state_aware_key": false,
+    "one_to_two_replacement_block": true,
+    "behavior_neutral_checks": {
+      "baseline_run1": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "baseline_run2": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "current_run1": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "current_run2": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      }
+    },
+    "run_summaries": {
+      "baseline_run1": {
+        "trace_count": 909,
+        "profile_checker_calls": 909,
+        "profile_objective_calls": 653,
+        "rng_digest": "0ef1b46c0559070d2546d0261ec49177635ed842cdeb4b5fb8820c671da5bf3b",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "random_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 3,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 5,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "cascade_aware_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 13,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 7,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 9,
+            "destroy": "related_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 10,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "related_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 11,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 11,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 12,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          }
+        ]
+      },
+      "baseline_run2": {
+        "trace_count": 909,
+        "profile_checker_calls": 909,
+        "profile_objective_calls": 653,
+        "rng_digest": "0ef1b46c0559070d2546d0261ec49177635ed842cdeb4b5fb8820c671da5bf3b",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "random_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 3,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 5,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "cascade_aware_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 13,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 7,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 9,
+            "destroy": "related_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 10,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "related_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 11,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 11,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 12,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          }
+        ]
+      },
+      "current_run1": {
+        "trace_count": 910,
+        "profile_checker_calls": 910,
+        "profile_objective_calls": 653,
+        "rng_digest": "0ef1b46c0559070d2546d0261ec49177635ed842cdeb4b5fb8820c671da5bf3b",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "random_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 3,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 5,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "cascade_aware_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 13,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 7,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 9,
+            "destroy": "related_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 10,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "related_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 11,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 11,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 12,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          }
+        ]
+      },
+      "current_run2": {
+        "trace_count": 910,
+        "profile_checker_calls": 910,
+        "profile_objective_calls": 653,
+        "rng_digest": "0ef1b46c0559070d2546d0261ec49177635ed842cdeb4b5fb8820c671da5bf3b",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "9de8f7ba48e3e29c3d7853e257c3515f9c86b4749cc4ce0d0493e051465fe583",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "random_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 3,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 5,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "cascade_aware_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 13,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 7,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "related_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 8,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 9,
+            "destroy": "related_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 10,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "related_customer_removal",
+            "repair": "cascade_repair",
+            "action_id": 11,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 11,
+            "destroy": "greedy_removal",
+            "repair": "best_mode_repair",
+            "action_id": 4,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 12,
+            "destroy": "random_customer_removal",
+            "repair": "regret_repair",
+            "action_id": 2,
+            "accepted": true,
+            "candidate_feasible": true
+          }
+        ]
+      }
+    }
+  },
+  "extended": {
+    "baseline_count": 884,
+    "current_count": 885,
+    "delta": 1,
+    "baseline_trace_deterministic": true,
+    "current_trace_deterministic": true,
+    "matching_blocks": [
+      [
+        0,
+        0,
+        321
+      ],
+      [
+        322,
+        323,
+        562
+      ],
+      [
+        884,
+        885,
+        0
+      ]
+    ],
+    "non_equal_opcodes": [
+      [
+        "replace",
+        321,
+        322,
+        321,
+        323
+      ]
+    ],
+    "inserted_count": 0,
+    "deleted_count": 0,
+    "replacement_count": 1,
+    "first_divergence": {
+      "tag": "replace",
+      "baseline_range": [
+        322,
+        322
+      ],
+      "current_range": [
+        322,
+        323
+      ],
+      "baseline_before": {
+        "version": "baseline",
+        "mode": "extended_mode",
+        "call_index": 321,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+        "iteration": 7,
+        "action_id": 31,
+        "destroy_name": "switch_transshipment_operator",
+        "repair_name": "greedy_drone_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+        "state_business_fingerprint_before": "8d3140b7307f06e05105776349e5ad2c3efc801e65d6ca706e1e6fdb1bde3567",
+        "state_business_fingerprint_after": "8d3140b7307f06e05105776349e5ad2c3efc801e65d6ca706e1e6fdb1bde3567",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [
+          10,
+          11,
+          14
+        ],
+        "route_summary": {
+          "van_2": [
+            4,
+            7,
+            12,
+            13,
+            4
+          ],
+          "van_3": [
+            4,
+            4
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              5
+            ],
+            "drone_arrival_time": 199.12608292203197,
+            "drone_id": "drone_4",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 184.57638990891286,
+            "launch_van_id": "van_2",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 199.12608292203197,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 199.12608292203197,
+            "van_waiting_time": 62.59844501291451
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_arrival_time": 215.6333354760775,
+            "drone_id": "drone_5",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 184.57638990891286,
+            "launch_van_id": "van_2",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 215.6333354760775,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 215.6333354760775,
+            "van_waiting_time": 79.10569756696003
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_arrival_time": 173.73282632308144,
+            "drone_id": "drone_6",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 136.52763790911746,
+            "launch_van_id": "van_3",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 173.73282632308144,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 173.73282632308144,
+            "van_waiting_time": 37.20518841396398
+          },
+          {
+            "customers": [
+              9
+            ],
+            "drone_arrival_time": 184.57638990891286,
+            "drone_id": "drone_7",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 136.52763790911746,
+            "launch_van_id": "van_3",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 184.57638990891286,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 184.57638990891286,
+            "van_waiting_time": 48.0487519997954
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": false,
+        "normalized_violation_signature": "338cc86a224a8f251e555cbcdd16f1cf9ff49ec053c0db265f5632e97727bdb7",
+        "violations": [
+          "high-floor customer 10 must be served by drone.",
+          "high-floor customer 11 must be served by drone.",
+          "high-floor customer 14 must be served by drone.",
+          "unassigned customers remain: [10, 11, 14]"
+        ],
+        "rng_state_fingerprint_before": "849e42720a99e141fbcf1bb51d39dc156e836f738a022c0f0c30a476787c797e",
+        "rng_state_fingerprint_after": "849e42720a99e141fbcf1bb51d39dc156e836f738a022c0f0c30a476787c797e",
+        "objective_call_index": 50,
+        "relative_order": 321,
+        "relative_time_ns": 5225019200
+      },
+      "current_before": {
+        "version": "current",
+        "mode": "extended_mode",
+        "call_index": 321,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+        "iteration": 7,
+        "action_id": 31,
+        "destroy_name": "switch_transshipment_operator",
+        "repair_name": "greedy_drone_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+        "state_business_fingerprint_before": "8d3140b7307f06e05105776349e5ad2c3efc801e65d6ca706e1e6fdb1bde3567",
+        "state_business_fingerprint_after": "8d3140b7307f06e05105776349e5ad2c3efc801e65d6ca706e1e6fdb1bde3567",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [
+          10,
+          11,
+          14
+        ],
+        "route_summary": {
+          "van_2": [
+            4,
+            7,
+            12,
+            13,
+            4
+          ],
+          "van_3": [
+            4,
+            4
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              5
+            ],
+            "drone_arrival_time": 199.12608292203197,
+            "drone_id": "drone_4",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 184.57638990891286,
+            "launch_van_id": "van_2",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 199.12608292203197,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 199.12608292203197,
+            "van_waiting_time": 62.59844501291451
+          },
+          {
+            "customers": [
+              6
+            ],
+            "drone_arrival_time": 215.6333354760775,
+            "drone_id": "drone_5",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 184.57638990891286,
+            "launch_van_id": "van_2",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 215.6333354760775,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 215.6333354760775,
+            "van_waiting_time": 79.10569756696003
+          },
+          {
+            "customers": [
+              8
+            ],
+            "drone_arrival_time": 173.73282632308144,
+            "drone_id": "drone_6",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 136.52763790911746,
+            "launch_van_id": "van_3",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 173.73282632308144,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 173.73282632308144,
+            "van_waiting_time": 37.20518841396398
+          },
+          {
+            "customers": [
+              9
+            ],
+            "drone_arrival_time": 184.57638990891286,
+            "drone_id": "drone_7",
+            "drone_waiting_time": 0.0,
+            "launch": 4,
+            "launch_position": 0,
+            "launch_time": 136.52763790911746,
+            "launch_van_id": "van_3",
+            "recovery": 4,
+            "recovery_position": 0,
+            "recovery_time": 184.57638990891286,
+            "recovery_van_id": "van_2",
+            "same_node": true,
+            "synchronized_recovery_time": 184.57638990891286,
+            "van_waiting_time": 48.0487519997954
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": false,
+        "normalized_violation_signature": "338cc86a224a8f251e555cbcdd16f1cf9ff49ec053c0db265f5632e97727bdb7",
+        "violations": [
+          "high-floor customer 10 must be served by drone.",
+          "high-floor customer 11 must be served by drone.",
+          "high-floor customer 14 must be served by drone.",
+          "unassigned customers remain: [10, 11, 14]"
+        ],
+        "rng_state_fingerprint_before": "849e42720a99e141fbcf1bb51d39dc156e836f738a022c0f0c30a476787c797e",
+        "rng_state_fingerprint_after": "849e42720a99e141fbcf1bb51d39dc156e836f738a022c0f0c30a476787c797e",
+        "objective_call_index": 50,
+        "relative_order": 321,
+        "relative_time_ns": 5258443100
+      },
+      "baseline_after": {
+        "version": "baseline",
+        "mode": "extended_mode",
+        "call_index": 323,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+        "iteration": 9,
+        "action_id": 17,
+        "destroy_name": "greedy_removal",
+        "repair_name": "greedy_drone_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > operators.py:greedy_removal > objective.py:objective",
+        "state_business_fingerprint_before": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "state_business_fingerprint_after": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            9,
+            5,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 158.21697486514014,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 158.21697486514014,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 158.21697486514014,
+            "van_waiting_time": 35.12205100202965
+          },
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 268.6891379516066,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 3,
+            "launch_time": 255.7373058408428,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 3,
+            "recovery_time": 268.6891379516066,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 268.6891379516066,
+            "van_waiting_time": 12.951832110763803
+          },
+          {
+            "customers": [
+              7
+            ],
+            "drone_arrival_time": 157.82956498230655,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 157.82956498230655,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 157.82956498230655,
+            "van_waiting_time": 34.734641119196056
+          },
+          {
+            "customers": [
+              6,
+              11
+            ],
+            "drone_arrival_time": 230.24904487313307,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 199.88073373733627,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 230.24904487313307,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 230.24904487313307,
+            "van_waiting_time": 30.3683111357968
+          },
+          {
+            "customers": [
+              14,
+              8
+            ],
+            "drone_arrival_time": 223.46659393234634,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 199.88073373733627,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 223.46659393234634,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 223.46659393234634,
+            "van_waiting_time": 23.58586019501007
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": true,
+        "normalized_violation_signature": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "violations": [],
+        "rng_state_fingerprint_before": "53f62675a38e3e70e01d6660ed7cd7e66c9e2b489e196172ab662f02b8f36a6f",
+        "rng_state_fingerprint_after": "53f62675a38e3e70e01d6660ed7cd7e66c9e2b489e196172ab662f02b8f36a6f",
+        "objective_call_index": 52,
+        "relative_order": 323,
+        "relative_time_ns": 5274374300
+      },
+      "current_after": {
+        "version": "current",
+        "mode": "extended_mode",
+        "call_index": 324,
+        "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+        "iteration": 9,
+        "action_id": 17,
+        "destroy_name": "greedy_removal",
+        "repair_name": "greedy_drone_repair",
+        "execution_phase": "candidate_objective",
+        "direct_caller_file": "objective.py",
+        "direct_caller_function": "objective",
+        "direct_caller_line": 139,
+        "compact_stack_signature": "alns_solver.py:run_c_alns > operators.py:greedy_removal > objective.py:objective",
+        "state_business_fingerprint_before": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "state_business_fingerprint_after": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "state_object_type": "TVDState",
+        "unassigned_customer_ids": [],
+        "route_summary": {
+          "van_0": [
+            3,
+            9,
+            5,
+            12,
+            3
+          ],
+          "van_1": [
+            3,
+            3
+          ]
+        },
+        "sortie_summary": [
+          {
+            "customers": [
+              10
+            ],
+            "drone_arrival_time": 158.21697486514014,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 158.21697486514014,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 158.21697486514014,
+            "van_waiting_time": 35.12205100202965
+          },
+          {
+            "customers": [
+              13
+            ],
+            "drone_arrival_time": 268.6891379516066,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 12,
+            "launch_position": 3,
+            "launch_time": 255.7373058408428,
+            "launch_van_id": "van_0",
+            "recovery": 12,
+            "recovery_position": 3,
+            "recovery_time": 268.6891379516066,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 268.6891379516066,
+            "van_waiting_time": 12.951832110763803
+          },
+          {
+            "customers": [
+              7
+            ],
+            "drone_arrival_time": 157.82956498230655,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 9,
+            "launch_position": 1,
+            "launch_time": 123.0949238631105,
+            "launch_van_id": "van_0",
+            "recovery": 9,
+            "recovery_position": 1,
+            "recovery_time": 157.82956498230655,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 157.82956498230655,
+            "van_waiting_time": 34.734641119196056
+          },
+          {
+            "customers": [
+              6,
+              11
+            ],
+            "drone_arrival_time": 230.24904487313307,
+            "drone_id": "drone_0",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 199.88073373733627,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 230.24904487313307,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 230.24904487313307,
+            "van_waiting_time": 30.3683111357968
+          },
+          {
+            "customers": [
+              14,
+              8
+            ],
+            "drone_arrival_time": 223.46659393234634,
+            "drone_id": "drone_1",
+            "drone_waiting_time": 0.0,
+            "launch": 5,
+            "launch_position": 2,
+            "launch_time": 199.88073373733627,
+            "launch_van_id": "van_0",
+            "recovery": 5,
+            "recovery_position": 2,
+            "recovery_time": 223.46659393234634,
+            "recovery_van_id": "van_0",
+            "same_node": true,
+            "synchronized_recovery_time": 223.46659393234634,
+            "van_waiting_time": 23.58586019501007
+          }
+        ],
+        "active_context_present": false,
+        "context_type": null,
+        "state_classification": "iteration candidate",
+        "checker_result": true,
+        "normalized_violation_signature": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945",
+        "violations": [],
+        "rng_state_fingerprint_before": "53f62675a38e3e70e01d6660ed7cd7e66c9e2b489e196172ab662f02b8f36a6f",
+        "rng_state_fingerprint_after": "53f62675a38e3e70e01d6660ed7cd7e66c9e2b489e196172ab662f02b8f36a6f",
+        "objective_call_index": 52,
+        "relative_order": 324,
+        "relative_time_ns": 5317914100
+      }
+    },
+    "extra_call": {
+      "version": "current",
+      "mode": "extended_mode",
+      "call_index": 322,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+      "iteration": 8,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "repair",
+      "direct_caller_file": "operators.py",
+      "direct_caller_function": "_validate_cascade_candidate",
+      "direct_caller_line": 3670,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > operators.py:cascade_repair > operators.py:_enumerate_bundle_reconstruction_strategies > operators.py:_validate_cascade_candidate",
+      "state_business_fingerprint_before": "df008ba8a7c24beae7f9091bfa72611b101e0d41238a727f264ee1d28cc18cbb",
+      "state_business_fingerprint_after": "afa0f65c0049774c0e448326e911013e82d56e6d6c152903f256134218e3438e",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        7,
+        9,
+        10
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          12,
+          5,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 268.6891379516066,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 3,
+          "launch_time": 255.7373058408428,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 3,
+          "recovery_time": 268.6891379516066,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 268.6891379516066,
+          "van_waiting_time": 12.951832110763803
+        },
+        {
+          "customers": [
+            6,
+            11
+          ],
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 5,
+          "launch_position": 2,
+          "launch_time": 0.0,
+          "launch_van_id": "van_0",
+          "recovery": 5,
+          "recovery_position": 2,
+          "recovery_time": 0.0,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "van_waiting_time": 0.0
+        },
+        {
+          "customers": [
+            14,
+            8
+          ],
+          "drone_id": "drone_1",
+          "drone_waiting_time": 0.0,
+          "launch": 5,
+          "launch_position": 2,
+          "launch_time": 0.0,
+          "launch_van_id": "van_0",
+          "recovery": 5,
+          "recovery_position": 2,
+          "recovery_time": 0.0,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "van_waiting_time": 0.0
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "repair candidate/working copy",
+      "checker_result": false,
+      "normalized_violation_signature": "a4eaa14b25e93291464b5d2fd1a226b2b261d2815461abe6471a1c017e4f43a7",
+      "violations": [
+        "high-floor customer 10 must be served by drone.",
+        "unassigned customers remain: [7, 9, 10]"
+      ],
+      "rng_state_fingerprint_before": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "rng_state_fingerprint_after": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "objective_call_index": 50,
+      "relative_order": 322,
+      "relative_time_ns": 5293839500
+    },
+    "corresponding_baseline_call": {
+      "version": "baseline",
+      "mode": "extended_mode",
+      "call_index": 322,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+      "iteration": 8,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "candidate_objective",
+      "direct_caller_file": "objective.py",
+      "direct_caller_function": "objective",
+      "direct_caller_line": 139,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+      "state_business_fingerprint_before": "e58f14efc75138e4c6ffdbdd5a21e52032cc63a36140fb4774cb5a060380ac28",
+      "state_business_fingerprint_after": "e58f14efc75138e4c6ffdbdd5a21e52032cc63a36140fb4774cb5a060380ac28",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          12,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 129.41041553052818,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 1,
+          "launch_time": 116.45858341976434,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 1,
+          "recovery_time": 129.41041553052818,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 129.41041553052818,
+          "van_waiting_time": 12.951832110763846
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "iteration candidate",
+      "checker_result": false,
+      "normalized_violation_signature": "01cddefd12dc9cdc299306a4a8b85ddfa790e8c72c6b3d94935009b3220e14af",
+      "violations": [
+        "high-floor customer 10 must be served by drone.",
+        "high-floor customer 11 must be served by drone.",
+        "high-floor customer 14 must be served by drone.",
+        "high-floor customer 8 must be served by drone.",
+        "unassigned customers remain: [5, 6, 7, 8, 9, 10, 11, 14]"
+      ],
+      "rng_state_fingerprint_before": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "rng_state_fingerprint_after": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "objective_call_index": 51,
+      "relative_order": 322,
+      "relative_time_ns": 5255875600
+    },
+    "corresponding_current_call": {
+      "version": "current",
+      "mode": "extended_mode",
+      "call_index": 323,
+      "pytest_node_id": "tests/test_stage2e1_operator_modes.py::test_explicit_extended_run_matches_preimplementation_baseline",
+      "iteration": 8,
+      "action_id": 15,
+      "destroy_name": "cascade_aware_removal",
+      "repair_name": "cascade_repair",
+      "execution_phase": "candidate_objective",
+      "direct_caller_file": "objective.py",
+      "direct_caller_function": "objective",
+      "direct_caller_line": 139,
+      "compact_stack_signature": "alns_solver.py:run_c_alns > objective.py:objective",
+      "state_business_fingerprint_before": "206c65a469d7bf123eb3224ad4c1d1bc0349eedda79d5f4242fb99b9bf5c515c",
+      "state_business_fingerprint_after": "206c65a469d7bf123eb3224ad4c1d1bc0349eedda79d5f4242fb99b9bf5c515c",
+      "state_object_type": "TVDState",
+      "unassigned_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        14
+      ],
+      "route_summary": {
+        "van_0": [
+          3,
+          12,
+          3
+        ],
+        "van_1": [
+          3,
+          3
+        ]
+      },
+      "sortie_summary": [
+        {
+          "customers": [
+            13
+          ],
+          "drone_arrival_time": 129.41041553052818,
+          "drone_id": "drone_0",
+          "drone_waiting_time": 0.0,
+          "launch": 12,
+          "launch_position": 1,
+          "launch_time": 116.45858341976434,
+          "launch_van_id": "van_0",
+          "recovery": 12,
+          "recovery_position": 1,
+          "recovery_time": 129.41041553052818,
+          "recovery_van_id": "van_0",
+          "same_node": true,
+          "synchronized_recovery_time": 129.41041553052818,
+          "van_waiting_time": 12.951832110763846
+        }
+      ],
+      "active_context_present": false,
+      "context_type": null,
+      "state_classification": "iteration candidate",
+      "checker_result": false,
+      "normalized_violation_signature": "01cddefd12dc9cdc299306a4a8b85ddfa790e8c72c6b3d94935009b3220e14af",
+      "violations": [
+        "high-floor customer 10 must be served by drone.",
+        "high-floor customer 11 must be served by drone.",
+        "high-floor customer 14 must be served by drone.",
+        "high-floor customer 8 must be served by drone.",
+        "unassigned customers remain: [5, 6, 7, 8, 9, 10, 11, 14]"
+      ],
+      "rng_state_fingerprint_before": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "rng_state_fingerprint_after": "0c51b4a6fcf2b9c66b1826e790f32b59f35f32efb2e122bcd1f5625fb9be875e",
+      "objective_call_index": 51,
+      "relative_order": 323,
+      "relative_time_ns": 5302558600
+    },
+    "previous_equivalent_check": null,
+    "sequence_realigns_after_extra": true,
+    "pure_insertion_under_state_aware_key": false,
+    "one_to_two_replacement_block": true,
+    "behavior_neutral_checks": {
+      "baseline_run1": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "baseline_run2": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "current_run1": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      },
+      "current_run2": {
+        "trace_count_equals_profile": true,
+        "checker_count_matches_expected": true,
+        "objective_calls_match_expected": true,
+        "rng_digest_matches_expected": true,
+        "final_objective_matches_expected": true,
+        "final_fingerprint_matches_expected": true,
+        "checker_preserved_business_state": false,
+        "checker_preserved_rng": true
+      }
+    },
+    "run_summaries": {
+      "baseline_run1": {
+        "trace_count": 884,
+        "profile_checker_calls": 884,
+        "profile_objective_calls": 608,
+        "rng_digest": "57273a01c37b67814e439fbf7d5f4617e124eda6c3020aefd905f3e09f4525d5",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 1,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 16,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "drone_task_removal",
+            "repair": "cascade_repair",
+            "action_id": 29,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 5,
+            "destroy": "greedy_removal",
+            "repair": "cascade_repair",
+            "action_id": 7,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 7,
+            "destroy": "switch_transshipment_operator",
+            "repair": "greedy_drone_repair",
+            "action_id": 31,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 9,
+            "destroy": "greedy_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 17,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "route_segment_removal",
+            "repair": "regret_repair",
+            "action_id": 23,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 11,
+            "destroy": "route_segment_removal",
+            "repair": "cascade_repair",
+            "action_id": 24,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 12,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": false,
+            "candidate_feasible": false
+          }
+        ]
+      },
+      "baseline_run2": {
+        "trace_count": 884,
+        "profile_checker_calls": 884,
+        "profile_objective_calls": 608,
+        "rng_digest": "57273a01c37b67814e439fbf7d5f4617e124eda6c3020aefd905f3e09f4525d5",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 1,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 16,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "drone_task_removal",
+            "repair": "cascade_repair",
+            "action_id": 29,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 5,
+            "destroy": "greedy_removal",
+            "repair": "cascade_repair",
+            "action_id": 7,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 7,
+            "destroy": "switch_transshipment_operator",
+            "repair": "greedy_drone_repair",
+            "action_id": 31,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 9,
+            "destroy": "greedy_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 17,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "route_segment_removal",
+            "repair": "regret_repair",
+            "action_id": 23,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 11,
+            "destroy": "route_segment_removal",
+            "repair": "cascade_repair",
+            "action_id": 24,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 12,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": false,
+            "candidate_feasible": false
+          }
+        ]
+      },
+      "current_run1": {
+        "trace_count": 885,
+        "profile_checker_calls": 885,
+        "profile_objective_calls": 608,
+        "rng_digest": "57273a01c37b67814e439fbf7d5f4617e124eda6c3020aefd905f3e09f4525d5",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 1,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 16,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "drone_task_removal",
+            "repair": "cascade_repair",
+            "action_id": 29,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 5,
+            "destroy": "greedy_removal",
+            "repair": "cascade_repair",
+            "action_id": 7,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 7,
+            "destroy": "switch_transshipment_operator",
+            "repair": "greedy_drone_repair",
+            "action_id": 31,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 9,
+            "destroy": "greedy_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 17,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "route_segment_removal",
+            "repair": "regret_repair",
+            "action_id": 23,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 11,
+            "destroy": "route_segment_removal",
+            "repair": "cascade_repair",
+            "action_id": 24,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 12,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": false,
+            "candidate_feasible": false
+          }
+        ]
+      },
+      "current_run2": {
+        "trace_count": 885,
+        "profile_checker_calls": 885,
+        "profile_objective_calls": 608,
+        "rng_digest": "57273a01c37b67814e439fbf7d5f4617e124eda6c3020aefd905f3e09f4525d5",
+        "final_objective": 789.5462929944308,
+        "final_fingerprint": "3f8ec1b603fbb1d564063ba9a2d432148c4252af93e0e6b9305a0097f46bbf0f",
+        "history": [
+          {
+            "iteration": 1,
+            "destroy": "random_customer_removal",
+            "repair": "best_mode_repair",
+            "action_id": 0,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 2,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 1,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 3,
+            "destroy": "random_customer_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 16,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 4,
+            "destroy": "drone_task_removal",
+            "repair": "cascade_repair",
+            "action_id": 29,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 5,
+            "destroy": "greedy_removal",
+            "repair": "cascade_repair",
+            "action_id": 7,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 6,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 7,
+            "destroy": "switch_transshipment_operator",
+            "repair": "greedy_drone_repair",
+            "action_id": 31,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 8,
+            "destroy": "cascade_aware_removal",
+            "repair": "cascade_repair",
+            "action_id": 15,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 9,
+            "destroy": "greedy_removal",
+            "repair": "greedy_drone_repair",
+            "action_id": 17,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 10,
+            "destroy": "route_segment_removal",
+            "repair": "regret_repair",
+            "action_id": 23,
+            "accepted": true,
+            "candidate_feasible": true
+          },
+          {
+            "iteration": 11,
+            "destroy": "route_segment_removal",
+            "repair": "cascade_repair",
+            "action_id": 24,
+            "accepted": false,
+            "candidate_feasible": false
+          },
+          {
+            "iteration": 12,
+            "destroy": "related_customer_removal",
+            "repair": "greedy_van_repair",
+            "action_id": 9,
+            "accepted": false,
+            "candidate_feasible": false
+          }
+        ]
+      }
+    }
+  },
+  "cross_mode": {
+    "both_extra_calls_identified": true,
+    "same_direct_caller": true,
+    "same_stack_signature": true,
+    "same_execution_phase": true,
+    "same_state_classification": true
+  }
+}

@@ -1,0 +1,9 @@
+fixture,run,requested_count,eligible_input,seed_order,current_expansion,current_closure_membership,current_removal_order,bundles,dependency_order,newly_unassigned,native_adapter_calls,rng_call_count,rng_replace,destroyed_fingerprint
+single_cross_van_chain,1,1,"5;6;7;8;9;10;11;12",8,8->6,"6;8","8;6","6;8","6;8","6;8",0,1,false,e877c3666cacb4ff1af0f567ec23f89eba89a748c168b1c0c0e8504f8b00d12c
+single_cross_van_chain,2,1,"5;6;7;8;9;10;11;12",8,8->6,"6;8","8;6","6;8","6;8","6;8",0,1,false,e877c3666cacb4ff1af0f567ec23f89eba89a748c168b1c0c0e8504f8b00d12c
+same_sortie_duplicate_membership,1,1,"5;6;7;8;9;10;11;12",5,5->7,"5;7","5;7","5;7","5;7","5;7",0,1,false,dc758e7946c8938fb6031fc95af3c0537129893d767e23d6306a6307572e8b4d
+same_sortie_duplicate_membership,2,1,"5;6;7;8;9;10;11;12",5,5->7,"5;7","5;7","5;7","5;7","5;7",0,1,false,dc758e7946c8938fb6031fc95af3c0537129893d767e23d6306a6307572e8b4d
+two_dependency_chains_two_bundles,1,2,"5;6;7;8;9;10;11;12","8;7","8->6;7->5","5;6;7;8","5;6;7;8","5;7|6;8","5;7|6;8","5;6;7;8",0,1,false,f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e
+two_dependency_chains_two_bundles,2,2,"5;6;7;8;9;10;11;12","8;7","8->6;7->5","5;6;7;8","5;6;7;8","5;7|6;8","5;7|6;8","5;6;7;8",0,1,false,f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e
+two_seed_two_chain_order,1,2,"5;6;7;8;9;10;11;12","8;5","8->6;5->7","5;6;7;8","5;6;7;8","5;7|6;8","5;7|6;8","5;6;7;8",0,1,false,f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e
+two_seed_two_chain_order,2,2,"5;6;7;8;9;10;11;12","8;5","8->6;5->7","5;6;7;8","5;6;7;8","5;7|6;8","5;7|6;8","5;6;7;8",0,1,false,f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e

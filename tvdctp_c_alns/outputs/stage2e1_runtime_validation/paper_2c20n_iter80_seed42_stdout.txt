@@ -1,0 +1,4 @@
+[validation harness] No application stdout was emitted before the command timeout.
+[validation harness] External command timeout: approximately 901.648 seconds.
+[validation harness] Tool exit code: 124.
+[validation harness] The process was terminated by the external timeout; no normal solver result was generated.

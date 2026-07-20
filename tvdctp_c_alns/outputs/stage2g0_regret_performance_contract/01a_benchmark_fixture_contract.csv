@@ -1,0 +1,4 @@
+fixture,source,fingerprint,customers,unassigned,vans,drones,containers,iterations,seed,mode,expected_selected,expected_objective,expected_checker
+heavy_regret,"second regret_repair entry in deterministic 20-customer, 2-container, 10-iteration paper-mode prefix",322c9cbceb26cde7319950e575dd3e8a26574643d143036715bedd9f88ad1a17,20,"[7, 23, 24, 13, 22, 21, 16]",3,12,2,10,42,paper_mode,16,1128.0529725913307,True
+small_regret,tests/test_stage2c_regret2.py::_cross_van_case semantics reconstructed without changing tests,8bee5555ef10a344184347d1edd6f33d52a0fa209fe47f3a4bc42cb54829a4e6,6,[6],2,8,1,1,2026,paper_mode,6,605.1902101589708,True
+solver_level,fresh deterministic production run,51e8f4548076f23b62503176b1e8c7483844a3e5c680ca0b3213d9ec8f901cf5,10,[] final,configured small scale,derived from vans,1,5,4,paper_mode,"actions 14,9,14,7,7",620.3366173230896,True

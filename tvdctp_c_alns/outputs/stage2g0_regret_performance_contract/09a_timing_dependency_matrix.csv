@@ -1,0 +1,5 @@
+move,direct_nodes,sortie_scope,cross_route,downstream,cost_checker
+van insertion,inserted arc and target route suffix,all launch/recovery anchors on target route,via cross-van recovery and carrier relaunch,fixed-point closure,"waiting, time windows, synchronization, physical carrier"
+same-van drone,launch/recovery positions,new sortie and same-drone chain,none unless existing chain transfers later,recovery route suffix and relaunch,"waiting, endurance/energy, time windows"
+cross-van drone,launch route anchor + recovery route anchor,new sortie and physical-drone chain,"yes, launch to recovery van",recovery route suffix and later carrier use,"synchronization, dynamic carried capacity, time windows"
+container/warehouse,not changed by Regret insertion,readiness remains an input,readiness can gate all vans at warehouse,global if input changed outside Regret,container readiness rules

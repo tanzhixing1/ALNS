@@ -1,0 +1,728 @@
+{
+  "roots": {
+    "baseline": "D:\\STUDY\\game\\github-program\\noteread\\ALNS_worktrees\\stage2f2a_baseline\\tvdctp_c_alns",
+    "current": "D:\\STUDY\\game\\github-program\\noteread\\ALNS_worktrees\\stage2f2a_current\\tvdctp_c_alns"
+  },
+  "rows": [
+    {
+      "Call Site ID": "CCS-001",
+      "File": "alns_solver.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 12",
+      "Current": "line 12",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-002",
+      "File": "alns_solver.py",
+      "Function": "run_c_alns",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "solver initial/final validation",
+      "Baseline": "line 126",
+      "Current": "line 126",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-003",
+      "File": "alns_solver.py",
+      "Function": "run_c_alns",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "solver initial/final validation",
+      "Baseline": "line 317",
+      "Current": "line 317",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-004",
+      "File": "diagnose_calns.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 22",
+      "Current": "line 22",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-005",
+      "File": "diagnose_calns.py",
+      "Function": "run_initial_only",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "diagnostic final validation",
+      "Baseline": "line 390",
+      "Current": "line 390",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-006",
+      "File": "diagnose_calns.py",
+      "Function": "summarize_result",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "diagnostic final validation",
+      "Baseline": "line 150",
+      "Current": "line 150",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-007",
+      "File": "evaluation.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 12",
+      "Current": "line 12",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-008",
+      "File": "evaluation.py",
+      "Function": "evaluate_and_save",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "evaluation/final output validation",
+      "Baseline": "line 1799",
+      "Current": "line 1799",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-009",
+      "File": "evaluation.py",
+      "Function": "save_route_plan_detail",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "evaluation/final output validation",
+      "Baseline": "line 972",
+      "Current": "line 972",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-010",
+      "File": "feasibility.py",
+      "Function": "<module>",
+      "Direct/Indirect": "definition",
+      "Phase": "definition",
+      "Baseline": "line 1104",
+      "Current": "line 1104",
+      "Notes": "definition: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-011",
+      "File": "initial_solution.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 10",
+      "Current": "line 10",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-012",
+      "File": "initial_solution.py",
+      "Function": "_candidate_sortie_is_feasible",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "initial construction/final validation",
+      "Baseline": "line 849",
+      "Current": "line 849",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-013",
+      "File": "initial_solution.py",
+      "Function": "initial_solution",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "initial construction/final validation",
+      "Baseline": "line 1319",
+      "Current": "line 1319",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-014",
+      "File": "objective.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 7",
+      "Current": "line 7",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-015",
+      "File": "objective.py",
+      "Function": "objective",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "objective feasibility boundary",
+      "Baseline": "line 139",
+      "Current": "line 139",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-016",
+      "File": "operators.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 26",
+      "Current": "line 26",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-017",
+      "File": "operators.py",
+      "Function": "_partial_repair_hard_feasible",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "repair/consolidation boundary",
+      "Baseline": "line 1044",
+      "Current": "line 1308",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-018",
+      "File": "operators.py",
+      "Function": "_state_is_feasible_and_no_worse",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "repair/consolidation boundary",
+      "Baseline": "line 2304",
+      "Current": "line 2568",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-019",
+      "File": "operators.py",
+      "Function": "_validate_cascade_candidate",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "Cascade repair candidate validation",
+      "Baseline": "line 3406",
+      "Current": "line 3670",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-020",
+      "File": "operators.py",
+      "Function": "consolidate_drone_sorties",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "repair/consolidation boundary",
+      "Baseline": "line 2420",
+      "Current": "line 2684",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-021",
+      "File": "operators.py",
+      "Function": "repair_is_complete",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "repair/consolidation boundary",
+      "Baseline": "line 3973",
+      "Current": "line 4237",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-022",
+      "File": "tests/test_core_model_capabilities.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 8",
+      "Current": "line 8",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-023",
+      "File": "tests/test_core_model_capabilities.py",
+      "Function": "_check_case",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 86",
+      "Current": "line 86",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-024",
+      "File": "tests/test_core_model_capabilities.py",
+      "Function": "test_two_container_cache_on_integration_smoke",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 672",
+      "Current": "line 672",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-025",
+      "File": "tests/test_core_model_capabilities.py",
+      "Function": "test_two_container_cache_on_integration_smoke",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 673",
+      "Current": "line 673",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-026",
+      "File": "tests/test_regression_rules.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 12",
+      "Current": "line 12",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-027",
+      "File": "tests/test_regression_rules.py",
+      "Function": "_solve",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 62",
+      "Current": "line 62",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-028",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_container_unload_time_gates_van_departure",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 404",
+      "Current": "line 404",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-029",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_drone_sortie_consolidation_merges_feasible_same_anchor_sorties",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 974",
+      "Current": "line 974",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-030",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_initial_solution_does_not_balance_into_second_van_when_one_van_is_feasible",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 505",
+      "Current": "line 505",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-031",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_initial_solution_serves_default_high_floor_customers_by_drone",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 454",
+      "Current": "line 454",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-032",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_manual_cross_van_flexible_docking_feasible_when_recovery_van_visits_node",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 593",
+      "Current": "line 593",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-033",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_manual_cross_van_flexible_docking_infeasible_when_recovery_van_misses_node",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 622",
+      "Current": "line 622",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-034",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_switch_transshipment_rebuilds_stage1_for_all_candidate_warehouses",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 336",
+      "Current": "line 336",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-035",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_tiny_multi_van_resource_model",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 136",
+      "Current": "line 136",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-036",
+      "File": "tests/test_regression_rules.py",
+      "Function": "test_trailer_cannot_move_without_tractor",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 380",
+      "Current": "line 380",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-037",
+      "File": "tests/test_stage2a_drone_feasibility.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 12",
+      "Current": "line 12",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-038",
+      "File": "tests/test_stage2a_drone_feasibility.py",
+      "Function": "test_stage2a_cross_van_position_numbers_do_not_replace_time_order",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 461",
+      "Current": "line 461",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-039",
+      "File": "tests/test_stage2a_drone_feasibility.py",
+      "Function": "test_stage2a_local_drone_checker_differential",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 415",
+      "Current": "line 415",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-040",
+      "File": "tests/test_stage2b_local_greedy.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 11",
+      "Current": "line 11",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-041",
+      "File": "tests/test_stage2b_local_greedy.py",
+      "Function": "test_local_scope_preserves_cross_van_recovery",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 261",
+      "Current": "line 261",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-042",
+      "File": "tests/test_stage2b_local_greedy.py",
+      "Function": "test_successful_local_repair_is_fully_feasible_and_serves_once",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 298",
+      "Current": "line 298",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-043",
+      "File": "tests/test_stage2c_regret2.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 11",
+      "Current": "line 11",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-044",
+      "File": "tests/test_stage2c_regret2.py",
+      "Function": "test_regret_candidates_preserve_cross_van_recovery_and_full_feasibility",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 431",
+      "Current": "line 431",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-045",
+      "File": "tests/test_stage2c_regret2.py",
+      "Function": "test_successful_regret_repair_final_state_is_fully_feasible",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 486",
+      "Current": "line 486",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-046",
+      "File": "tests/test_stage2d0_cascade_contract.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 12",
+      "Current": "line 12",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-047",
+      "File": "tests/test_stage2d0_cascade_contract.py",
+      "Function": "test_metadata_does_not_change_checker_objective_or_business_fingerprint",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 532",
+      "Current": "line 533",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-048",
+      "File": "tests/test_stage2d0_cascade_contract.py",
+      "Function": "test_metadata_does_not_change_checker_objective_or_business_fingerprint",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 533",
+      "Current": "line 534",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-049",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 10",
+      "Current": "line 10",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-050",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "test_all_bundles_success_produces_full_feasible_state_and_objective",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 622",
+      "Current": "line 622",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-051",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "test_cross_van_snapshot_reconstruction_is_supported_and_feasible",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 465",
+      "Current": "line 465",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-052",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "test_fixed_seed_diagnostics_are_deterministic_across_three_runs",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 550",
+      "Current": "line 550",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-053",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "test_full_checker_semantics_remain_strict",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 442",
+      "Current": "line 442",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-054",
+      "File": "tests/test_stage2d1_cascade_repair.py",
+      "Function": "test_full_checker_semantics_remain_strict",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 447",
+      "Current": "line 447",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-055",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 8",
+      "Current": "line 8",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-056",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "_idle_multidrone_state",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 53",
+      "Current": "line 53",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-057",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "_warehouse_return_counterexample",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 76",
+      "Current": "line 76",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-058",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "test_cross_van_recovery_updates_current_carrier_for_enumeration",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 226",
+      "Current": "line 226",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-059",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "test_first_drone_warehouse_returned_second_drone_candidate_is_found",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 155",
+      "Current": "line 155",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-060",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "test_stage2d_whole_bundle_retains_nonfirst_feasible_drone",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 304",
+      "Current": "line 304",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-061",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "test_two_idle_symmetric_drones_are_both_enumerated_without_pruning",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 123",
+      "Current": "line 123",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-062",
+      "File": "tests/test_stage2d_multidrone_coverage.py",
+      "Function": "test_two_idle_symmetric_drones_are_both_enumerated_without_pruning",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 124",
+      "Current": "line 124",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-063",
+      "File": "tests/test_stage2e1_operator_modes.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 19",
+      "Current": "line 19",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-064",
+      "File": "tests/test_stage2e1_operator_modes.py",
+      "Function": "test_default_paper_run_matches_preimplementation_baseline",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 400",
+      "Current": "line 400",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-065",
+      "File": "tests/test_stage2ea1_structural_context.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 14",
+      "Current": "line 14",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-066",
+      "File": "tests/test_stage2ea1_structural_context.py",
+      "Function": "test_existing_13_pairs_are_exactly_unchanged",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 581",
+      "Current": "line 581",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-067",
+      "File": "tests/test_stage2ea1_structural_context.py",
+      "Function": "test_objective_checker_and_violations_are_context_isolated",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 500",
+      "Current": "line 500",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-068",
+      "File": "tests/test_stage2ea1_structural_context.py",
+      "Function": "test_objective_checker_and_violations_are_context_isolated",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 501",
+      "Current": "line 501",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-069",
+      "File": "tests/test_stage2ea2_ordinary_cascade_adapter.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "line 11",
+      "Current": "line 11",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-070",
+      "File": "tests/test_stage2ea2_ordinary_cascade_adapter.py",
+      "Function": "test_existing_13_pair_baseline_and_16_pair_contract_matrix",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "line 610",
+      "Current": "line 610",
+      "Notes": "call: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-071",
+      "File": "tests/test_stage2f1_native_cascade_removal.py",
+      "Function": "<module>",
+      "Direct/Indirect": "alias",
+      "Phase": "import",
+      "Baseline": "ABSENT",
+      "Current": "line 8",
+      "Notes": "import: check_solution_feasible"
+    },
+    {
+      "Call Site ID": "CCS-072",
+      "File": "tests/test_stage2f1_native_cascade_removal.py",
+      "Function": "test_multiple_occurrence_rank_uses_minimum_pre_destroy_sortie_rank",
+      "Direct/Indirect": "direct imported reference",
+      "Phase": "test-side direct validation/instrumentation",
+      "Baseline": "ABSENT",
+      "Current": "line 202",
+      "Notes": "call: check_solution_feasible"
+    }
+  ]
+}

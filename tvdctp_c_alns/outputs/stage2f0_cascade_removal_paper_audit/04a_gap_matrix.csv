@@ -1,0 +1,20 @@
+topic,classification,paper_contract,current_native_behavior,consequence,stage2f1_candidate
+seed selection,PARTIALLY ALIGNED,R0 from preceding strategy but standalone generator partial,One uniform sample without replacement from van plus drone served customers,Engineering interpretation and eligible domain ambiguity,retain unless explicit decision changes it
+removal quantity,PARTIALLY ALIGNED,Proportion or k controls R0,round total customers times ratio with minimum one and served cap,Rounding and minimum are engineering choices,freeze and test
+dependency relation,PARTIALLY ALIGNED; NOT IMPLEMENTED,Same sub-route plus associated truck and van decision effects,Only matching sortie customers and non-warehouse anchors,Primary confirmed gap,replace with explicit pre-destroy structural dependency graph
+dependency direction,PARTIALLY ALIGNED,Impact propagation described but graph partial,Effectively symmetric within matching sortie,Direction cannot be claimed as verified,define minimal direction or component semantics
+recursive expansion,ALIGNED,Recursive union formula 93,Changed loop to set stability,Control structure aligned,retain with ordered worklist
+closure termination,ALIGNED,Stop at equality,Stop when no new set member,Aligned for current predicate,retain
+final R star,PARTIALLY ALIGNED,Fixed point over paper Di,Fixed point over incomplete production dependency predicate,May under-expand,correct Di then recompute exact closure
+related route,NOT IMPLEMENTED,Associated truck and van route structures included,Not used for dependency discovery,Snapshot coverage is not discovery,add conservative route and coordination edges
+related sub-route,PARTIALLY ALIGNED,Same or associated drone sub-routes included,Same sortie and anchors only,Basic coupling present but chains absent,add explicit linked-sortie or carrier relations if supported
+duplicate handling,PARTIALLY ALIGNED,Set dedupe and true partition,Closure dedupe but bundle constructor may overlap,Validator rejection is later than construction,construct non-overlapping components
+multiple-chain merging,ALIGNED for customer union,Union all reachable chains,One set accumulates all additions,Trace only stores new edges,retain union and improve evidence trace if needed
+bundle partition,PARTIALLY ALIGNED,Dependency-based partition,Per-sortie intersections plus singleton leftovers,Not complete or guaranteed disjoint,weak components over accepted dependency graph as MED
+dependency order,PAPER UNSPECIFIED; ENGINEERING INTERPRETATION,No order rule,Sorted customer IDs copied to dependency_order,Must not be called paper semantics,freeze stable structural or ID order as MED
+tie-breaking,PAPER UNSPECIFIED,No tie rules,Sort order State order and set iteration,Determinism needs explicit contract,use stable deterministic engineering rules
+RNG call logic,PARTIALLY ALIGNED; PAPER UNSPECIFIED,Initial strategies may be random,One Native choice and no closure RNG,Exact RNG mechanics unstated,preserve one-call baseline unless seed contract changes
+RNG call order,PAPER UNSPECIFIED; ENGINEERING INTERPRETATION,Not defined,Operator selection then Native choice then no Cascade-repair RNG,Paper cannot require this order,regression-freeze current global stream
+removal execution order,PAPER UNSPECIFIED; ENGINEERING INTERPRETATION,Simultaneous removal,Python set iteration and implicit sortie peer unassignment,Order is not paper semantics,use explicit stable worklist without changing R star
+snapshot timing,ENGINEERING INTERPRETATION,Associated structures removed together,Captured before removal,Supports simultaneous reconstruction,retain
+context creation timing,ENGINEERING INTERPRETATION,No context object,Finalized after mutation from pre and post facts,Does not affect algorithm selection or RNG,retain

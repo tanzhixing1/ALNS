@@ -1,0 +1,6 @@
+fixture,predicate_id,source_customer,target_customer,structural_rank,provenance,endpoint_type_check
+canonical,NCD-B-LAUNCH-RECOVERY,5,5,"0;0;0;1",sortie:c88d4fe594e96daf1971a107:0:launch-recovery-order,customers_only
+canonical,NCD-A-SAME-SUBROUTE,5,7,"0;1;0;0",sortie:c88d4fe594e96daf1971a107:0:same-subroute:0->1,customers_only
+canonical,NCD-A-SAME-SUBROUTE,6,8,"1;1;2;0",sortie:853bba5fdaaa1c772ef14e8a:0:same-subroute:2->1,customers_only
+canonical,NCD-A-SAME-SUBROUTE,7,5,"0;0;1;0",sortie:c88d4fe594e96daf1971a107:0:same-subroute:1->0,customers_only
+canonical,NCD-A-SAME-SUBROUTE,8,6,"1;2;1;0",sortie:853bba5fdaaa1c772ef14e8a:0:same-subroute:1->2,customers_only

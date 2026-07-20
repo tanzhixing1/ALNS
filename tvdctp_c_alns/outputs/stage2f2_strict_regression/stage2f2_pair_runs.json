@@ -1,0 +1,4013 @@
+{
+  "summary": {
+    "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+    "seed": 29,
+    "operator_mode_enum": "paper_mode",
+    "registry": [
+      {
+        "action_id": 0,
+        "destroy_key": "random_customer_removal",
+        "repair_key": "best_mode_repair"
+      },
+      {
+        "action_id": 1,
+        "destroy_key": "random_customer_removal",
+        "repair_key": "greedy_van_repair"
+      },
+      {
+        "action_id": 2,
+        "destroy_key": "random_customer_removal",
+        "repair_key": "regret_repair"
+      },
+      {
+        "action_id": 3,
+        "destroy_key": "random_customer_removal",
+        "repair_key": "cascade_repair"
+      },
+      {
+        "action_id": 4,
+        "destroy_key": "greedy_removal",
+        "repair_key": "best_mode_repair"
+      },
+      {
+        "action_id": 5,
+        "destroy_key": "greedy_removal",
+        "repair_key": "greedy_van_repair"
+      },
+      {
+        "action_id": 6,
+        "destroy_key": "greedy_removal",
+        "repair_key": "regret_repair"
+      },
+      {
+        "action_id": 7,
+        "destroy_key": "greedy_removal",
+        "repair_key": "cascade_repair"
+      },
+      {
+        "action_id": 8,
+        "destroy_key": "related_customer_removal",
+        "repair_key": "best_mode_repair"
+      },
+      {
+        "action_id": 9,
+        "destroy_key": "related_customer_removal",
+        "repair_key": "greedy_van_repair"
+      },
+      {
+        "action_id": 10,
+        "destroy_key": "related_customer_removal",
+        "repair_key": "regret_repair"
+      },
+      {
+        "action_id": 11,
+        "destroy_key": "related_customer_removal",
+        "repair_key": "cascade_repair"
+      },
+      {
+        "action_id": 12,
+        "destroy_key": "cascade_aware_removal",
+        "repair_key": "best_mode_repair"
+      },
+      {
+        "action_id": 13,
+        "destroy_key": "cascade_aware_removal",
+        "repair_key": "greedy_van_repair"
+      },
+      {
+        "action_id": 14,
+        "destroy_key": "cascade_aware_removal",
+        "repair_key": "regret_repair"
+      },
+      {
+        "action_id": 15,
+        "destroy_key": "cascade_aware_removal",
+        "repair_key": "cascade_repair"
+      }
+    ],
+    "category_counts": {
+      "A": 10,
+      "B": 6,
+      "C": 0,
+      "D": 0
+    },
+    "all_categories_expected": true,
+    "ordinary_12_hard_baseline_matches": 12,
+    "ordinary_12_mismatches": [],
+    "native_4_business_baseline_matches": 4,
+    "determinism": {
+      "Cascade+Cascade": true,
+      "Cascade+Global": true,
+      "Cascade+Local": true,
+      "Cascade+Regret": true,
+      "Greedy+Cascade": true,
+      "Greedy+Global": true,
+      "Greedy+Local": true,
+      "Greedy+Regret": true,
+      "Random+Cascade": true,
+      "Random+Global": true,
+      "Random+Local": true,
+      "Random+Regret": true,
+      "Related+Cascade": true,
+      "Related+Global": true,
+      "Related+Local": true,
+      "Related+Regret": true
+    },
+    "all_deterministic": true,
+    "all_contexts_clean": true,
+    "native_adapter_calls": 0,
+    "ordinary_cascade_adapter_calls": 3
+  },
+  "runs": [
+    {
+      "run": 1,
+      "action_id": 0,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Random+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 1,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Random+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 2,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Random+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 3,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Random+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:random_customer_removal:ed4643286cd2b5da651b:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "96a868b48ffd1c69bf499f610101405c1a0e5468768069d22cd149b4cd7a4b20",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274815561,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 4,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Greedy+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 765.2523175400826,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 765.25231754,
+        "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 5,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Greedy+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 773.1502873365171,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933",
+      "candidate_trace_digest": "d023cf038d2c5cfcebb09f30a18ee16a7f5188478bbae33833368832761ea74f",
+      "rng_calls_after_repair": [
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              7
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 773.150287337,
+        "business_fingerprint": "95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 6,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Greedy+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 765.2523175400826,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+      "candidate_trace_digest": "1b8736acc5cf5a18cc4290b707a063626fa914f861eeeaabe12baba84e68626d",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 765.25231754,
+        "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 7,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Greedy+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:greedy_removal:d9b7cb4ea50f854b9354:bundle:0000",
+          "customer_ids": [
+            7
+          ],
+          "dependency_order": [
+            7
+          ],
+          "contract_fingerprint": "f8dd51b82ffdd0caf924bd0b20c4a0a02d50bb6b69d25e5100c6e57ba1e7dd51",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:0-2"
+          ],
+          "drone_subroute_ids": [
+            "sortie:c88d4fe594e96daf1971a107:0"
+          ]
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 791.6393353884779,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "b29d4743a67273b3908cd26e1f4a95c634829d3a50aae1cc7596cf5803ee5cb3",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 791.639335388478,
+        "business_fingerprint": "b29d4743a67273b3908cd26e1f4a95c634829d3a50aae1cc7596cf5803ee5cb3",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 8,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Related+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 9,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Related+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 10,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Related+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 11,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Related+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:related_customer_removal:9e23bfadb39f13d752d5:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "7e65812a88427b2016dfcb42259f4096cab3b4a560841352bd06b3e8b537ad96",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274815561,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 1,
+      "action_id": 12,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Cascade+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 1,
+      "action_id": 13,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Cascade+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 1,
+      "action_id": 14,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Cascade+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 1,
+      "action_id": 15,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Cascade+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274816,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 2,
+      "action_id": 0,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Random+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 1,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Random+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 2,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Random+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 3,
+      "destroy": "Random",
+      "destroy_key": "random_customer_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Random+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:random_customer_removal:ed4643286cd2b5da651b:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "96a868b48ffd1c69bf499f610101405c1a0e5468768069d22cd149b4cd7a4b20",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274815561,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 4,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Greedy+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 765.2523175400826,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 765.25231754,
+        "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 5,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Greedy+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 773.1502873365171,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933",
+      "candidate_trace_digest": "d023cf038d2c5cfcebb09f30a18ee16a7f5188478bbae33833368832761ea74f",
+      "rng_calls_after_repair": [
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              7
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 773.150287337,
+        "business_fingerprint": "95a1746970f9d4d18841f0261f05f6a4d1783c92923359249b2e1db510aeb933",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 6,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Greedy+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 765.2523175400826,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+      "candidate_trace_digest": "1b8736acc5cf5a18cc4290b707a063626fa914f861eeeaabe12baba84e68626d",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 765.25231754,
+        "business_fingerprint": "da4451935d067199fc880bbde649a891258dc027df8b833b3e8bbeaaf9217e76",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 7,
+      "destroy": "Greedy",
+      "destroy_key": "greedy_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Greedy+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        7
+      ],
+      "selected_removed_customer_ids": [
+        7
+      ],
+      "actually_unassigned": [
+        7
+      ],
+      "deletion_attempt_order": [
+        7
+      ],
+      "actual_unassignment_order": [
+        7
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [],
+      "rng_digest_after_destroy": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:greedy_removal:d9b7cb4ea50f854b9354:bundle:0000",
+          "customer_ids": [
+            7
+          ],
+          "dependency_order": [
+            7
+          ],
+          "contract_fingerprint": "f8dd51b82ffdd0caf924bd0b20c4a0a02d50bb6b69d25e5100c6e57ba1e7dd51",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:0-2"
+          ],
+          "drone_subroute_ids": [
+            "sortie:c88d4fe594e96daf1971a107:0"
+          ]
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 791.6393353884779,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "b29d4743a67273b3908cd26e1f4a95c634829d3a50aae1cc7596cf5803ee5cb3",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [],
+      "rng_digest_after_repair": "6b1deb4fb11923d5a698f8b90d6e2cc7b2e247c417c329dbbdee14e0e1854292",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 791.639335388478,
+        "business_fingerprint": "b29d4743a67273b3908cd26e1f4a95c634829d3a50aae1cc7596cf5803ee5cb3",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 8,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Related+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 9,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Related+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 10,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Related+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 0,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 11,
+      "destroy": "Related",
+      "destroy_key": "related_customer_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Related+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Ordinary",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [],
+      "closure_discovery_order": [],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [],
+      "repair_input_bundles": [],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 1,
+      "adapter_output_bundles": [
+        {
+          "bundle_id": "ordinary:related_customer_removal:9e23bfadb39f13d752d5:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "7e65812a88427b2016dfcb42259f4096cab3b4a560841352bd06b3e8b537ad96",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": 12
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274815561,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": true
+    },
+    {
+      "run": 2,
+      "action_id": 12,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Global",
+      "repair_key": "best_mode_repair",
+      "pair": "Cascade+Global",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 2,
+      "action_id": 13,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Local",
+      "repair_key": "greedy_van_repair",
+      "pair": "Cascade+Local",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "B",
+      "expected_category": "B",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 40927.31636113969,
+      "feasible": false,
+      "violations": [
+        "drone_id drone_0 launch_position 1 is before previous recovery_position 2.",
+        "timing fixed-point did not converge within 26 iterations.",
+        "van_0 departs position 1 before recovery_time 2779.606.",
+        "van_0 position 2 arrival 2723.238 is before propagated recovery arrival 2821.270."
+      ],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+      "candidate_trace_digest": "1ec78cd24b2d10f4736eb8f85c9fc9edd4d55b8b4f64e9e1afbc5068155bc943",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        },
+        {
+          "method": "shuffle",
+          "args": [
+            [
+              12
+            ]
+          ],
+          "kwargs": {},
+          "result": null
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 40927.31636114,
+        "business_fingerprint": "819471d0e0d8b6a5e0919c5d2b98dc6000308979b41703d6a2df4fb600ad9a76",
+        "feasible": false,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 2,
+      "action_id": 14,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Regret",
+      "repair_key": "regret_repair",
+      "pair": "Cascade+Regret",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "returned",
+      "repair_reason": "",
+      "objective": 926.3737517924612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+      "candidate_trace_digest": "b4b209050fc7fea02d550e14e0c0d39b1827a9bd03f4c754168e64d7961a7b65",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 926.373751792,
+        "business_fingerprint": "3f8b9bc597f3be2a267ad88c5a6c2640e877eb395973824a7c40a204956ac7fc",
+        "feasible": true,
+        "repair_status": "returned"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    },
+    {
+      "run": 2,
+      "action_id": 15,
+      "destroy": "Cascade",
+      "destroy_key": "cascade_aware_removal",
+      "repair": "Cascade",
+      "repair_key": "cascade_repair",
+      "pair": "Cascade+Cascade",
+      "fixture": "Stage 2D coordinated fixture (8 customers, removal count 1)",
+      "seed": 29,
+      "operator_mode": "paper_mode",
+      "eligible_customer_ids": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "requested_removal_count": 1,
+      "context_path": "Native",
+      "destroy_selected_customers": [
+        12
+      ],
+      "selected_removed_customer_ids": [
+        12
+      ],
+      "actually_unassigned": [
+        12
+      ],
+      "deletion_attempt_order": [
+        12
+      ],
+      "actual_unassignment_order": [
+        12
+      ],
+      "r_star": [
+        12
+      ],
+      "closure_discovery_order": [
+        12
+      ],
+      "dependency_trace": [],
+      "dependency_edges": [],
+      "dependency_predicate_hits": {},
+      "native_partition_evidence": [
+        [
+          12
+        ]
+      ],
+      "repair_input_bundles": [
+        {
+          "bundle_id": "cascade:85e5862611154e12ca70:bundle:0000",
+          "customer_ids": [
+            12
+          ],
+          "dependency_order": [
+            12
+          ],
+          "contract_fingerprint": "8eb99601571e8554f1c68edeaaa34f67241af5172cc7ed7bc4f47c4d56c51d9c",
+          "captured_before_removal": true,
+          "affected_route_segment_ids": [
+            "van:van_0:4-6"
+          ],
+          "drone_subroute_ids": []
+        }
+      ],
+      "active_context_before_repair": true,
+      "rng_calls_after_destroy": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_destroy": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_destroy": true,
+      "adapter_call_count": 0,
+      "adapter_output_bundles": [],
+      "bundle_count": 1,
+      "repair_result_category": "A",
+      "expected_category": "A",
+      "repair_status": "success",
+      "repair_reason": "None",
+      "objective": 927.8802748155612,
+      "feasible": true,
+      "violations": [],
+      "active_context_after_repair": false,
+      "active_context_on_destroyed_after_repair": false,
+      "active_context_on_source_after_repair": false,
+      "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+      "candidate_trace_digest": "",
+      "rng_calls_after_repair": [
+        {
+          "method": "choice",
+          "args": [
+            [
+              5,
+              6,
+              7,
+              8,
+              9,
+              10,
+              11,
+              12
+            ]
+          ],
+          "kwargs": {
+            "size": 1,
+            "replace": false
+          },
+          "result": [
+            12
+          ]
+        }
+      ],
+      "rng_digest_after_repair": "6d5f81475e1e419dfbf72367d4d3b0ef26a57b5668b320d82f98ba052018cce1",
+      "caller_state_unchanged_after_repair": true,
+      "baseline_expected": {
+        "objective": 927.880274816,
+        "business_fingerprint": "56db81c7cff8dc3d96bed1d7a8c7d3ebeaffb46ad3b3744f4952dc8b54c10b9e",
+        "feasible": true,
+        "repair_status": "success"
+      },
+      "business_baseline_match": true,
+      "ordinary_hard_baseline_match": null
+    }
+  ]
+}

@@ -1,0 +1,18 @@
+rule,state_fields,classification,van_candidate,drone_candidate,final_global_confirmation
+stage-1 nodes and truck pattern,truck/container fields,GLOBAL EXACT,no,no,no
+tractor/trailer event continuity,tractor_routes/homes,GLOBAL EXACT,no,no,no
+container load/unload/destination,container routes/assignments,GLOBAL EXACT,no,no,no
+van route endpoints/nodes/count,van_routes/van_home,LOCAL WITH DEPENDENCY CLOSURE,yes,activation only,final global confirmation
+drone ownership derivation,fleet/config/home maps,GLOBAL EXACT,no,no direct,final global confirmation
+initial/dynamic carried capacity,carrier maps + timing physical sorties,LOCAL WITH DEPENDENCY CLOSURE,possible,yes,final global confirmation
+unique service,all routes/sorties,GLOBAL EXACT,yes,yes,required
+served/unassigned partition,all service sets,GLOBAL EXACT,yes,yes,required
+high-floor must be drone,is_high_floor/service_mode,LOCAL EXACT,yes,yes,final global confirmation
+order/container warehouse consistency,assignments + route origins,LOCAL WITH DEPENDENCY CLOSURE,yes,yes,final global confirmation
+van payload,target routes/demands,LOCAL EXACT,yes,no geometry,final global confirmation
+time windows/container readiness,timing + assignments,LOCAL WITH DEPENDENCY CLOSURE,yes,yes,required
+launch/recovery anchors/order,sorties + both routes,LOCAL WITH DEPENDENCY CLOSURE,timing,yes,required
+drone payload/endurance/energy,affected sortie/data/config,LOCAL EXACT,no geometry,yes,final global confirmation
+physical drone continuity/relaunch,timing physical_sorties,LOCAL WITH DEPENDENCY CLOSURE,possible,yes,required
+warehouse launch/return limits,all physical sorties,GLOBAL EXACT,possible,yes,required
+negative/global waiting and timing convergence,complete timing,UNKNOWN / NOT SAFE TO LOCALIZE,yes,yes,required

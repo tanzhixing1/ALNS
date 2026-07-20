@@ -1,0 +1,30 @@
+file,function,caller,callees,input,output,modifies_business_state,modifies_selected_set,uses_rng,rng_location,snapshot_only,forms_bundle,forms_dependency_order,path_class
+operator_modes.py,build_action_registry,run_c_alns,_validated_bindings and _build_identities,mode plus operator maps,ActionRegistry,no,no,no,,no,no,no,infrastructure
+alns_solver.py,_roulette_choice,run_c_alns,numpy Generator.choice,names and weights,selected operator name,no,no,yes,alns_solver.py:59,no,no,no,operator-selection infrastructure
+alns_solver.py,run_c_alns,main or tests,ActionRegistry destroy then repair and lifecycle assertions,data and config,ALNSResult,updates persistent current or best after candidate evaluation,no,yes,operator selection and SA acceptance,no,no,no,solver boundary
+operators.py,_removal_count,cascade_aware_removal and ordinary destroy functions,round and max,data and config,int,no,no,no,,no,no,no,shared destroy helper
+operators.py,_served_customers,cascade_aware_removal and other helpers,State getters,State,sorted served customer list,no,no,no,,no,no,no,shared destroy helper
+operators.py,_clear_stale_cascade_metadata,destroy and repair finish,discard_active_removal_context,State,None,metadata only,no,no,,no,no,no,infrastructure
+operators.py,_state_business_fingerprint,cascade contract functions,State.cache_signature,State,SHA256 string,no,no,no,,yes,no,no,infrastructure
+operators.py,cascade_aware_removal,ActionRegistry destroy call,copy projection helpers dependency closure snapshots removal and context attach,State RNG data config,destroyed TVDState,yes on copied State,yes,yes,operators.py:722,no,yes,yes,Native Cascade
+operators.py,_cascade_dependencies,cascade_aware_removal,sortie_nodes,pre-removal State and customer,set of customer IDs,no,returns dependency candidates,no,,read-only,no,no,Native Cascade
+operators.py,_cascade_destroy_call_id,cascade_aware_removal,SHA256,source fingerprint initial closure bundles,string,no,no,no,,yes,no,no,Native contract infrastructure
+operators.py,_capture_cascade_bundle_snapshot,cascade_aware_removal,State structure readers,pre-removal State and bundle,CascadeBundleSnapshot,no,no,no,,yes,yes,yes,Native Cascade contract
+operators.py,_record_destroy_diagnostics,cascade_aware_removal,profile recorder,closure and data,None,diagnostic side channel only,no,no,,no,no,no,diagnostic infrastructure
+operators.py,_remove_customers,cascade_aware_removal and ordinary destroys,_remove_customer,working State and customer iterable,mutated State,yes,no,no,,no,no,no,shared removal execution
+operators.py,_remove_customer,_remove_customers,State mutation and sortie_nodes,working State and customer,None,yes,no,no,,no,no,no,shared removal execution
+operators.py,_remove_duplicate_unassigned,cascade_aware_removal,dedup loop,working State,None,yes,no,no,,no,no,no,Native post-removal cleanup
+operators.py,_attach_removal_structural_context,destroy operators,finalize_removal_structural_context and attach,pre/post facts and orders,destroyed State,metadata only,no,no,,yes,no,no,infrastructure
+removal_structural_context.py,capture_structural_projection,destroy functions and validators,State structure readers,State,immutable StructuralProjection,no,no,no,,yes,no,no,infrastructure
+removal_structural_context.py,finalize_removal_structural_context,_attach_removal_structural_context,diff projection validation digest,pre/post projections plus provenance,RemovalStructuralContext,no,no,no,,yes,no,no,infrastructure
+removal_structural_context.py,attach_active_removal_context,_attach_removal_structural_context,context validator,State and context,State,metadata only,no,no,,yes,no,no,lifecycle infrastructure
+removal_structural_context.py,detach_active_removal_context,cascade_repair and repair boundary,context validator,State,optional context,metadata only,no,no,,yes,no,no,lifecycle infrastructure
+removal_structural_context.py,removal_context_boundary,Global Local Regret repairs,detach discard and wrapped repair,repair function,wrapped function,metadata lifecycle only,no,no,,no,no,no,lifecycle infrastructure
+operators.py,cascade_repair,ActionRegistry repair call,detach adapter condition validator reconstruction and finish,destroyed State RNG data config,repaired State,yes during repair,no,no,rng explicitly unused at operators.py:3786-3787,no,consumes existing bundles,consumes existing order,repair boundary
+operators.py,_validated_cascade_bundles,cascade_repair,cascade_metadata_is_current and snapshot validators,destroyed State,validated bundles or errors,no,no,no,,yes,no,no,shared contract validation
+ordinary_cascade_adapter.py,adapt_removal_context_to_cascade_bundles,cascade_repair only for ordinary source,validate _atomic_edges _partition_and_order _build_snapshot,ordinary context and destroyed State,tuple of snapshots,no,no,no,,yes,yes,yes,ordinary adapter only
+ordinary_cascade_adapter.py,_atomic_edges,ordinary adapter,projection fact traversal,ordinary context and actual-R,atomic structural edges,no,no,no,,yes,no,no,ordinary adapter only
+ordinary_cascade_adapter.py,_partition_and_order,ordinary adapter,component BFS and stable topological sort,removed order and edges,components plus dependency orders,no,no,no,,yes,yes,yes,ordinary adapter only
+ordinary_cascade_adapter.py,install_adapted_cascade_contract,cascade_repair,contract assembly,destroyed State context bundles,None,metadata only,no,no,,yes,installs bundles,installs orders,ordinary adapter only
+operators.py,_finish_cascade_result,cascade_repair,_clear_stale_cascade_metadata,repair result and diagnostics,clean repaired State,metadata cleanup only,no,no,,no,no,no,repair lifecycle infrastructure
+removal_structural_context.py,assert_no_active_removal_context,run_c_alns,membership check,State and owner,None,no,no,no,,no,no,no,lifecycle guard

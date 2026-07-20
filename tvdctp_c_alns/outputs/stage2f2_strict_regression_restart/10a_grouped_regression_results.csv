@@ -1,0 +1,10 @@
+group,collected,passed,failed,deselected,timeout,runtime_seconds,result
+Stage 2D bundle contract,18,18,0,0,0,0.54,PASS
+Stage 2D Cascade repair plus multidrone,40,40,0,0,0,3.80,PASS
+Stage 2E-A.1 context lifecycle,28,28,0,0,0,2.05,PASS
+Stage 2E-A.2 ordinary adapter,33,33,0,0,0,4.79,PASS
+Stage 2E.1 operator mode,54,54,0,0,0,7.11,PASS
+Stage 2F.1 file,19,19,0,0,0,6.28,PASS
+Stage 2F.1 focused boundary,83,83,0,0,0,21.01,PASS
+All non-medium,293,293,0,1,0,68.77,PASS
+Medium,1,1,0,0,0,397.85,PASS

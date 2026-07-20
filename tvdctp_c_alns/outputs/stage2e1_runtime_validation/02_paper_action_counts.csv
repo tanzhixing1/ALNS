@@ -1,0 +1,17 @@
+action_id,destroy,repair,selection_count,accept_count,improvement_count,best_update_count,status
+0,random_customer_removal,best_mode_repair,,,,,unavailable_due_timeout
+1,random_customer_removal,greedy_van_repair,,,,,unavailable_due_timeout
+2,random_customer_removal,regret_repair,,,,,unavailable_due_timeout
+3,random_customer_removal,cascade_repair,,,,,unavailable_due_timeout
+4,greedy_removal,best_mode_repair,,,,,unavailable_due_timeout
+5,greedy_removal,greedy_van_repair,,,,,unavailable_due_timeout
+6,greedy_removal,regret_repair,,,,,unavailable_due_timeout
+7,greedy_removal,cascade_repair,,,,,unavailable_due_timeout
+8,related_customer_removal,best_mode_repair,,,,,unavailable_due_timeout
+9,related_customer_removal,greedy_van_repair,,,,,unavailable_due_timeout
+10,related_customer_removal,regret_repair,,,,,unavailable_due_timeout
+11,related_customer_removal,cascade_repair,,,,,unavailable_due_timeout
+12,cascade_aware_removal,best_mode_repair,,,,,unavailable_due_timeout
+13,cascade_aware_removal,greedy_van_repair,,,,,unavailable_due_timeout
+14,cascade_aware_removal,regret_repair,,,,,unavailable_due_timeout
+15,cascade_aware_removal,cascade_repair,,,,,unavailable_due_timeout

@@ -1,0 +1,1632 @@
+{
+  "runs": [
+    {
+      "fixture_name": "single_cross_van_chain",
+      "run": 1,
+      "seed": 1,
+      "requested_removal_count": 1,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          1,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "6": [
+          6,
+          8
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        6,
+        8
+      ],
+      "removal_order": [
+        8,
+        6
+      ],
+      "deletion_attempt_order": [
+        8,
+        6
+      ],
+      "actual_unassignment_order": [
+        8,
+        6
+      ],
+      "bundle_partition": [
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "e877c3666cacb4ff1af0f567ec23f89eba89a748c168b1c0c0e8504f8b00d12c",
+      "removal_structural_context": {
+        "context_id": "4ec33240df3484947db144fb9549ee06cede99a9f9cde022f2d3899df9df42e7",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          6,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          6,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "6707d48c9666cbb367171ee21fa38e8710f25a8ff657d66960e18ffbe6967c5a",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 1,
+        "bundles": [
+          {
+            "bundle_id": "cascade:5248c9ad1fbb4d882774:bundle:0000",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "single_cross_van_chain",
+      "run": 2,
+      "seed": 1,
+      "requested_removal_count": 1,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          1,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "6": [
+          6,
+          8
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        6,
+        8
+      ],
+      "removal_order": [
+        8,
+        6
+      ],
+      "deletion_attempt_order": [
+        8,
+        6
+      ],
+      "actual_unassignment_order": [
+        8,
+        6
+      ],
+      "bundle_partition": [
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "e877c3666cacb4ff1af0f567ec23f89eba89a748c168b1c0c0e8504f8b00d12c",
+      "removal_structural_context": {
+        "context_id": "4ec33240df3484947db144fb9549ee06cede99a9f9cde022f2d3899df9df42e7",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          6,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          6,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "6707d48c9666cbb367171ee21fa38e8710f25a8ff657d66960e18ffbe6967c5a",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 1,
+        "bundles": [
+          {
+            "bundle_id": "cascade:5248c9ad1fbb4d882774:bundle:0000",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "same_sortie_duplicate_membership",
+      "run": 1,
+      "seed": 23,
+      "requested_removal_count": 1,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          1,
+          false
+        ]
+      ],
+      "seed_customer": 5,
+      "initial_selected_set": [
+        5
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 5,
+          "new_customer": 7
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "7": [
+          5,
+          7
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        7
+      ],
+      "removal_order": [
+        5,
+        7
+      ],
+      "deletion_attempt_order": [
+        5,
+        7
+      ],
+      "actual_unassignment_order": [
+        5,
+        7
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ]
+      ],
+      "destroyed_state_fingerprint": "dc758e7946c8938fb6031fc95af3c0537129893d767e23d6306a6307572e8b4d",
+      "removal_structural_context": {
+        "context_id": "ff679f997aa7b467890b2db3b7a4147f855eec84f8c287c25430438017e13857",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          7
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          7
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "7a2e1b4e444ff41d4cdbd83f0b3a30d792ed41060a3dd259af05075eaf381f0a",
+        "cascade_dependency_trace": [
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 1,
+        "bundles": [
+          {
+            "bundle_id": "cascade:720c02b9381ae93891d3:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "same_sortie_duplicate_membership",
+      "run": 2,
+      "seed": 23,
+      "requested_removal_count": 1,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          1,
+          false
+        ]
+      ],
+      "seed_customer": 5,
+      "initial_selected_set": [
+        5
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 5,
+          "new_customer": 7
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "7": [
+          5,
+          7
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        7
+      ],
+      "removal_order": [
+        5,
+        7
+      ],
+      "deletion_attempt_order": [
+        5,
+        7
+      ],
+      "actual_unassignment_order": [
+        5,
+        7
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ]
+      ],
+      "destroyed_state_fingerprint": "dc758e7946c8938fb6031fc95af3c0537129893d767e23d6306a6307572e8b4d",
+      "removal_structural_context": {
+        "context_id": "ff679f997aa7b467890b2db3b7a4147f855eec84f8c287c25430438017e13857",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          7
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          7
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "7a2e1b4e444ff41d4cdbd83f0b3a30d792ed41060a3dd259af05075eaf381f0a",
+        "cascade_dependency_trace": [
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 1,
+        "bundles": [
+          {
+            "bundle_id": "cascade:720c02b9381ae93891d3:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "two_dependency_chains_two_bundles",
+      "run": 1,
+      "seed": 58,
+      "requested_removal_count": 2,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          2,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8,
+        7
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        },
+        {
+          "source": 7,
+          "new_customer": 5
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "6": [
+          6,
+          8
+        ],
+        "7": [
+          5,
+          7
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "removal_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "deletion_attempt_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "actual_unassignment_order": [
+        5,
+        7,
+        6,
+        8
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e",
+      "removal_structural_context": {
+        "context_id": "42203b458ea25af2d3493e289ce99978b50f5913c89b42daaf710e0b5910b3d5",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "5db2873058429bb02a01651c5df6dc06ed55b395a627a434332cbd951beeb79f",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ],
+          [
+            7,
+            5
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 2,
+        "bundles": [
+          {
+            "bundle_id": "cascade:a6383626764fe18eb1b2:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          },
+          {
+            "bundle_id": "cascade:a6383626764fe18eb1b2:bundle:0001",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "two_dependency_chains_two_bundles",
+      "run": 2,
+      "seed": 58,
+      "requested_removal_count": 2,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          2,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8,
+        7
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        },
+        {
+          "source": 7,
+          "new_customer": 5
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "6": [
+          6,
+          8
+        ],
+        "7": [
+          5,
+          7
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "removal_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "deletion_attempt_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "actual_unassignment_order": [
+        5,
+        7,
+        6,
+        8
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e",
+      "removal_structural_context": {
+        "context_id": "42203b458ea25af2d3493e289ce99978b50f5913c89b42daaf710e0b5910b3d5",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "5db2873058429bb02a01651c5df6dc06ed55b395a627a434332cbd951beeb79f",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ],
+          [
+            7,
+            5
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 2,
+        "bundles": [
+          {
+            "bundle_id": "cascade:a6383626764fe18eb1b2:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          },
+          {
+            "bundle_id": "cascade:a6383626764fe18eb1b2:bundle:0001",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "two_seed_two_chain_order",
+      "run": 1,
+      "seed": 48,
+      "requested_removal_count": 2,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          2,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8,
+        5
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        },
+        {
+          "source": 5,
+          "new_customer": 7
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "6": [
+          6,
+          8
+        ],
+        "7": [
+          5,
+          7
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "removal_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "deletion_attempt_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "actual_unassignment_order": [
+        5,
+        7,
+        6,
+        8
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e",
+      "removal_structural_context": {
+        "context_id": "9bd7e9b91757d2308b91621924a7c0574350da5dd678f8e9259b2a0cc68fb50c",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "5db2873058429bb02a01651c5df6dc06ed55b395a627a434332cbd951beeb79f",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 2,
+        "bundles": [
+          {
+            "bundle_id": "cascade:e482326e4a507451b2bd:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          },
+          {
+            "bundle_id": "cascade:e482326e4a507451b2bd:bundle:0001",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    },
+    {
+      "fixture_name": "two_seed_two_chain_order",
+      "run": 2,
+      "seed": 48,
+      "requested_removal_count": 2,
+      "source_is_canonical_feasible": true,
+      "fixture_ids": {
+        "launch_van": "van_0",
+        "recovery_van": "van_1",
+        "same_drone_id": "drone_0",
+        "cross_drone_id": "drone_1",
+        "same_anchor": 5,
+        "recovery_anchor": 6,
+        "same_drone_customer": 7,
+        "cross_drone_customer": 8,
+        "plain_van_customer": 9
+      },
+      "initial_state_fingerprint": "b9f9ede9f8a413b4e214e3afa4d98e9111c0e79b6945e9e57e9bc64a0a5048dc",
+      "served_customer_order": [
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "rng_calls": [
+        [
+          "choice",
+          [
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11,
+            12
+          ],
+          2,
+          false
+        ]
+      ],
+      "seed_customer": 8,
+      "initial_selected_set": [
+        8,
+        5
+      ],
+      "dependency_expansion_sequence": [
+        {
+          "source": 8,
+          "new_customer": 6
+        },
+        {
+          "source": 5,
+          "new_customer": 7
+        }
+      ],
+      "dependency_map_on_final_set": {
+        "5": [
+          5,
+          7
+        ],
+        "6": [
+          6,
+          8
+        ],
+        "7": [
+          5,
+          7
+        ],
+        "8": [
+          6,
+          8
+        ]
+      },
+      "final_removal_set_R_star": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "removal_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "deletion_attempt_order": [
+        5,
+        6,
+        7,
+        8
+      ],
+      "actual_unassignment_order": [
+        5,
+        7,
+        6,
+        8
+      ],
+      "bundle_partition": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "dependency_order": [
+        [
+          5,
+          7
+        ],
+        [
+          6,
+          8
+        ]
+      ],
+      "destroyed_state_fingerprint": "f6b8b4e95962feba350fcfba08e04922575dfba3beea3389fbe42cc1420bd37e",
+      "removal_structural_context": {
+        "context_id": "9bd7e9b91757d2308b91621924a7c0574350da5dd678f8e9259b2a0cc68fb50c",
+        "source_destroy_operator": "cascade_aware_removal",
+        "selected_removed_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "actually_unassigned_customer_ids": [
+          5,
+          6,
+          7,
+          8
+        ],
+        "pre_destroy_structural_fingerprint": "ffb38bb2c2e42b0abf57bfe66cc9507d3056a46440220cc4118fbef0108884af",
+        "post_destroy_structural_fingerprint": "5db2873058429bb02a01651c5df6dc06ed55b395a627a434332cbd951beeb79f",
+        "cascade_dependency_trace": [
+          [
+            8,
+            6
+          ],
+          [
+            5,
+            7
+          ]
+        ],
+        "cascade_native_partition_evidence": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ],
+        "cascade_native_dependency_order": [
+          [
+            5,
+            7
+          ],
+          [
+            6,
+            8
+          ]
+        ]
+      },
+      "cascade_repair_input_summary": {
+        "contract_valid": true,
+        "contract_errors": [],
+        "bundle_count": 2,
+        "bundles": [
+          {
+            "bundle_id": "cascade:e482326e4a507451b2bd:bundle:0000",
+            "customer_ids": [
+              5,
+              7
+            ],
+            "dependency_order": [
+              5,
+              7
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:0",
+                "customer_ids": [
+                  7
+                ],
+                "launch_node": 5,
+                "recovery_node": 5
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-2"
+            ]
+          },
+          {
+            "bundle_id": "cascade:e482326e4a507451b2bd:bundle:0001",
+            "customer_ids": [
+              6,
+              8
+            ],
+            "dependency_order": [
+              6,
+              8
+            ],
+            "dependency_order_semantics": "current implementation order; Paper unspecified",
+            "removed_drone_subroutes": [
+              {
+                "sortie_id": "sortie:1",
+                "customer_ids": [
+                  8
+                ],
+                "launch_node": 3,
+                "recovery_node": 6
+              }
+            ],
+            "affected_route_segment_ids": [
+              "van:van_0:0-6",
+              "van:van_1:0-2"
+            ]
+          }
+        ],
+        "active_context_present": true,
+        "contract_source_operator": "cascade_aware_removal"
+      }
+    }
+  ],
+  "determinism": {
+    "single_cross_van_chain": {
+      "initial_state_fingerprint": true,
+      "rng_calls": true,
+      "seed_customer": true,
+      "initial_selected_set": true,
+      "dependency_expansion_sequence": true,
+      "final_removal_set_R_star": true,
+      "removal_order": true,
+      "bundle_partition": true,
+      "dependency_order": true,
+      "destroyed_state_fingerprint": true,
+      "all_required_fields_equal": true
+    },
+    "same_sortie_duplicate_membership": {
+      "initial_state_fingerprint": true,
+      "rng_calls": true,
+      "seed_customer": true,
+      "initial_selected_set": true,
+      "dependency_expansion_sequence": true,
+      "final_removal_set_R_star": true,
+      "removal_order": true,
+      "bundle_partition": true,
+      "dependency_order": true,
+      "destroyed_state_fingerprint": true,
+      "all_required_fields_equal": true
+    },
+    "two_dependency_chains_two_bundles": {
+      "initial_state_fingerprint": true,
+      "rng_calls": true,
+      "seed_customer": true,
+      "initial_selected_set": true,
+      "dependency_expansion_sequence": true,
+      "final_removal_set_R_star": true,
+      "removal_order": true,
+      "bundle_partition": true,
+      "dependency_order": true,
+      "destroyed_state_fingerprint": true,
+      "all_required_fields_equal": true
+    },
+    "two_seed_two_chain_order": {
+      "initial_state_fingerprint": true,
+      "rng_calls": true,
+      "seed_customer": true,
+      "initial_selected_set": true,
+      "dependency_expansion_sequence": true,
+      "final_removal_set_R_star": true,
+      "removal_order": true,
+      "bundle_partition": true,
+      "dependency_order": true,
+      "destroyed_state_fingerprint": true,
+      "all_required_fields_equal": true
+    }
+  }
+}

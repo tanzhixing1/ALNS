@@ -1,0 +1,560 @@
+
+===== 2026-07-17T14:32:27.021687+00:00 iterations=10 =====
+Timeout (0:01:00)!
+Thread 0x0000ad8c (most recent call first):
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py"Windows fatal exception: access violation
+
+Thread 0x0000ad8c (most recent call first):
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1363 in check_solution_feasible
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 226 in traced_checker
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 139 in objective
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 211 in traced_objective
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819 in _score_regret_moves_with_exact_objective_delta
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846 in _enumerate_regret_moves
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869 in _evaluate_regret_customer
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997 in regret_repair
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019 in wrapped
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 260 in traced_repair
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184 in run_c_alns
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 427 in main
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 442 in <module>
+
+===== 2026-07-17T14:40:05.619002+00:00 iterations=20 =====
+Timeout (0:01:00)!
+Thread 0x0000d198 (most recent call first):
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 795 in _compute_sortie_events
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1030 in compute_timing
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py"Windows fatal exception: access violation
+
+Thread 0x0000d198 (most recent call first):
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\state.py", line 251 in <genexpr>
+Windows fatal exception: access violation
+
+
+===== 2026-07-17T14:43:23.215704+00:00 iterations=20 =====
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xc654:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x71ec:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2882, in _evaluate_regret_customer
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2853, in _enumerate_regret_moves
+    return scored_moves, {
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2821, in _score_regret_moves_with_exact_objective_delta
+    return scored
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 245, in traced_checker
+    _mark_slow_call("canonical_checker", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 111, in _mark_slow_call
+    if seconds > 60.0 and FIRST_OVER_60 is None:
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xc654:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x71ec:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 245, in traced_checker
+    _mark_slow_call("canonical_checker", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1698, in check_solution_feasible
+    return feasible, violations
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1082, in compute_timing
+    return timing
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 809, in _build_van_timelines
+    return van_arrivals, van_sequences
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 760, in _position_recovery_wait
+    return float(wait_until)
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xc654:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x71ec:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1101, in compute_waiting_minutes
+    return van_waiting + drone_waiting
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1091, in update_drone_sortie_timing
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1082, in compute_timing
+    return timing
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 809, in _build_van_timelines
+    return van_arrivals, van_sequences
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 701, in _service_finish_without_record
+    return float(max(arrival_time, float(earliest)) + float(service_time))
+
+===== 2026-07-17T14:47:28.980497+00:00 iterations=40 =====
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\state.py", line 304, in copy
+    return TVDState(
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 222, in _deepcopy_dict
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 197, in _deepcopy_list
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 222, in _deepcopy_dict
+    return y
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 245, in traced_checker
+    _mark_slow_call("canonical_checker", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1698, in check_solution_feasible
+    return feasible, violations
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1101, in compute_waiting_minutes
+    return van_waiting + drone_waiting
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1091, in update_drone_sortie_timing
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1082, in compute_timing
+    return timing
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 997, in _compute_sortie_events
+    return new_events
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 534, in _drone_id_sort_key
+    return int(str(drone_id).split("_")[1])
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2265, in _enumerate_feasible_drone_moves
+    return moves
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2213, in _enumerate_feasible_drone_moves_for_customers
+    return moves
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 1145, in _drone_local_feasibility_cache_key
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 1110, in _warehouse_ready_signature
+    return tuple(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 1112, in <genexpr>
+    for warehouse, ready_time in sorted(ready.items())
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2265, in _enumerate_feasible_drone_moves
+    return moves
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 1971, in _extend_drone_customers
+    return customers
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 1889, in _can_make_drone_sortie
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 103, in drone_sortie_energy
+    return total
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 98, in drone_sortie_energy_details
+    return float(cumulative), rows
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 39, in pickup_demand
+    return float(getattr(data, "pickup_demands", {}).get(customer, 0.0))
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2816, in _score_regret_moves_with_exact_objective_delta
+    candidate = state.copy()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 245, in traced_checker
+    _mark_slow_call("canonical_checker", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1698, in check_solution_feasible
+    return feasible, violations
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1082, in compute_timing
+    return timing
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2816, in _score_regret_moves_with_exact_objective_delta
+    candidate = state.copy()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\state.py", line 304, in copy
+    return TVDState(
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 222, in _deepcopy_dict
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 222, in _deepcopy_dict
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 168, in deepcopy
+    return y
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\copy.py", line 242, in _keep_alive
+    memo[id(memo)].append(x)
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2819, in _score_regret_moves_with_exact_objective_delta
+    candidate_cost, _ = objective(candidate, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1101, in compute_waiting_minutes
+    return van_waiting + drone_waiting
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1091, in update_drone_sortie_timing
+    return (
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1082, in compute_timing
+    return timing
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 997, in _compute_sortie_events
+    return new_events
+
+Timeout (0:01:00) - Python frame snapshot
+
+Thread 0xca2c:
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1032, in _bootstrap
+    self._bootstrap_inner()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1075, in _bootstrap_inner
+    self.run()
+  File "C:\Users\19088\.cache\codex-runtimes\codex-primary-runtime\dependencies\python\Lib\threading.py", line 1012, in run
+    self._target(*self._args, **self._kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 180, in _periodic_python_stack
+    traceback.print_stack(frame, file=STACK_FILE)
+
+Thread 0x6d44:
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 468, in <module>
+    exit_code = main()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 453, in main
+    result = alns_solver.run_c_alns(data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\alns_solver.py", line 184, in run_c_alns
+    candidate = action_registry.repair_operator(repair_name)(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 274, in traced_repair
+    result = __original(*args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\removal_structural_context.py", line 1019, in wrapped
+    result = function(state, *args, **kwargs)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2997, in regret_repair
+    evaluation, stats = _evaluate_regret_customer(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2869, in _evaluate_regret_customer
+    moves, stats = _enumerate_regret_moves(customer, state, data, config)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2846, in _enumerate_regret_moves
+    scored_moves = _score_regret_moves_with_exact_objective_delta(
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\operators.py", line 2816, in _score_regret_moves_with_exact_objective_delta
+    candidate = state.copy()
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 230, in traced_objective
+    _mark_slow_call("objective", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\objective.py", line 184, in objective
+    return float(total), breakdown
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\outputs\stage2e1_runtime_diagnosis\runtime_probe.py", line 245, in traced_checker
+    _mark_slow_call("canonical_checker", ended - started, started, ended)
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 1698, in check_solution_feasible
+    return feasible, violations
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 103, in drone_sortie_energy
+    return total
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 98, in drone_sortie_energy_details
+    return float(cumulative), rows
+  File "D:\STUDY\game\github-program\noteread\ALNS\tvdctp_c_alns\feasibility.py", line 35, in delivery_demand
+    return float(data.demands.get(customer, 0.0))

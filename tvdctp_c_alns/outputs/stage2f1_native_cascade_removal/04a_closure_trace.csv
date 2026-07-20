@@ -1,0 +1,9 @@
+fixture,run,seed_order,discovery_edges,r_star_membership,discovery_removal_order,newly_unassigned,pairwise_equal
+single_cross_van_chain,1,8,8->6,"6;8","8;6","6;8",true
+single_cross_van_chain,2,8,8->6,"6;8","8;6","6;8",true
+same_sortie_duplicate_membership,1,5,5->7,"5;7","5;7","5;7",true
+same_sortie_duplicate_membership,2,5,5->7,"5;7","5;7","5;7",true
+two_dependency_chains_two_bundles,1,"8;7","8->6;7->5","5;6;7;8","8;7;6;5","5;6;7;8",true
+two_dependency_chains_two_bundles,2,"8;7","8->6;7->5","5;6;7;8","8;7;6;5","5;6;7;8",true
+two_seed_two_chain_order,1,"8;5","8->6;5->7","5;6;7;8","8;5;6;7","5;6;7;8",true
+two_seed_two_chain_order,2,"8;5","8->6;5->7","5;6;7;8","8;5;6;7","5;6;7;8",true

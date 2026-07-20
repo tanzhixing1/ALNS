@@ -1,0 +1,12 @@
+Stage 2E.2 temporary prototype tests plus Stage 2C:
+34 passed in 14.35s
+
+The tests covered deterministic business keys, invocation-local scope, namespace
+isolation, diagnostics/context exclusion, duplicate-record retention, candidate
+sequence and exact scores, semantic trace/RNG/final state equivalence, cleanup on
+failure, no fallback, non-Regret isolation, State.copy isolation, and three-run
+determinism.
+
+The prototype failed the performance and source-isolation gates and was reverted.
+Its temporary test module was removed with it; these results are retained only as
+evaluation evidence and are not presented as tests for accepted production code.

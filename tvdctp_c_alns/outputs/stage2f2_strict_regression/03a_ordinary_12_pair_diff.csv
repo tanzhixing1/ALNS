@@ -1,0 +1,14 @@
+action_id,pair,selected_match,actual_match,objective_match,fingerprint_match,feasibility_match,rng_match,adapter_match,context_clean,mismatch
+0,Random+Global,True,True,True,True,True,True,True,True,
+1,Random+Local,True,True,True,True,True,True,True,True,
+2,Random+Regret,True,True,True,True,True,True,True,True,
+3,Random+Cascade,True,True,True,True,True,True,True,True,
+4,Greedy+Global,True,True,True,True,True,True,True,True,
+5,Greedy+Local,True,True,True,True,True,True,True,True,
+6,Greedy+Regret,True,True,True,True,True,True,True,True,
+7,Greedy+Cascade,True,True,True,True,True,True,True,True,
+8,Related+Global,True,True,True,True,True,True,True,True,
+9,Related+Local,True,True,True,True,True,True,True,True,
+10,Related+Regret,True,True,True,True,True,True,True,True,
+11,Related+Cascade,True,True,True,True,True,True,True,True,
+

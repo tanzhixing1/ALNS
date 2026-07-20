@@ -1,0 +1,10 @@
+cost_term,data_dependencies,classification,van_candidate,drone_candidate,incremental_safe_status
+truck transport/fixed/trailer,tractor_routes/truck_route,PROVABLY LOCAL (stage-1 constant for insertion),no,no,reusable immutable contribution
+van transport,all van route arcs,PROVABLY LOCAL,target route,route geometry unchanged,subtract/add target route exact contribution
+van fixed,active route or sortie launch/recovery,LOCAL WITH TRANSITIVE TIMING SCOPE,possible activation,possible launch/recovery activation,requires exact active-van facts
+drone transport,all sortie geometry,PROVABLY LOCAL,geometry unchanged,new sortie,subtract/add affected sorties
+drone fixed/used physical drones,timing physical routes + sortie ids,LOCAL WITH TRANSITIVE TIMING SCOPE,timing chain may change,new/reused physical drone,needs shared physical-route facts
+drone energy,sortie customer order/demand/distance,PROVABLY LOCAL,geometry unchanged,new sortie,affected sorties only
+waiting_cost_reported,global timing waits,LOCAL WITH TRANSITIVE TIMING SCOPE,yes,yes,reported only; excluded from total
+penalty_cost,canonical checker violations,GLOBAL,yes,yes,not safe to increment without checker proof
+total_cost,truck+van+drone+penalty,GLOBAL,yes,yes,only after all exact component/feasibility facts

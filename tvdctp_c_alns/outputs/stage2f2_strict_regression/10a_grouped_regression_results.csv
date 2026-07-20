@@ -1,0 +1,11 @@
+group,command,status,passed,failed,runtime_seconds,note
+Stage2D_bundle,pytest test_stage2d0_cascade_contract.py,PASS,18,0,3.42,
+Stage2D_repair,pytest test_stage2d1_cascade_repair.py test_stage2d_multidrone_coverage.py,PASS,40,0,17.35,
+Stage2EA1,pytest test_stage2ea1_structural_context.py,PASS,28,0,10.87,
+Stage2EA2,pytest test_stage2ea2_ordinary_cascade_adapter.py,NOT_RELIED_UPON,,,,summary not retained after sibling failure
+Stage2E1,pytest test_stage2e1_operator_modes.py,FAIL,52,2,30.00,checker calls +1 in paper and extended
+Stage2F0,postimplementation_probe.py,PASS,8,0,2.7,4 double-run fixtures
+Stage2F1,focused 81-node command,PASS,81,0,31.68,
+Stage2F2,stage2f2_audit_probe.py,PASS,32,0,6.0,16 pairs twice
+non_medium,pytest -q -k not-medium,NOT_RUN,,,,stopped on grouped failure
+medium,pytest -q -k medium,NOT_RUN,,,,stopped on grouped failure

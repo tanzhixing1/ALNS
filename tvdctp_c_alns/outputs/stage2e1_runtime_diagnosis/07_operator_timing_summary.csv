@@ -1,0 +1,13 @@
+operator_kind,operator_name,calls,total_seconds,max_seconds,total_candidates,max_candidates,objective_calls,checker_calls,scope
+destroy,cascade_aware_removal,11,0.226383400,0.033549400,,,,,40-iteration trace
+destroy,random_customer_removal,13,0.206095500,0.035329700,,,,,40-iteration trace
+destroy,greedy_removal,8,0.807861000,0.133767100,,,,,40-iteration trace
+destroy,related_customer_removal,8,0.121301200,0.018814600,,,,,40-iteration trace
+repair,greedy_van_repair,15,8.660301200,1.477853500,18236,3305,67,84,40-iteration trace
+repair,best_mode_repair,8,8.610210600,2.591936200,19331,6026,91,105,40-iteration trace
+repair,regret_repair,11,573.353840000,230.985076600,178994,58588,86196,86223,40-iteration trace
+repair,cascade_repair,6,0.327783500,0.137280800,262,262,63,88,40-iteration trace
+nested_phase,objective,86417,267.308425780,60.501351288,,,,,maximum is per-iteration aggregate
+nested_phase,canonical_checker,86500,136.021351133,42.429327711,,,,,nested inside objective and repair
+cascade_phase,cascade_adapter,4,0.034795000,0.009358200,,,,,ordinary-removal adapter only
+cascade_phase,cascade_candidate_enumeration,9,0.201490700,0.092836800,25,4,,,bundle-level public diagnostics

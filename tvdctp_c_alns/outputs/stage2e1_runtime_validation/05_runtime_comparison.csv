@@ -1,0 +1,5 @@
+run_name,operator_mode,customers,containers,iterations_requested,iterations_completed,seed,action_count,external_wall_seconds,solver_runtime_seconds,initial_solution_seconds,alns_loop_seconds,average_ms_per_iteration,initial_objective,best_objective,feasible,violation_count,accepted_count,best_update_count,exit_code,status
+default_paper_smoke,paper_mode,20,2,5,5,42,16,12.338813500,11.250,,,,1484.4917238190928,1465.9853751167163,true,0,1,1,0,completed
+explicit_paper_smoke,paper_mode,20,2,5,5,42,16,12.263523600,11.200,,,,1484.4917238190928,1465.9853751167163,true,0,1,1,0,completed
+paper_2c20n_iter80_seed42,paper_mode,20,2,80,,42,16,901.648,,,,,,,,,,,124,external_timeout
+extended_2c20n_iter80_seed42,extended_mode,20,2,80,,42,35,,,,,,,,,,,,,not_run_after_paper_timeout

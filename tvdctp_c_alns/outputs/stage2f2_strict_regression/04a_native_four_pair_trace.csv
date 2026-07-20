@@ -1,0 +1,6 @@
+action_id,pair,seed,r_star,dependency_edges,discovery_order,bundles,dependency_order,newly_unassigned,path_b,adapter_calls,category,baseline_change
+12,Cascade+Global,[12],[12],[],[12],[[12]],[[12]],[12],PASS,0,B,none
+13,Cascade+Local,[12],[12],[],[12],[[12]],[[12]],[12],PASS,0,B,none
+14,Cascade+Regret,[12],[12],[],[12],[[12]],[[12]],[12],PASS,0,A,none
+15,Cascade+Cascade,[12],[12],[],[12],[[12]],[[12]],[12],PASS,0,A,none
+

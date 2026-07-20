@@ -1,0 +1,6 @@
+mode,version,iteration,seeds,r_star,bundles,deletion_attempt_order,actual_newly_unassigned,raw_snapshot_candidates,checker_calls,checker_result,violations,objective_calls,repair_status,repair_return_equals_destroyed,rng_changed,context_after,total_checker_calls,total_objective_calls
+paper,baseline,7,"7 14","5 6 7 8 9 10 11 14","7 9 | 9 10 | 5 8 14 | 5 6 11","5 6 7 8 9 10 11 14","5 6 7 8 9 10 11 14",0,0,not_reached,"overlap and snapshot membership contract rejection",0,failure,YES,NO,absent,909,653
+paper,current,7,"7 14","5 6 7 8 9 10 11 14","7 9 10 | 5 6 8 11 14","7 14 9 5 8 10 6 11","5 6 7 8 9 10 11 14",1,1,infeasible,"high-floor 8 11 14 must be drone",0,failure,YES,NO,absent,910,653
+extended,baseline,8,"11 7","5 6 7 8 9 10 11 14","9 10 | 7 9 | 5 6 11 | 5 8 14","5 6 7 8 9 10 11 14","5 6 7 8 9 10 11 14",0,0,not_reached,"overlap and snapshot membership contract rejection",0,failure,YES,NO,absent,884,608
+extended,current,8,"11 7","5 6 7 8 9 10 11 14","5 6 8 11 14 | 7 9 10","11 7 5 6 9 14 8 10","5 6 7 8 9 10 11 14",1,1,infeasible,"high-floor 10 must be drone",0,failure,YES,NO,absent,885,608
+

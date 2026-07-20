@@ -1,0 +1,9 @@
+node,current_computation,reusable_scope,invalidation
+candidate move,unique per customer/revision,descriptor,State revision changes
+materialized State,recreated for every candidate,Class 2 future,any business mutation
+business signature,"71,072 clean calls",same candidate context,any signature field changes
+derived timing,"35,496 calls, 48 hits",same candidate immutable context,route/sortie/carrier/readiness changes
+derived structural facts,re-traversed by objective/checker,same candidate immutable context,same as business/timing
+objective,"17,784 calls",consume shared context,cost/config/data changes
+checker,"17,792 calls",consume shared context,rule input changes
+candidate identity,"35,540 observed calls",descriptor plus frozen base,State revision changes

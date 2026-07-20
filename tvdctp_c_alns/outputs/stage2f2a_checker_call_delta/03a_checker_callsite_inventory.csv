@@ -1,0 +1,73 @@
+Call Site ID,File,Function,Direct/Indirect,Phase,Baseline,Current,Notes
+CCS-001,alns_solver.py,<module>,alias,import,line 12,line 12,import: check_solution_feasible
+CCS-002,alns_solver.py,run_c_alns,direct imported reference,solver initial/final validation,line 126,line 126,call: check_solution_feasible
+CCS-003,alns_solver.py,run_c_alns,direct imported reference,solver initial/final validation,line 317,line 317,call: check_solution_feasible
+CCS-004,diagnose_calns.py,<module>,alias,import,line 22,line 22,import: check_solution_feasible
+CCS-005,diagnose_calns.py,run_initial_only,direct imported reference,diagnostic final validation,line 390,line 390,call: check_solution_feasible
+CCS-006,diagnose_calns.py,summarize_result,direct imported reference,diagnostic final validation,line 150,line 150,call: check_solution_feasible
+CCS-007,evaluation.py,<module>,alias,import,line 12,line 12,import: check_solution_feasible
+CCS-008,evaluation.py,evaluate_and_save,direct imported reference,evaluation/final output validation,line 1799,line 1799,call: check_solution_feasible
+CCS-009,evaluation.py,save_route_plan_detail,direct imported reference,evaluation/final output validation,line 972,line 972,call: check_solution_feasible
+CCS-010,feasibility.py,<module>,definition,definition,line 1104,line 1104,definition: check_solution_feasible
+CCS-011,initial_solution.py,<module>,alias,import,line 10,line 10,import: check_solution_feasible
+CCS-012,initial_solution.py,_candidate_sortie_is_feasible,direct imported reference,initial construction/final validation,line 849,line 849,call: check_solution_feasible
+CCS-013,initial_solution.py,initial_solution,direct imported reference,initial construction/final validation,line 1319,line 1319,call: check_solution_feasible
+CCS-014,objective.py,<module>,alias,import,line 7,line 7,import: check_solution_feasible
+CCS-015,objective.py,objective,direct imported reference,objective feasibility boundary,line 139,line 139,call: check_solution_feasible
+CCS-016,operators.py,<module>,alias,import,line 26,line 26,import: check_solution_feasible
+CCS-017,operators.py,_partial_repair_hard_feasible,direct imported reference,repair/consolidation boundary,line 1044,line 1308,call: check_solution_feasible
+CCS-018,operators.py,_state_is_feasible_and_no_worse,direct imported reference,repair/consolidation boundary,line 2304,line 2568,call: check_solution_feasible
+CCS-019,operators.py,_validate_cascade_candidate,direct imported reference,Cascade repair candidate validation,line 3406,line 3670,call: check_solution_feasible
+CCS-020,operators.py,consolidate_drone_sorties,direct imported reference,repair/consolidation boundary,line 2420,line 2684,call: check_solution_feasible
+CCS-021,operators.py,repair_is_complete,direct imported reference,repair/consolidation boundary,line 3973,line 4237,call: check_solution_feasible
+CCS-022,tests/test_core_model_capabilities.py,<module>,alias,import,line 8,line 8,import: check_solution_feasible
+CCS-023,tests/test_core_model_capabilities.py,_check_case,direct imported reference,test-side direct validation/instrumentation,line 86,line 86,call: check_solution_feasible
+CCS-024,tests/test_core_model_capabilities.py,test_two_container_cache_on_integration_smoke,direct imported reference,test-side direct validation/instrumentation,line 672,line 672,call: check_solution_feasible
+CCS-025,tests/test_core_model_capabilities.py,test_two_container_cache_on_integration_smoke,direct imported reference,test-side direct validation/instrumentation,line 673,line 673,call: check_solution_feasible
+CCS-026,tests/test_regression_rules.py,<module>,alias,import,line 12,line 12,import: check_solution_feasible
+CCS-027,tests/test_regression_rules.py,_solve,direct imported reference,test-side direct validation/instrumentation,line 62,line 62,call: check_solution_feasible
+CCS-028,tests/test_regression_rules.py,test_container_unload_time_gates_van_departure,direct imported reference,test-side direct validation/instrumentation,line 404,line 404,call: check_solution_feasible
+CCS-029,tests/test_regression_rules.py,test_drone_sortie_consolidation_merges_feasible_same_anchor_sorties,direct imported reference,test-side direct validation/instrumentation,line 974,line 974,call: check_solution_feasible
+CCS-030,tests/test_regression_rules.py,test_initial_solution_does_not_balance_into_second_van_when_one_van_is_feasible,direct imported reference,test-side direct validation/instrumentation,line 505,line 505,call: check_solution_feasible
+CCS-031,tests/test_regression_rules.py,test_initial_solution_serves_default_high_floor_customers_by_drone,direct imported reference,test-side direct validation/instrumentation,line 454,line 454,call: check_solution_feasible
+CCS-032,tests/test_regression_rules.py,test_manual_cross_van_flexible_docking_feasible_when_recovery_van_visits_node,direct imported reference,test-side direct validation/instrumentation,line 593,line 593,call: check_solution_feasible
+CCS-033,tests/test_regression_rules.py,test_manual_cross_van_flexible_docking_infeasible_when_recovery_van_misses_node,direct imported reference,test-side direct validation/instrumentation,line 622,line 622,call: check_solution_feasible
+CCS-034,tests/test_regression_rules.py,test_switch_transshipment_rebuilds_stage1_for_all_candidate_warehouses,direct imported reference,test-side direct validation/instrumentation,line 336,line 336,call: check_solution_feasible
+CCS-035,tests/test_regression_rules.py,test_tiny_multi_van_resource_model,direct imported reference,test-side direct validation/instrumentation,line 136,line 136,call: check_solution_feasible
+CCS-036,tests/test_regression_rules.py,test_trailer_cannot_move_without_tractor,direct imported reference,test-side direct validation/instrumentation,line 380,line 380,call: check_solution_feasible
+CCS-037,tests/test_stage2a_drone_feasibility.py,<module>,alias,import,line 12,line 12,import: check_solution_feasible
+CCS-038,tests/test_stage2a_drone_feasibility.py,test_stage2a_cross_van_position_numbers_do_not_replace_time_order,direct imported reference,test-side direct validation/instrumentation,line 461,line 461,call: check_solution_feasible
+CCS-039,tests/test_stage2a_drone_feasibility.py,test_stage2a_local_drone_checker_differential,direct imported reference,test-side direct validation/instrumentation,line 415,line 415,call: check_solution_feasible
+CCS-040,tests/test_stage2b_local_greedy.py,<module>,alias,import,line 11,line 11,import: check_solution_feasible
+CCS-041,tests/test_stage2b_local_greedy.py,test_local_scope_preserves_cross_van_recovery,direct imported reference,test-side direct validation/instrumentation,line 261,line 261,call: check_solution_feasible
+CCS-042,tests/test_stage2b_local_greedy.py,test_successful_local_repair_is_fully_feasible_and_serves_once,direct imported reference,test-side direct validation/instrumentation,line 298,line 298,call: check_solution_feasible
+CCS-043,tests/test_stage2c_regret2.py,<module>,alias,import,line 11,line 11,import: check_solution_feasible
+CCS-044,tests/test_stage2c_regret2.py,test_regret_candidates_preserve_cross_van_recovery_and_full_feasibility,direct imported reference,test-side direct validation/instrumentation,line 431,line 431,call: check_solution_feasible
+CCS-045,tests/test_stage2c_regret2.py,test_successful_regret_repair_final_state_is_fully_feasible,direct imported reference,test-side direct validation/instrumentation,line 486,line 486,call: check_solution_feasible
+CCS-046,tests/test_stage2d0_cascade_contract.py,<module>,alias,import,line 12,line 12,import: check_solution_feasible
+CCS-047,tests/test_stage2d0_cascade_contract.py,test_metadata_does_not_change_checker_objective_or_business_fingerprint,direct imported reference,test-side direct validation/instrumentation,line 532,line 533,call: check_solution_feasible
+CCS-048,tests/test_stage2d0_cascade_contract.py,test_metadata_does_not_change_checker_objective_or_business_fingerprint,direct imported reference,test-side direct validation/instrumentation,line 533,line 534,call: check_solution_feasible
+CCS-049,tests/test_stage2d1_cascade_repair.py,<module>,alias,import,line 10,line 10,import: check_solution_feasible
+CCS-050,tests/test_stage2d1_cascade_repair.py,test_all_bundles_success_produces_full_feasible_state_and_objective,direct imported reference,test-side direct validation/instrumentation,line 622,line 622,call: check_solution_feasible
+CCS-051,tests/test_stage2d1_cascade_repair.py,test_cross_van_snapshot_reconstruction_is_supported_and_feasible,direct imported reference,test-side direct validation/instrumentation,line 465,line 465,call: check_solution_feasible
+CCS-052,tests/test_stage2d1_cascade_repair.py,test_fixed_seed_diagnostics_are_deterministic_across_three_runs,direct imported reference,test-side direct validation/instrumentation,line 550,line 550,call: check_solution_feasible
+CCS-053,tests/test_stage2d1_cascade_repair.py,test_full_checker_semantics_remain_strict,direct imported reference,test-side direct validation/instrumentation,line 442,line 442,call: check_solution_feasible
+CCS-054,tests/test_stage2d1_cascade_repair.py,test_full_checker_semantics_remain_strict,direct imported reference,test-side direct validation/instrumentation,line 447,line 447,call: check_solution_feasible
+CCS-055,tests/test_stage2d_multidrone_coverage.py,<module>,alias,import,line 8,line 8,import: check_solution_feasible
+CCS-056,tests/test_stage2d_multidrone_coverage.py,_idle_multidrone_state,direct imported reference,test-side direct validation/instrumentation,line 53,line 53,call: check_solution_feasible
+CCS-057,tests/test_stage2d_multidrone_coverage.py,_warehouse_return_counterexample,direct imported reference,test-side direct validation/instrumentation,line 76,line 76,call: check_solution_feasible
+CCS-058,tests/test_stage2d_multidrone_coverage.py,test_cross_van_recovery_updates_current_carrier_for_enumeration,direct imported reference,test-side direct validation/instrumentation,line 226,line 226,call: check_solution_feasible
+CCS-059,tests/test_stage2d_multidrone_coverage.py,test_first_drone_warehouse_returned_second_drone_candidate_is_found,direct imported reference,test-side direct validation/instrumentation,line 155,line 155,call: check_solution_feasible
+CCS-060,tests/test_stage2d_multidrone_coverage.py,test_stage2d_whole_bundle_retains_nonfirst_feasible_drone,direct imported reference,test-side direct validation/instrumentation,line 304,line 304,call: check_solution_feasible
+CCS-061,tests/test_stage2d_multidrone_coverage.py,test_two_idle_symmetric_drones_are_both_enumerated_without_pruning,direct imported reference,test-side direct validation/instrumentation,line 123,line 123,call: check_solution_feasible
+CCS-062,tests/test_stage2d_multidrone_coverage.py,test_two_idle_symmetric_drones_are_both_enumerated_without_pruning,direct imported reference,test-side direct validation/instrumentation,line 124,line 124,call: check_solution_feasible
+CCS-063,tests/test_stage2e1_operator_modes.py,<module>,alias,import,line 19,line 19,import: check_solution_feasible
+CCS-064,tests/test_stage2e1_operator_modes.py,test_default_paper_run_matches_preimplementation_baseline,direct imported reference,test-side direct validation/instrumentation,line 400,line 400,call: check_solution_feasible
+CCS-065,tests/test_stage2ea1_structural_context.py,<module>,alias,import,line 14,line 14,import: check_solution_feasible
+CCS-066,tests/test_stage2ea1_structural_context.py,test_existing_13_pairs_are_exactly_unchanged,direct imported reference,test-side direct validation/instrumentation,line 581,line 581,call: check_solution_feasible
+CCS-067,tests/test_stage2ea1_structural_context.py,test_objective_checker_and_violations_are_context_isolated,direct imported reference,test-side direct validation/instrumentation,line 500,line 500,call: check_solution_feasible
+CCS-068,tests/test_stage2ea1_structural_context.py,test_objective_checker_and_violations_are_context_isolated,direct imported reference,test-side direct validation/instrumentation,line 501,line 501,call: check_solution_feasible
+CCS-069,tests/test_stage2ea2_ordinary_cascade_adapter.py,<module>,alias,import,line 11,line 11,import: check_solution_feasible
+CCS-070,tests/test_stage2ea2_ordinary_cascade_adapter.py,test_existing_13_pair_baseline_and_16_pair_contract_matrix,direct imported reference,test-side direct validation/instrumentation,line 610,line 610,call: check_solution_feasible
+CCS-071,tests/test_stage2f1_native_cascade_removal.py,<module>,alias,import,ABSENT,line 8,import: check_solution_feasible
+CCS-072,tests/test_stage2f1_native_cascade_removal.py,test_multiple_occurrence_rank_uses_minimum_pre_destroy_sortie_rank,direct imported reference,test-side direct validation/instrumentation,ABSENT,line 202,call: check_solution_feasible

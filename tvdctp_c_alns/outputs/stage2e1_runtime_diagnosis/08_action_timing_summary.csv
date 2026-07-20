@@ -1,0 +1,17 @@
+action_id,destroy,repair,calls,total_operator_seconds,max_operator_seconds,total_candidates,max_candidates,objective_calls,checker_calls
+0,random_customer_removal,best_mode_repair,2,1.816479400,1.218604500,3937,2568,14,20
+1,random_customer_removal,greedy_van_repair,5,3.296618400,1.169293500,6966,2531,13,20
+2,random_customer_removal,regret_repair,5,227.304068700,94.899292300,80136,32718,42396,42412
+3,random_customer_removal,cascade_repair,1,0.075526300,0.075526300,0,0,5,10
+4,greedy_removal,best_mode_repair,3,3.289869200,1.931160100,6683,4083,70,74
+5,greedy_removal,greedy_van_repair,2,0.475464100,0.240634000,338,169,44,46
+6,greedy_removal,regret_repair,1,9.651629100,9.651629100,4900,4900,1807,1808
+7,greedy_removal,cascade_repair,2,0.432607400,0.227254600,262,262,55,74
+8,related_customer_removal,best_mode_repair,2,1.249598900,0.753820500,2685,1567,6,9
+9,related_customer_removal,greedy_van_repair,3,0.900532400,0.371171300,1991,741,5,8
+10,related_customer_removal,regret_repair,2,37.551745100,22.851954800,11055,7259,6234,6238
+11,related_customer_removal,cascade_repair,1,0.039460600,0.039460600,0,0,1,2
+12,cascade_aware_removal,best_mode_repair,1,2.617334900,2.617334900,6026,6026,1,2
+13,cascade_aware_removal,greedy_van_repair,5,4.445348100,1.494906200,8941,3305,5,10
+14,cascade_aware_removal,regret_repair,3,299.117088400,231.010967400,82903,58588,35759,35765
+15,cascade_aware_removal,cascade_repair,2,0.050405400,0.029481400,0,0,2,2

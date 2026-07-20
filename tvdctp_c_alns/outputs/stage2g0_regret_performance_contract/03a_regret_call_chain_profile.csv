@@ -1,0 +1,14 @@
+call_chain_step,file_function,input,output,calls,inclusive_seconds,exclusive_seconds,allocations
+repair entry,operators.py:regret_repair,State/customer/move/data/config,moves/derived facts/scored move/State,1,124.14360619988292,,process peak only
+remaining-customer evaluation,operators.py:_evaluate_regret_customer,State/customer/move/data/config,moves/derived facts/scored move/State,27,124.0432398011908,0.0657659936696291,not isolated
+van enumeration,operators.py:_enumerate_feasible_van_moves,State/customer/move/data/config,moves/derived facts/scored move/State,27,0.009423199575394392,0.0039036995731294155,not isolated
+drone enumeration,operators.py:_enumerate_feasible_drone_moves,State/customer/move/data/config,moves/derived facts/scored move/State,27,16.42207199987024,6.1733734116423875,not isolated
+hard prefilter,operators.py:_van/_drone_insert_hard_feasible,State/customer/move/data/config,moves/derived facts/scored move/State,32718,10.254218088230118,10.254218088230118,not isolated
+deduplicate,operators.py:_deduplicate_regret_moves,State/customer/move/data/config,moves/derived facts/scored move/State,27,0.36479369970038533,0.060541104758158326,not isolated
+State materialization,state.py:TVDState.copy,State/customer/move/data/config,moves/derived facts/scored move/State,17786,23.877472810214385,23.877472810214385,~44817 retained bytes/copy sample
+candidate apply,operators.py:_apply_move,State/customer/move/data/config,moves/derived facts/scored move/State,17743,0.1784220791887492,0.1784220791887492,not isolated
+timing,feasibility.py:compute_timing,State/customer/move/data/config,moves/derived facts/scored move/State,35487,53.27377579919994,45.25874001113698,not isolated
+objective,objective.py:objective,State/customer/move/data/config,moves/derived facts/scored move/State,17784,81.76828336156905,11.461532037705183,not isolated
+canonical checker,feasibility.py:check_solution_feasible,State/customer/move/data/config,moves/derived facts/scored move/State,17790,40.68832091381773,12.018855303525925,not isolated
+ranking/tie key,operators.py:_regret_move_order_key,State/customer/move/data/config,moves/derived facts/scored move/State,17743,0.2480937084183097,0.0493625954259187,not isolated
+selected commit,operators.py:_apply_move outside scoring,State/customer/move/data/config,moves/derived facts/scored move/State,6,5.1800161600112915e-05,5.1800161600112915e-05,in-place
